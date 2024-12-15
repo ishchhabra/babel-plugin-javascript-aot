@@ -210,10 +210,10 @@ export class HIRBuilder {
         const right = expression.get("right") as NodePath<t.Expression>;
 
         const storedLeft = this.#createTemporaryStore(
-          this.#buildExpression(left)
+          this.#buildExpression(left),
         );
         const storedRight = this.#createTemporaryStore(
-          this.#buildExpression(right)
+          this.#buildExpression(right),
         );
 
         return {

@@ -57,8 +57,8 @@ export class Codegen {
           t.ifStatement(
             test,
             t.blockStatement(consequent),
-            alternate.length > 0 ? t.blockStatement(alternate) : null
-          )
+            alternate.length > 0 ? t.blockStatement(alternate) : null,
+          ),
         );
 
         // Generate fallthrough block
@@ -79,7 +79,7 @@ export class Codegen {
         return t.variableDeclaration("const", [
           t.variableDeclarator(
             t.identifier(instruction.value.place.identifier.name),
-            value as t.Expression
+            value as t.Expression,
           ),
         ]);
 
@@ -116,14 +116,14 @@ export class Codegen {
       case "UnaryExpression":
         return t.unaryExpression(
           value.operator,
-          this.#generatePlace(value.value)
+          this.#generatePlace(value.value),
         );
 
       case "BinaryExpression":
         return t.binaryExpression(
           value.operator,
           this.#generatePlace(value.left),
-          this.#generatePlace(value.right)
+          this.#generatePlace(value.right),
         );
 
       case "StoreLocal":
@@ -133,7 +133,7 @@ export class Codegen {
         return t.updateExpression(
           value.operator,
           this.#generatePlace(value.value),
-          value.prefix
+          value.prefix,
         );
 
       case "UnsupportedNode":

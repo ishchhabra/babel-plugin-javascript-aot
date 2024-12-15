@@ -36,7 +36,7 @@ const DEFAULT_OPTIONS: Required<ConstantPropagationOptions> = {
  */
 export function constantPropagation(
   blocks: Map<BlockId, BasicBlock>,
-  options?: ConstantPropagationOptions
+  options?: ConstantPropagationOptions,
 ): OptimizationStats {
   if (!blocks || blocks.size === 0) {
     return { iterations: 0, optimizationsApplied: 0 };
@@ -77,7 +77,7 @@ type PropagationResult = {
 function applyConstantPropagation(
   blocks: Map<BlockId, BasicBlock>,
   constants: Constants,
-  debug: boolean
+  debug: boolean,
 ): PropagationResult {
   let hasChanges = false;
   let optimizationsApplied = 0;
@@ -101,7 +101,7 @@ function applyConstantPropagation(
 function processBlock(
   block: BasicBlock,
   constantCache: Map<IdentifierId, Constant>,
-  debug: boolean
+  debug: boolean,
 ): PropagationResult {
   let hasChanges = false;
   let optimizationsApplied = 0;
@@ -123,7 +123,7 @@ function processBlock(
           // Only set the constant if we haven't seen this identifier before
           constantCache.set(
             instruction.value.place.identifier.id,
-            evaluatedValue
+            evaluatedValue,
           );
           hasChanges = true;
           optimizationsApplied++;
@@ -132,15 +132,15 @@ function processBlock(
         // Create new instruction with the evaluated value
         const newInstruction = createOptimizedInstruction(
           instruction,
-          evaluatedValue
+          evaluatedValue,
         );
         block.instructions[i] = newInstruction;
 
         if (debug) {
           console.log(
             `Optimized instruction ${instruction.id}: ${JSON.stringify(
-              evaluatedValue
-            )}`
+              evaluatedValue,
+            )}`,
           );
         }
       }
@@ -156,7 +156,7 @@ function processBlock(
 
 function createOptimizedInstruction(
   originalInstruction: Instruction,
-  evaluatedValue: Constant
+  evaluatedValue: Constant,
 ): Instruction {
   return {
     id: originalInstruction.id,
@@ -179,7 +179,7 @@ function createOptimizedInstruction(
 
 function evaluateInstruction(
   constants: Constants,
-  instruction: Instruction
+  instruction: Instruction,
 ): Constant | null {
   const value = instruction.value;
 
@@ -236,7 +236,7 @@ function evaluateInstruction(
 
 function evaluateUnaryExpression(
   operand: Constant,
-  operator: "!" | "~"
+  operator: "!" | "~",
 ): Constant | null {
   switch (operator) {
     case "!":
@@ -255,7 +255,7 @@ function evaluateUnaryExpression(
 function evaluateBinaryExpression(
   left: Constant,
   right: Constant,
-  operator: string
+  operator: string,
 ): Constant | null {
   // Early return if either value is null or undefined
   if (left.value == null || right.value == null) {
@@ -314,7 +314,7 @@ function evaluateBinaryExpression(
 
     // Mixed number and bigint types are not supported
     return null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -322,7 +322,7 @@ function evaluateBinaryExpression(
 function evaluateUpdateExpression(
   operand: Constant,
   operator: t.UpdateExpression["operator"],
-  prefix: boolean
+  prefix: boolean,
 ): Constant | null {
   if (operand.kind !== "Primitive" || typeof operand.value !== "number") {
     return null;

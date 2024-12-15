@@ -7,7 +7,7 @@ import { OptimizationOptions } from "../Optimization/OptimizationOptions";
 
 export function compileProgram(
   program: NodePath<t.Program>,
-  options: OptimizationOptions
+  options: OptimizationOptions,
 ) {
   const builder = new HIRBuilder(program).build();
 
