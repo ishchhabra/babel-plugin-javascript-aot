@@ -1,14 +1,17 @@
 import * as t from "@babel/types";
 import { BasicBlock, BlockId } from "../HIR/Block";
 import { IdentifierId } from "../HIR/Identifier";
-import { Instruction } from "../HIR/Instruction";
+import {
+  BinaryExpressionInstruction,
+  Instruction,
+  UnaryExpressionInstruction,
+} from "../HIR/Instruction";
 import { Place } from "../HIR/Place";
-
-type Primitive = string | number | boolean | null | undefined | bigint | symbol;
+import { PrimitiveValue } from "../HIR/Value";
 
 type Constant = {
   readonly kind: "Primitive";
-  readonly value: Primitive;
+  readonly value: PrimitiveValue;
 };
 
 type Constants = Map<IdentifierId, Constant>;
@@ -199,7 +202,7 @@ function evaluateInstruction(
 
 function evaluateUnaryExpression(
   operand: Constant,
-  operator: "!" | "~",
+  operator: UnaryExpressionInstruction["operator"],
 ): Constant | null {
   switch (operator) {
     case "!":
@@ -212,13 +215,17 @@ function evaluateUnaryExpression(
         return null;
       }
       return { kind: "Primitive", value: ~operand.value };
+    case "-":
+      return { kind: "Primitive", value: -(operand.value as number) };
+    case "+":
+      return { kind: "Primitive", value: +(operand.value as number) };
   }
 }
 
 function evaluateBinaryExpression(
   left: Constant,
   right: Constant,
-  operator: string,
+  operator: BinaryExpressionInstruction["operator"],
 ): Constant | null {
   if (left.value == null || right.value == null) {
     return null;
@@ -227,45 +234,122 @@ function evaluateBinaryExpression(
   const leftValue = left.value;
   const rightValue = right.value;
 
-  if (
-    (typeof leftValue !== "number" && typeof leftValue !== "bigint") ||
-    (typeof rightValue !== "number" && typeof rightValue !== "bigint")
-  ) {
-    return null;
-  }
-
-  try {
-    if (typeof leftValue === "bigint" && typeof rightValue === "bigint") {
-      switch (operator) {
-        case "+":
-          return { kind: "Primitive", value: leftValue + rightValue };
-        case "-":
-          return { kind: "Primitive", value: leftValue - rightValue };
-        case "*":
-          return { kind: "Primitive", value: leftValue * rightValue };
-        case "/":
-          if (rightValue === 0n) throw new Error("Division by zero");
-          return { kind: "Primitive", value: leftValue / rightValue };
+  switch (operator) {
+    case "+":
+      if (!canAdd(leftValue, rightValue)) {
+        return null;
       }
-    }
 
-    if (typeof leftValue === "number" && typeof rightValue === "number") {
-      switch (operator) {
-        case "+":
-          return { kind: "Primitive", value: leftValue + rightValue };
-        case "-":
-          return { kind: "Primitive", value: leftValue - rightValue };
-        case "*":
-          return { kind: "Primitive", value: leftValue * rightValue };
-        case "/":
-          if (rightValue === 0) throw new Error("Division by zero");
-          return { kind: "Primitive", value: leftValue / rightValue };
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) + (rightValue as number),
+      };
+    case "-":
+      if (!canArithmetic(leftValue, rightValue)) {
+        return null;
       }
-    }
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) - (rightValue as number),
+      };
+    case "*":
+      if (!canArithmetic(leftValue, rightValue)) {
+        return null;
+      }
 
-    return null;
-  } catch {
-    return null;
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) * (rightValue as number),
+      };
+    case "/":
+      if (!canArithmetic(leftValue, rightValue)) {
+        return null;
+      }
+
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) / (rightValue as number),
+      };
+    case "|":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) | (rightValue as number),
+      };
+    case "&":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) & (rightValue as number),
+      };
+    case "^":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) ^ (rightValue as number),
+      };
+    case ">>":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) >> (rightValue as number),
+      };
+    case ">>>":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) >>> (rightValue as number),
+      };
+    case "==":
+      return {
+        kind: "Primitive",
+        value: leftValue === rightValue,
+      };
+    case "!=":
+      return {
+        kind: "Primitive",
+        value: leftValue !== rightValue,
+      };
+    case ">":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) > (rightValue as number),
+      };
+    case ">=":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) >= (rightValue as number),
+      };
+    case "<":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) < (rightValue as number),
+      };
+    case "<=":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) <= (rightValue as number),
+      };
+    case "!==":
+      return {
+        kind: "Primitive",
+        value: leftValue !== rightValue,
+      };
+    case "===":
+      return {
+        kind: "Primitive",
+        value: leftValue === rightValue,
+      };
+    case "%":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) % (rightValue as number),
+      };
+    case "**":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) ** (rightValue as number),
+      };
+    case "<<":
+      return {
+        kind: "Primitive",
+        value: (leftValue as number) << (rightValue as number),
+      };
   }
 }
 
@@ -294,4 +378,32 @@ function evaluateUpdateExpression(
 
 function readConstant(constants: Constants, place: Place): Constant | null {
   return constants.get(place.identifier.id) ?? null;
+}
+
+function canAdd(left: PrimitiveValue, right: PrimitiveValue): boolean {
+  // symbols cannot be added.
+  if (typeof left === "symbol" || typeof right === "symbol") {
+    return false;
+  }
+
+  // strings can be concatenated with any primitive except symbols.
+  if (typeof left === "string" || typeof right === "string") {
+    return true;
+  }
+
+  // bigints can be added with other bigints or strings.
+  if (typeof left === "bigint" || typeof right === "bigint") {
+    return typeof left === "bigint" && typeof right === "bigint";
+  }
+
+  // numbers can be added with other numbers.
+  if (typeof left === "number" && typeof right === "number") {
+    return true;
+  }
+
+  return true;
+}
+
+function canArithmetic(left: PrimitiveValue, right: PrimitiveValue): boolean {
+  return typeof left === "number" && typeof right === "number";
 }

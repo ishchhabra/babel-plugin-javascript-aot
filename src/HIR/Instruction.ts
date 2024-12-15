@@ -17,13 +17,19 @@ export interface StoreLocalInstruction extends BaseInstruction {
 
 export interface UnaryExpressionInstruction extends BaseInstruction {
   kind: "UnaryExpression";
-  operator: "!" | "~";
+  operator: Exclude<
+    t.UnaryExpression["operator"],
+    "typeof" | "delete" | "throw" | "void"
+  >;
   value: Place;
 }
 
 export interface BinaryExpressionInstruction extends BaseInstruction {
   kind: "BinaryExpression";
-  operator: "+" | "-" | "/" | "*";
+  operator: Exclude<
+    t.BinaryExpression["operator"],
+    "in" | "instanceof" | "&&" | "||" | "|>"
+  >;
   left: Place;
   right: Place;
 }
