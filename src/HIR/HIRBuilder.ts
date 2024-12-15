@@ -16,7 +16,6 @@ export class HIRBuilder {
   #program: NodePath<t.Program>;
   #blocks: Map<BlockId, BasicBlock>;
   #currentBlockId: BlockId;
-  #bindings: Map<string, number>;
 
   #nextBlockId = 0;
   #nextIdentifierId = 0;
@@ -25,7 +24,6 @@ export class HIRBuilder {
   constructor(program: NodePath<t.Program>) {
     this.#program = program;
     this.#blocks = new Map();
-    this.#bindings = new Map();
 
     this.#blocks.set(0, makeEmptyBlock(this.#nextBlockId++));
     this.#currentBlockId = 0;
@@ -118,7 +116,7 @@ export class HIRBuilder {
             };
 
             const name = (declaration.node.id as t.Identifier).name;
-            this.#bindings.set(name, id);
+            declaration.scope.setData(name, id);
 
             this.#currentBlock.instructions.push({
               id: makeInstructionId(this.#nextInstructionId++),
@@ -171,7 +169,7 @@ export class HIRBuilder {
 
       case "Identifier": {
         // Look up the binding for this identifier
-        const binding = this.#bindings.get(expressionNode.name);
+        const binding = expression.scope.getData(expressionNode.name);
         if (binding === undefined) {
           throw new Error(`Undefined variable: ${expressionNode.name}`);
         }
