@@ -11,7 +11,6 @@ export interface BaseInstruction {
 
 export interface StoreLocalInstruction extends BaseInstruction {
   kind: "StoreLocal";
-  place: Place;
   value: Value;
 }
 

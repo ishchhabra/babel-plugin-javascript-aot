@@ -149,7 +149,6 @@ export class HIRBuilder {
               id: makeInstructionId(this.#nextInstructionId++),
               kind: "StoreLocal",
               target: targetPlace,
-              place: targetPlace,
               value: {
                 kind: "Load",
                 place: valuePlace,
@@ -186,7 +185,6 @@ export class HIRBuilder {
           id: instructionId,
           kind: "StoreLocal",
           target: resultPlace,
-          place: resultPlace,
           value: {
             kind: "Primitive",
             value: expressionNode.value,
