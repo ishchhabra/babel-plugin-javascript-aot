@@ -2,7 +2,15 @@ import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { BasicBlock, BlockId } from "./Block";
 import { makeIdentifierId, makeIdentifierName } from "./Identifier";
-import { InstructionValue, makeInstructionId } from "./Instruction";
+import {
+  BinaryExpressionInstruction,
+  makeInstructionId,
+  StoreLocalInstruction,
+  UnaryExpressionInstruction,
+  UnsupportedNodeInstruction,
+  UpdateExpressionInstruction,
+} from "./Instruction";
+import { Place } from "./Place";
 
 export class HIRBuilder {
   #program: NodePath<t.Program>;
@@ -43,7 +51,6 @@ export class HIRBuilder {
     for (const statement of body) {
       this.#buildStatement(statement);
     }
-
     return this;
   }
 
@@ -61,8 +68,7 @@ export class HIRBuilder {
       case "IfStatement": {
         statement.assertIfStatement();
         const test = statement.get("test");
-        const testValue = this.#buildExpression(test);
-        const storedTest = this.#createTemporaryStore(testValue);
+        const testPlace = this.#buildExpression(test);
 
         const consequentBlockId = this.#nextBlockId++;
         const alternateBlockId = this.#nextBlockId++;
@@ -71,7 +77,7 @@ export class HIRBuilder {
         const branchId = makeInstructionId(this.#nextInstructionId++);
         this.#currentBlock.terminal = {
           kind: "branch",
-          test: storedTest,
+          test: testPlace,
           consequent: consequentBlockId,
           alternate: alternateBlockId,
           fallthrough: fallthroughBlockId,
@@ -124,25 +130,29 @@ export class HIRBuilder {
         for (const declaration of statement.get("declarations")) {
           const init = declaration.get("init");
           if (init.hasNode()) {
-            const value = this.#buildExpression(init);
+            const valuePlace = this.#buildExpression(init);
             const identifierId = this.#nextIdentifierId++;
             const id = makeIdentifierId(identifierId);
+
+            const targetPlace = {
+              kind: "Identifier" as const,
+              identifier: {
+                id,
+                name: makeIdentifierName(id),
+              },
+            };
 
             const name = (declaration.node.id as t.Identifier).name;
             this.#bindings.set(name, id);
 
             this.#currentBlock.instructions.push({
               id: makeInstructionId(this.#nextInstructionId++),
+              kind: "StoreLocal",
+              target: targetPlace,
+              place: targetPlace,
               value: {
-                kind: "StoreLocal",
-                place: {
-                  kind: "Identifier",
-                  identifier: {
-                    id,
-                    name: makeIdentifierName(id),
-                  },
-                },
-                value,
+                kind: "Load",
+                place: valuePlace,
               },
             });
           }
@@ -151,145 +161,136 @@ export class HIRBuilder {
       }
 
       default:
+        const resultPlace = this.#createTemporaryPlace();
         this.#currentBlock.instructions.push({
           id: makeInstructionId(this.#nextInstructionId++),
-          value: {
-            kind: "UnsupportedNode",
-            node: statementNode,
-          },
+          kind: "UnsupportedNode",
+          target: resultPlace,
+          node: statementNode,
         });
         break;
     }
   }
 
-  #buildExpression(expression: NodePath<t.Expression>): InstructionValue {
+  #buildExpression(expression: NodePath<t.Expression>): Place {
     const expressionNode = expression.node;
+    const instructionId = makeInstructionId(this.#nextInstructionId++);
+
     switch (expressionNode.type) {
       case "BooleanLiteral":
-      case "NumericLiteral":
+      case "NumericLiteral": {
         expression.assertLiteral();
-        return {
-          kind: "Primitive",
-          value: expressionNode.value,
+
+        const resultPlace = this.#createTemporaryPlace();
+        const instruction: StoreLocalInstruction = {
+          id: instructionId,
+          kind: "StoreLocal",
+          target: resultPlace,
+          place: resultPlace,
+          value: {
+            kind: "Primitive",
+            value: expressionNode.value,
+          },
         };
+        this.#currentBlock.instructions.push(instruction);
+        return resultPlace;
+      }
 
       case "Identifier": {
-        expression.assertIdentifier();
+        // Look up the binding for this identifier
         const binding = this.#bindings.get(expressionNode.name);
         if (binding === undefined) {
           throw new Error(`Undefined variable: ${expressionNode.name}`);
         }
+
+        // Return a place referencing this identifier
         return {
-          kind: "Load",
-          place: {
-            kind: "Identifier",
-            identifier: {
-              id: binding,
-              name: makeIdentifierName(binding),
-            },
+          kind: "Identifier",
+          identifier: {
+            id: binding,
+            name: makeIdentifierName(binding),
           },
         };
       }
 
       case "UnaryExpression": {
         expression.assertUnaryExpression();
-        const operand = expression.get("argument") as NodePath<t.Expression>;
-        const operandValue = this.#buildExpression(operand);
-        const storedOperand = this.#createTemporaryStore(operandValue);
+        const operandPlace = this.#buildExpression(
+          expression.get("argument") as NodePath<t.Expression>,
+        );
 
-        return {
+        const resultPlace = this.#createTemporaryPlace();
+        const instruction: UnaryExpressionInstruction = {
+          id: instructionId,
           kind: "UnaryExpression",
+          target: resultPlace,
           operator: expressionNode.operator as "!" | "~",
-          value: storedOperand,
+          value: operandPlace,
         };
+        this.#currentBlock.instructions.push(instruction);
+        return resultPlace;
       }
 
       case "BinaryExpression": {
         expression.assertBinaryExpression();
-        const left = expression.get("left") as NodePath<t.Expression>;
-        const right = expression.get("right") as NodePath<t.Expression>;
-
-        const storedLeft = this.#createTemporaryStore(
-          this.#buildExpression(left),
+        const leftPlace = this.#buildExpression(
+          expression.get("left") as NodePath<t.Expression>,
         );
-        const storedRight = this.#createTemporaryStore(
-          this.#buildExpression(right),
+        const rightPlace = this.#buildExpression(
+          expression.get("right") as NodePath<t.Expression>,
         );
 
-        return {
+        const resultPlace = this.#createTemporaryPlace();
+        const instruction: BinaryExpressionInstruction = {
+          id: instructionId,
           kind: "BinaryExpression",
+          target: resultPlace,
           operator: expressionNode.operator as "+" | "-" | "/" | "*",
-          left: storedLeft,
-          right: storedRight,
+          left: leftPlace,
+          right: rightPlace,
         };
+        this.#currentBlock.instructions.push(instruction);
+        return resultPlace;
       }
 
-      case "UpdateExpression":
+      case "UpdateExpression": {
         expression.assertUpdateExpression();
-        const argument = expression.get("argument") as NodePath<t.Expression>;
-        const argumentValue = this.#buildExpression(argument);
+        const argumentPlace = this.#buildExpression(
+          expression.get("argument") as NodePath<t.Expression>,
+        );
 
-        const instructionId = makeInstructionId(this.#nextInstructionId++);
-        const identifierId = makeIdentifierId(this.#nextIdentifierId++);
-
-        this.#currentBlock.instructions.push({
+        const resultPlace = this.#createTemporaryPlace();
+        const instruction: UpdateExpressionInstruction = {
           id: instructionId,
-          value: {
-            kind: "StoreLocal",
-            place: {
-              kind: "Identifier",
-              identifier: {
-                id: identifierId,
-                name: makeIdentifierName(identifierId),
-              },
-            },
-            value: argumentValue,
-          },
-        });
-
-        return {
           kind: "UpdateExpression",
-          operator: expressionNode.operator as "++" | "--",
+          target: resultPlace,
+          operator: expressionNode.operator,
           prefix: expressionNode.prefix,
-          value: {
-            kind: "Identifier",
-            identifier: {
-              id: identifierId,
-              name: makeIdentifierName(identifierId),
-            },
-          },
+          value: argumentPlace,
         };
+        this.#currentBlock.instructions.push(instruction);
+        return resultPlace;
+      }
 
-      default:
-        console.log(expressionNode.type);
-        return {
+      default: {
+        console.log("Unsupported node", expressionNode.type);
+        const resultPlace = this.#createTemporaryPlace();
+        const instruction: UnsupportedNodeInstruction = {
+          id: instructionId,
           kind: "UnsupportedNode",
+          target: resultPlace,
           node: expressionNode,
         };
+        this.#currentBlock.instructions.push(instruction);
+        return resultPlace;
+      }
     }
   }
 
-  #createTemporaryStore(value: InstructionValue) {
-    const instructionId = makeInstructionId(this.#nextInstructionId++);
+  #createTemporaryPlace(): Place {
     const identifierId = makeIdentifierId(this.#nextIdentifierId++);
-
-    this.#currentBlock.instructions.push({
-      id: instructionId,
-      value: {
-        kind: "StoreLocal",
-        place: {
-          kind: "Identifier",
-          identifier: {
-            id: identifierId,
-            name: makeIdentifierName(identifierId),
-          },
-        },
-        value,
-      },
-    });
-
     return {
-      kind: "Identifier" as const,
+      kind: "Identifier",
       identifier: {
         id: identifierId,
         name: makeIdentifierName(identifierId),

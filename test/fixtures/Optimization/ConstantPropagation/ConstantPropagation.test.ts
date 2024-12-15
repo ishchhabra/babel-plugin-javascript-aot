@@ -1,5 +1,5 @@
 import pluginTester from "babel-plugin-tester";
-import BabelPlugin from "../../../src/index";
+import BabelPlugin from "../../../../src/index";
 
 pluginTester({
   plugin: BabelPlugin,

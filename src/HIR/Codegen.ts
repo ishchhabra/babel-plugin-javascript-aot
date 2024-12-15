@@ -1,7 +1,8 @@
 import * as t from "@babel/types";
 import { BasicBlock, BlockId } from "./Block";
-import { Instruction, InstructionValue } from "./Instruction";
+import { Instruction } from "./Instruction";
 import { Place } from "./Place";
+import { Value } from "./Value";
 
 export class Codegen {
   #blocks: Map<BlockId, BasicBlock>;
@@ -73,24 +74,56 @@ export class Codegen {
   }
 
   #generateInstruction(instruction: Instruction): t.Statement {
-    switch (instruction.value.kind) {
+    switch (instruction.kind) {
       case "StoreLocal":
-        const value = this.#generateValue(instruction.value);
         return t.variableDeclaration("const", [
           t.variableDeclarator(
-            t.identifier(instruction.value.place.identifier.name),
-            value as t.Expression,
+            t.identifier(instruction.target.identifier.name),
+            this.#generateValue(instruction.value),
+          ),
+        ]);
+
+      case "UnaryExpression":
+        return t.variableDeclaration("const", [
+          t.variableDeclarator(
+            t.identifier(instruction.target.identifier.name),
+            t.unaryExpression(
+              instruction.operator,
+              this.#generatePlace(instruction.value),
+            ),
+          ),
+        ]);
+
+      case "BinaryExpression":
+        return t.variableDeclaration("const", [
+          t.variableDeclarator(
+            t.identifier(instruction.target.identifier.name),
+            t.binaryExpression(
+              instruction.operator,
+              this.#generatePlace(instruction.left),
+              this.#generatePlace(instruction.right),
+            ),
+          ),
+        ]);
+
+      case "UpdateExpression":
+        return t.variableDeclaration("const", [
+          t.variableDeclarator(
+            t.identifier(instruction.target.identifier.name),
+            t.updateExpression(
+              instruction.operator,
+              this.#generatePlace(instruction.value),
+              instruction.prefix,
+            ),
           ),
         ]);
 
       case "UnsupportedNode":
-        return instruction.value.node as t.Statement;
+        return instruction.node as t.Statement;
     }
-
-    throw new Error(`Unsupported instruction kind: ${instruction.value.kind}`);
   }
 
-  #generateValue(value: InstructionValue): t.Node {
+  #generateValue(value: Value): t.Expression {
     switch (value.kind) {
       case "Primitive":
         if (typeof value.value === "number") {
@@ -112,41 +145,17 @@ export class Codegen {
 
       case "Load":
         return this.#generatePlace(value.place);
-
-      case "UnaryExpression":
-        return t.unaryExpression(
-          value.operator,
-          this.#generatePlace(value.value),
-        );
-
-      case "BinaryExpression":
-        return t.binaryExpression(
-          value.operator,
-          this.#generatePlace(value.left),
-          this.#generatePlace(value.right),
-        );
-
-      case "StoreLocal":
-        return this.#generateValue(value.value);
-
-      case "UpdateExpression":
-        return t.updateExpression(
-          value.operator,
-          this.#generatePlace(value.value),
-          value.prefix,
-        );
-
-      case "UnsupportedNode":
-        return value.node;
     }
 
-    throw new Error(`Unsupported value kind: ${JSON.stringify(value)}`);
+    throw new Error(`Unsupported value kind: ${value}`);
   }
 
   #generatePlace(place: Place): t.Expression {
     switch (place.kind) {
       case "Identifier":
         return t.identifier(place.identifier.name);
+      default:
+        throw new Error(`Unsupported place kind: ${place.kind}`);
     }
   }
 }

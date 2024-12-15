@@ -1,7 +1,7 @@
 import * as t from "@babel/types";
 import { BasicBlock, BlockId } from "../HIR/Block";
 import { IdentifierId } from "../HIR/Identifier";
-import { Instruction, StoreLocalInstructionValue } from "../HIR/Instruction";
+import { Instruction } from "../HIR/Instruction";
 import { Place } from "../HIR/Place";
 
 type Primitive = string | number | boolean | null | undefined | bigint | symbol;
@@ -28,12 +28,6 @@ const DEFAULT_OPTIONS: Required<ConstantPropagationOptions> = {
   maxIterations: 1000,
 };
 
-/**
- * Performs constant propagation optimization on the given blocks
- * @param blocks Map of basic blocks to optimize
- * @param options Configuration options for the optimization
- * @returns Statistics about the optimization process
- */
 export function constantPropagation(
   blocks: Map<BlockId, BasicBlock>,
   options?: ConstantPropagationOptions,
@@ -108,40 +102,47 @@ function processBlock(
 
   for (let i = 0; i < block.instructions.length; i++) {
     const instruction = block.instructions[i];
-    if (!instruction) {
-      continue;
-    }
+    if (!instruction) continue;
 
     try {
       const evaluatedValue = evaluateInstruction(constantCache, instruction);
 
       if (evaluatedValue !== null) {
-        if (
-          instruction.value.kind === "StoreLocal" &&
-          !constantCache.has(instruction.value.place.identifier.id)
-        ) {
-          // Only set the constant if we haven't seen this identifier before
-          constantCache.set(
-            instruction.value.place.identifier.id,
-            evaluatedValue,
-          );
+        const targetId = instruction.target.identifier.id;
+        const existingValue = constantCache.get(targetId);
+
+        // Only count as a change if the value is different from what we had before
+        const isNewValue =
+          !existingValue ||
+          JSON.stringify(existingValue.value) !==
+            JSON.stringify(evaluatedValue.value);
+
+        if (isNewValue) {
+          // Store the evaluated constant in the cache
+          constantCache.set(targetId, evaluatedValue);
+
+          // Create new instruction with the evaluated value
+          block.instructions[i] = {
+            ...instruction,
+            kind: "StoreLocal",
+            target: instruction.target,
+            place: instruction.target,
+            value: {
+              kind: "Primitive",
+              value: evaluatedValue.value,
+            },
+          };
+
           hasChanges = true;
           optimizationsApplied++;
-        }
 
-        // Create new instruction with the evaluated value
-        const newInstruction = createOptimizedInstruction(
-          instruction,
-          evaluatedValue,
-        );
-        block.instructions[i] = newInstruction;
-
-        if (debug) {
-          console.log(
-            `Optimized instruction ${instruction.id}: ${JSON.stringify(
-              evaluatedValue,
-            )}`,
-          );
+          if (debug) {
+            console.log(
+              `Optimized instruction ${instruction.id}: ${JSON.stringify(
+                evaluatedValue,
+              )}`,
+            );
+          }
         }
       }
     } catch (error) {
@@ -154,79 +155,41 @@ function processBlock(
   return { hasChanges, optimizationsApplied };
 }
 
-function createOptimizedInstruction(
-  originalInstruction: Instruction,
-  evaluatedValue: Constant,
-): Instruction {
-  return {
-    id: originalInstruction.id,
-    value: {
-      kind: "StoreLocal",
-      place:
-        originalInstruction.value.kind === "StoreLocal"
-          ? originalInstruction.value.place
-          : {
-              kind: "Identifier",
-              identifier: {
-                id: originalInstruction.id,
-                name: `tmp${originalInstruction.id}`,
-              },
-            },
-      value: evaluatedValue,
-    },
-  };
-}
-
 function evaluateInstruction(
   constants: Constants,
   instruction: Instruction,
 ): Constant | null {
-  const value = instruction.value;
-
-  switch (value.kind) {
+  switch (instruction.kind) {
     case "StoreLocal":
-      const place = (instruction.value as StoreLocalInstructionValue).place;
-      const identifierId = place.identifier.id;
-
-      if (constants.has(identifierId)) {
-        return { kind: "Primitive", value: constants.get(identifierId)!.value };
+      if (instruction.value.kind === "Primitive") {
+        return { kind: "Primitive", value: instruction.value.value };
       }
-
-      return evaluateInstruction(constants, {
-        id: instruction.id,
-        value: value.value,
-      });
-
-    case "Primitive":
-      return { kind: "Primitive", value: value.value };
+      if (instruction.value.kind === "Load") {
+        return readConstant(constants, instruction.value.place);
+      }
+      return null;
 
     case "UnaryExpression": {
-      const operand = readConstant(constants, value.value);
-      if (operand === null) {
-        return null;
-      }
-
-      return evaluateUnaryExpression(operand, value.operator);
+      const operand = readConstant(constants, instruction.value);
+      if (operand === null) return null;
+      return evaluateUnaryExpression(operand, instruction.operator);
     }
 
     case "BinaryExpression": {
-      const left = readConstant(constants, value.left);
-      const right = readConstant(constants, value.right);
-
-      if (left === null || right === null) {
-        return null;
-      }
-
-      return evaluateBinaryExpression(left, right, value.operator);
+      const left = readConstant(constants, instruction.left);
+      const right = readConstant(constants, instruction.right);
+      if (left === null || right === null) return null;
+      return evaluateBinaryExpression(left, right, instruction.operator);
     }
 
     case "UpdateExpression": {
-      const operand = readConstant(constants, value.value);
-      if (operand === null) {
-        return null;
-      }
-
-      return evaluateUpdateExpression(operand, value.operator, value.prefix);
+      const operand = readConstant(constants, instruction.value);
+      if (operand === null) return null;
+      return evaluateUpdateExpression(
+        operand,
+        instruction.operator,
+        instruction.prefix,
+      );
     }
 
     default:
@@ -257,12 +220,10 @@ function evaluateBinaryExpression(
   right: Constant,
   operator: string,
 ): Constant | null {
-  // Early return if either value is null or undefined
   if (left.value == null || right.value == null) {
     return null;
   }
 
-  // Check if both values are numbers or bigints
   const leftValue = left.value;
   const rightValue = right.value;
 
@@ -274,7 +235,6 @@ function evaluateBinaryExpression(
   }
 
   try {
-    // If both are bigints, perform bigint arithmetic
     if (typeof leftValue === "bigint" && typeof rightValue === "bigint") {
       switch (operator) {
         case "+":
@@ -284,16 +244,11 @@ function evaluateBinaryExpression(
         case "*":
           return { kind: "Primitive", value: leftValue * rightValue };
         case "/":
-          if (rightValue === 0n) {
-            throw new Error("Division by zero");
-          }
+          if (rightValue === 0n) throw new Error("Division by zero");
           return { kind: "Primitive", value: leftValue / rightValue };
-        default:
-          return null;
       }
     }
 
-    // If both are numbers, perform number arithmetic
     if (typeof leftValue === "number" && typeof rightValue === "number") {
       switch (operator) {
         case "+":
@@ -303,16 +258,11 @@ function evaluateBinaryExpression(
         case "*":
           return { kind: "Primitive", value: leftValue * rightValue };
         case "/":
-          if (rightValue === 0) {
-            throw new Error("Division by zero");
-          }
+          if (rightValue === 0) throw new Error("Division by zero");
           return { kind: "Primitive", value: leftValue / rightValue };
-        default:
-          return null;
       }
     }
 
-    // Mixed number and bigint types are not supported
     return null;
   } catch {
     return null;

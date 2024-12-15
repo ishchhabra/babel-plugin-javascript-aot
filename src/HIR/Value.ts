@@ -1,3 +1,5 @@
+import { Place } from "./Place";
+
 export type PrimitiveValue =
   | string
   | number
@@ -7,7 +9,12 @@ export type PrimitiveValue =
   | bigint
   | symbol;
 
-export type Value = {
-  kind: "Primitive";
-  value: PrimitiveValue;
-};
+export type Value =
+  | {
+      kind: "Primitive";
+      value: PrimitiveValue;
+    }
+  | {
+      kind: "Load";
+      place: Place;
+    };

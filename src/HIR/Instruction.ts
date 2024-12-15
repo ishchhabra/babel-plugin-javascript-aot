@@ -1,62 +1,51 @@
 import * as t from "@babel/types";
 import { Place } from "./Place";
+import { Value } from "./Value";
 
 export type InstructionId = number;
 
-type PrimitiveInstructionValue = {
-  kind: "Primitive";
-  value: string | number | boolean | null | undefined | bigint | symbol;
-};
+export interface BaseInstruction {
+  id: InstructionId;
+  target: Place;
+}
 
-export type LoadInstructionValue = {
-  kind: "Load";
-  place: Place;
-};
-
-export type StoreLocalInstructionValue = {
+export interface StoreLocalInstruction extends BaseInstruction {
   kind: "StoreLocal";
   place: Place;
-  value: InstructionValue;
-};
+  value: Value;
+}
 
-export type UnaryExpressionInstructionValue = {
+export interface UnaryExpressionInstruction extends BaseInstruction {
   kind: "UnaryExpression";
   operator: "!" | "~";
   value: Place;
-};
+}
 
-export type BinaryExpressionInstructionValue = {
+export interface BinaryExpressionInstruction extends BaseInstruction {
   kind: "BinaryExpression";
   operator: "+" | "-" | "/" | "*";
   left: Place;
   right: Place;
-};
+}
 
-export type UpdateExpressionInstructionValue = {
+export interface UpdateExpressionInstruction extends BaseInstruction {
   kind: "UpdateExpression";
   operator: t.UpdateExpression["operator"];
   prefix: boolean;
   value: Place;
-};
+}
 
-export type UnsupportedNodeInstructionValue = {
+export interface UnsupportedNodeInstruction extends BaseInstruction {
   kind: "UnsupportedNode";
   node: t.Node;
-};
+}
 
-export type InstructionValue =
-  | PrimitiveInstructionValue
-  | LoadInstructionValue
-  | UnaryExpressionInstructionValue
-  | BinaryExpressionInstructionValue
-  | StoreLocalInstructionValue
-  | UpdateExpressionInstructionValue
-  | UnsupportedNodeInstructionValue;
-
-export type Instruction = {
-  id: InstructionId;
-  value: InstructionValue;
-};
+export type Instruction =
+  | StoreLocalInstruction
+  | UnaryExpressionInstruction
+  | BinaryExpressionInstruction
+  | UpdateExpressionInstruction
+  | UnsupportedNodeInstruction;
 
 export function makeInstructionId(id: number): InstructionId {
   return id;
