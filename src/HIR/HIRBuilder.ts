@@ -1,6 +1,6 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
-import { BasicBlock, BlockId } from "./Block";
+import { BasicBlock, BlockId, makeEmptyBlock } from "./Block";
 import { makeIdentifierId, makeIdentifierName } from "./Identifier";
 import {
   BinaryExpressionInstruction,
@@ -27,14 +27,7 @@ export class HIRBuilder {
     this.#blocks = new Map();
     this.#bindings = new Map();
 
-    this.#blocks.set(0, {
-      kind: "block",
-      id: this.#nextBlockId++,
-      instructions: [],
-      terminal: {
-        kind: "unsupported",
-      },
-    });
+    this.#blocks.set(0, makeEmptyBlock(this.#nextBlockId++));
     this.#currentBlockId = 0;
   }
 
@@ -84,27 +77,13 @@ export class HIRBuilder {
           id: branchId,
         };
 
-        this.#blocks.set(consequentBlockId, {
-          kind: "block",
-          id: consequentBlockId,
-          instructions: [],
-          terminal: {
-            kind: "unsupported",
-          },
-        });
+        this.#blocks.set(consequentBlockId, makeEmptyBlock(consequentBlockId));
 
         this.#currentBlockId = consequentBlockId;
         const consequent = statement.get("consequent") as NodePath<t.Statement>;
         this.#buildStatement(consequent);
 
-        this.#blocks.set(alternateBlockId, {
-          kind: "block",
-          id: alternateBlockId,
-          instructions: [],
-          terminal: {
-            kind: "unsupported",
-          },
-        });
+        this.#blocks.set(alternateBlockId, makeEmptyBlock(alternateBlockId));
 
         if (statement.node.alternate) {
           this.#currentBlockId = alternateBlockId;
@@ -112,14 +91,10 @@ export class HIRBuilder {
           this.#buildStatement(alternate);
         }
 
-        this.#blocks.set(fallthroughBlockId, {
-          kind: "block",
-          id: fallthroughBlockId,
-          instructions: [],
-          terminal: {
-            kind: "unsupported",
-          },
-        });
+        this.#blocks.set(
+          fallthroughBlockId,
+          makeEmptyBlock(fallthroughBlockId),
+        );
 
         this.#currentBlockId = fallthroughBlockId;
         break;

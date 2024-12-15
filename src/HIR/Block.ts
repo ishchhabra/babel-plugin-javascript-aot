@@ -11,3 +11,16 @@ export type BasicBlock = {
   instructions: Instruction[];
   terminal: Terminal;
 };
+
+export function makeBlockId(id: number): BlockId {
+  return id;
+}
+
+export function makeEmptyBlock(id: BlockId): BasicBlock {
+  return {
+    kind: "block",
+    id,
+    instructions: [],
+    terminal: { kind: "unsupported" },
+  };
+}

@@ -129,7 +129,6 @@ function processBlock(
             ...instruction,
             kind: "StoreLocal",
             target: instruction.target,
-            place: instruction.target,
             value: {
               kind: "Primitive",
               value: evaluatedValue.value,
