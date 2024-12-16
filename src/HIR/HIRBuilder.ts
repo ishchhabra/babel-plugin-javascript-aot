@@ -5,26 +5,27 @@ import { makeIdentifierId, makeIdentifierName } from "./Identifier";
 import { makeInstructionId } from "./Instruction";
 import { Phi } from "./Phi";
 import { Place } from "./Place";
+import { Scope } from "./Scope";
 
 export class HIRBuilder {
   #program: NodePath<t.Program>;
   #blocks: Map<BlockId, BasicBlock>;
   #currentBlockId: BlockId;
-  #phis: Map<string, Phi>;
-  #variablePlaces: Map<string, Place>; // Map from variable name to current Place
+  #currentScope: Scope | null = null;
+  #scopes: Array<Scope> = [];
 
   #nextBlockId = 0;
   #nextIdentifierId = 0;
   #nextInstructionId = 0;
+  #nextScopeId = 0;
 
   constructor(program: NodePath<t.Program>) {
     this.#program = program;
     this.#blocks = new Map();
-    this.#phis = new Map();
-    this.#variablePlaces = new Map();
-
+    this.#currentScope = null;
     this.#blocks.set(0, makeEmptyBlock(this.#nextBlockId++));
     this.#currentBlockId = 0;
+    this.#enterScope(); // Create initial global scope
   }
 
   public get blocks() {
@@ -32,7 +33,19 @@ export class HIRBuilder {
   }
 
   public get phis() {
-    return this.#phis;
+    return this.#scopes.flatMap((scope) => Array.from(scope.phis.values()));
+  }
+
+  #enterScope() {
+    const newScope = new Scope(this.#nextScopeId++, this.#currentScope);
+    this.#scopes.push(newScope);
+    this.#currentScope = newScope;
+  }
+
+  #exitScope() {
+    if (this.#currentScope?.parent) {
+      this.#currentScope = this.#currentScope.parent;
+    }
   }
 
   get #currentBlock() {
@@ -52,9 +65,11 @@ export class HIRBuilder {
     switch (statementNode.type) {
       case "BlockStatement": {
         statement.assertBlockStatement();
+        this.#enterScope();
         for (const stmt of statement.get("body")) {
           this.#buildStatement(stmt);
         }
+        this.#exitScope();
         break;
       }
 
@@ -66,9 +81,6 @@ export class HIRBuilder {
         const consequentBlockId = this.#nextBlockId++;
         const alternateBlockId = this.#nextBlockId++;
         const fallthroughBlockId = this.#nextBlockId++;
-
-        // Save current variable places
-        const savedPlaces = new Map(this.#variablePlaces);
 
         const branchId = makeInstructionId(this.#nextInstructionId++);
         this.#currentBlock.terminal = {
@@ -86,39 +98,25 @@ export class HIRBuilder {
         this.#buildStatement(
           statement.get("consequent") as NodePath<t.Statement>,
         );
-        const consequentPlaces = new Map(this.#variablePlaces);
 
         // Process alternate
         this.#blocks.set(alternateBlockId, makeEmptyBlock(alternateBlockId));
-        this.#variablePlaces = new Map(savedPlaces);
         if (statement.node.alternate) {
           this.#currentBlockId = alternateBlockId;
           this.#buildStatement(
             statement.get("alternate") as NodePath<t.Statement>,
           );
         }
-        const alternatePlaces = new Map(this.#variablePlaces);
 
-        // Create fallthrough block and phi nodes
+        for (const [name, phi] of this.#currentScope?.phis ?? []) {
+          this.#currentScope?.setVariablePlace(name, phi.place);
+        }
+        // Create fallthrough block
         this.#blocks.set(
           fallthroughBlockId,
           makeEmptyBlock(fallthroughBlockId),
         );
         this.#currentBlockId = fallthroughBlockId;
-
-        // Create phi nodes for variables modified in either branch
-        for (const [name, phi] of this.#phis) {
-          const consequentPlace = consequentPlaces.get(name);
-          const alternatePlace = alternatePlaces.get(name);
-
-          if (consequentPlace || alternatePlace) {
-            phi.operands.set(consequentBlockId, consequentPlace || phi.place);
-            phi.operands.set(alternateBlockId, alternatePlace || phi.place);
-            // Update the current place to be the phi's place
-            this.#variablePlaces.set(name, phi.place);
-          }
-        }
-
         break;
       }
 
@@ -126,8 +124,9 @@ export class HIRBuilder {
         statement.assertVariableDeclaration();
         for (const declaration of statement.get("declarations")) {
           const init = declaration.get("init");
-          if (init.node) {
+          if (init.hasNode()) {
             const valuePlace = this.#buildExpression(init);
+            console.log("valuePlace", init.type, valuePlace);
             const targetPlace = this.#createTemporaryPlace();
             const name = (declaration.node.id as t.Identifier).name;
 
@@ -141,15 +140,20 @@ export class HIRBuilder {
               },
             });
 
-            this.#variablePlaces.set(name, targetPlace);
+            if (!this.#currentScope) {
+              throw new Error("No current scope");
+            }
+
+            this.#currentScope.setVariablePlace(name, targetPlace);
 
             if (statementNode.kind === "let") {
               const phiPlace = this.#createTemporaryPlace();
-              this.#phis.set(name, {
+              const phi: Phi = {
                 source: this.#currentBlockId,
                 place: phiPlace,
                 operands: new Map([[this.#currentBlockId, targetPlace]]),
-              });
+              };
+              this.#currentScope.setVariablePhi(name, phi);
             }
           }
         }
@@ -177,9 +181,13 @@ export class HIRBuilder {
               },
             });
 
-            this.#variablePlaces.set(name, targetPlace);
+            if (!this.#currentScope) {
+              throw new Error("No current scope");
+            }
 
-            const phi = this.#phis.get(name);
+            this.#currentScope.setVariablePlace(name, targetPlace);
+
+            const phi = this.#currentScope.getVariablePhi(name);
             if (phi) {
               phi.operands.set(this.#currentBlockId, targetPlace);
             }
@@ -205,7 +213,14 @@ export class HIRBuilder {
     switch (expressionNode.type) {
       case "Identifier": {
         const name = expressionNode.name;
-        const place = this.#variablePlaces.get(name);
+        if (!this.#currentScope) {
+          throw new Error("No current scope");
+        }
+        const place = this.#currentScope.getVariablePlace(name);
+        console.log(
+          `${name} found at `,
+          this.#currentScope.getVariablePhi(name),
+        );
         if (!place) {
           throw new Error(`Undefined variable: ${name}`);
         }
@@ -241,7 +256,7 @@ export class HIRBuilder {
           id: makeInstructionId(this.#nextInstructionId++),
           kind: "BinaryExpression",
           target: resultPlace,
-          operator: expressionNode.operator,
+          operator: expressionNode.operator as "+",
           left: leftPlace,
           right: rightPlace,
         });
