@@ -5,5 +5,5 @@ pluginTester({
   plugin: BabelPlugin,
   pluginOptions: {},
   pluginName: "javascript-aot",
-  fixtures: "./Phi",
+  fixtures: "./",
 });
