@@ -1,6 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { BasicBlock, BlockId, makeEmptyBlock } from "./Block";
+import { makeDeclarationId } from "./Declaration";
 import { makeIdentifierId, makeIdentifierName } from "./Identifier";
 import { makeInstructionId } from "./Instruction";
 import { Phi } from "./Phi";
@@ -15,6 +16,7 @@ export class HIRBuilder {
   #scopes: Array<Scope> = [];
 
   #nextBlockId = 0;
+  #nextDeclarationId = 0;
   #nextIdentifierId = 0;
   #nextInstructionId = 0;
   #nextScopeId = 0;
@@ -108,9 +110,10 @@ export class HIRBuilder {
           );
         }
 
-        for (const [name, phi] of this.#currentScope?.phis ?? []) {
-          this.#currentScope?.setVariablePlace(name, phi.place);
+        for (const [declarationId, phi] of this.#currentScope?.phis ?? []) {
+          this.#currentScope?.setBinding(declarationId, phi.place);
         }
+
         // Create fallthrough block
         this.#blocks.set(
           fallthroughBlockId,
@@ -137,13 +140,22 @@ export class HIRBuilder {
                 kind: "Load",
                 place: valuePlace,
               },
+              type: statementNode.kind === "const" ? "const" : "let",
             });
 
             if (!this.#currentScope) {
               throw new Error("No current scope");
             }
 
-            this.#currentScope.setVariablePlace(name, targetPlace);
+            declaration.scope.rename(name, targetPlace.identifier.name);
+            const declarationId = makeDeclarationId(this.#nextDeclarationId++);
+            this.#currentScope.setDeclarationId(
+              // Using targetPlace.identifier.name because we're renaming the variable.
+              targetPlace.identifier.name,
+              declarationId,
+            );
+
+            this.#currentScope.setBinding(declarationId, targetPlace);
 
             if (statementNode.kind === "let") {
               const phiPlace = this.#createTemporaryPlace();
@@ -152,7 +164,7 @@ export class HIRBuilder {
                 place: phiPlace,
                 operands: new Map([[this.#currentBlockId, targetPlace]]),
               };
-              this.#currentScope.setVariablePhi(name, phi);
+              this.#currentScope.setPhi(declarationId, phi);
             }
           }
         }
@@ -167,6 +179,11 @@ export class HIRBuilder {
           const left = expression.get("left");
           if (left.isIdentifier()) {
             const name = left.node.name;
+            const declarationId = this.#currentScope?.getDeclarationId(name);
+            if (!declarationId) {
+              throw new Error(`Undefined variable: ${name}`);
+            }
+
             const valuePlace = this.#buildExpression(expression.get("right"));
             const targetPlace = this.#createTemporaryPlace();
 
@@ -178,15 +195,20 @@ export class HIRBuilder {
                 kind: "Load",
                 place: valuePlace,
               },
+              type: "const",
             });
 
             if (!this.#currentScope) {
               throw new Error("No current scope");
             }
 
-            this.#currentScope.setVariablePlace(name, targetPlace);
-
-            const phi = this.#currentScope.getVariablePhi(name);
+            expression.scope.rename(name, targetPlace.identifier.name);
+            this.#currentScope.renameDeclaration(
+              name,
+              targetPlace.identifier.name,
+            );
+            this.#currentScope.setBinding(declarationId, targetPlace);
+            const phi = this.#currentScope.getPhi(declarationId);
             if (phi) {
               phi.operands.set(this.#currentBlockId, targetPlace);
             }
@@ -202,7 +224,9 @@ export class HIRBuilder {
           kind: "UnsupportedNode",
           target: resultPlace,
           node: statementNode,
+          type: "const",
         });
+        statement.skip();
       }
     }
   }
@@ -215,7 +239,13 @@ export class HIRBuilder {
         if (!this.#currentScope) {
           throw new Error("No current scope");
         }
-        const place = this.#currentScope.getVariablePlace(name);
+
+        const declarationId = this.#currentScope.getDeclarationId(name);
+        if (!declarationId) {
+          throw new Error(`Undefined variable: ${name}`);
+        }
+
+        const place = this.#currentScope.getBinding(declarationId);
         if (!place) {
           throw new Error(`Undefined variable: ${name}`);
         }
@@ -234,6 +264,7 @@ export class HIRBuilder {
             kind: "Primitive",
             value: expressionNode.value,
           },
+          type: "const",
         });
         return resultPlace;
       }
@@ -254,6 +285,7 @@ export class HIRBuilder {
           operator: expressionNode.operator as "+",
           left: leftPlace,
           right: rightPlace,
+          type: "const",
         });
 
         return resultPlace;
@@ -272,6 +304,7 @@ export class HIRBuilder {
           target: resultPlace,
           operator: expressionNode.operator as "!" | "~",
           value: operandPlace,
+          type: "const",
         });
 
         return resultPlace;
@@ -291,6 +324,7 @@ export class HIRBuilder {
           operator: expressionNode.operator,
           prefix: expressionNode.prefix,
           value: argumentPlace,
+          type: "const",
         });
 
         return resultPlace;
@@ -303,6 +337,7 @@ export class HIRBuilder {
           kind: "UnsupportedNode",
           target: resultPlace,
           node: expressionNode,
+          type: "const",
         });
         return resultPlace;
       }
@@ -315,6 +350,7 @@ export class HIRBuilder {
       kind: "Identifier",
       identifier: {
         id: identifierId,
+        declarationId: makeDeclarationId(this.#nextDeclarationId++),
         name: makeIdentifierName(identifierId),
       },
     };

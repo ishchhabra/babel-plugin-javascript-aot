@@ -76,7 +76,7 @@ export class Codegen {
     switch (instruction.kind) {
       case "StoreLocal": {
         const value = this.#generateValue(instruction.value);
-        return t.variableDeclaration("const", [
+        return t.variableDeclaration(instruction.type, [
           t.variableDeclarator(
             t.identifier(instruction.target.identifier.name),
             value,

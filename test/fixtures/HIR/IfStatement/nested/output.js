@@ -5,7 +5,7 @@ const $3 = $1 > $2;
 if ($3) {
   let $6;
   const $4 = 2;
-  const $5 = $4;
+  let $5 = $4;
   $6 = $5;
   const $7 = 3;
   const $8 = $1 > $7;

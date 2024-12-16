@@ -1,3 +1,4 @@
+import { DeclarationId } from "./Declaration";
 import { Phi } from "./Phi";
 import { Place } from "./Place";
 
@@ -6,8 +7,9 @@ export type ScopeId = number;
 export class Scope {
   readonly id: ScopeId;
   readonly parent: Scope | null;
-  readonly #bindings: Map<string, Place> = new Map();
-  readonly #phis: Map<string, Phi> = new Map();
+  readonly #declarations: Map<string, DeclarationId> = new Map();
+  readonly #bindings: Map<DeclarationId, Place> = new Map();
+  readonly #phis: Map<DeclarationId, Phi> = new Map();
 
   constructor(id: ScopeId, parent: Scope | null) {
     this.id = id;
@@ -18,30 +20,47 @@ export class Scope {
     return this.#phis;
   }
 
-  getVariablePlace(name: string): Place | undefined {
-    const place = this.#bindings.get(name);
-    if (place !== undefined) {
-      return place;
+  get declarations() {
+    return this.#declarations;
+  }
+
+  getDeclarationId(name: string): DeclarationId | undefined {
+    return this.#declarations.get(name) ?? this.parent?.getDeclarationId(name);
+  }
+
+  setDeclarationId(name: string, declarationId: DeclarationId) {
+    this.#declarations.set(name, declarationId);
+  }
+
+  renameDeclaration(oldName: string, newName: string): boolean {
+    const declarationId = this.#declarations.get(oldName);
+    if (declarationId !== undefined) {
+      this.#declarations.delete(oldName);
+      this.#declarations.set(newName, declarationId);
+
+      return true;
     }
 
-    return this.parent?.getVariablePlace(name);
+    return this.parent?.renameDeclaration(oldName, newName) ?? false;
   }
 
-  setVariablePlace(name: string, place: Place) {
-    this.#bindings.set(name, place);
+  getBinding(declarationId: DeclarationId): Place | undefined {
+    return (
+      this.#bindings.get(declarationId) ??
+      this.parent?.getBinding(declarationId)
+    );
   }
 
-  getVariablePhi(name: string): Phi | undefined {
-    const phi = this.#phis.get(name);
-    if (phi !== undefined) {
-      return phi;
-    }
-
-    return this.parent?.getVariablePhi(name);
+  setBinding(declarationId: DeclarationId, place: Place) {
+    this.#bindings.set(declarationId, place);
   }
 
-  setVariablePhi(name: string, phi: Phi) {
-    this.#phis.set(name, phi);
+  getPhi(declarationId: DeclarationId): Phi | undefined {
+    return this.#phis.get(declarationId) ?? this.parent?.getPhi(declarationId);
+  }
+
+  setPhi(declarationId: DeclarationId, phi: Phi) {
+    this.#phis.set(declarationId, phi);
   }
 }
 

@@ -7,6 +7,7 @@ export type InstructionId = number;
 export interface BaseInstruction {
   id: InstructionId;
   target: Place;
+  type: "const" | "let";
 }
 
 export interface StoreLocalInstruction extends BaseInstruction {
