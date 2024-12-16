@@ -126,7 +126,6 @@ export class HIRBuilder {
           const init = declaration.get("init");
           if (init.hasNode()) {
             const valuePlace = this.#buildExpression(init);
-            console.log("valuePlace", init.type, valuePlace);
             const targetPlace = this.#createTemporaryPlace();
             const name = (declaration.node.id as t.Identifier).name;
 
@@ -217,10 +216,6 @@ export class HIRBuilder {
           throw new Error("No current scope");
         }
         const place = this.#currentScope.getVariablePlace(name);
-        console.log(
-          `${name} found at `,
-          this.#currentScope.getVariablePhi(name),
-        );
         if (!place) {
           throw new Error(`Undefined variable: ${name}`);
         }
