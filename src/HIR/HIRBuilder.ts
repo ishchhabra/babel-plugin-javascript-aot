@@ -2,20 +2,16 @@ import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { BasicBlock, BlockId, makeEmptyBlock } from "./Block";
 import { makeIdentifierId, makeIdentifierName } from "./Identifier";
-import {
-  BinaryExpressionInstruction,
-  makeInstructionId,
-  StoreLocalInstruction,
-  UnaryExpressionInstruction,
-  UnsupportedNodeInstruction,
-  UpdateExpressionInstruction,
-} from "./Instruction";
+import { makeInstructionId } from "./Instruction";
+import { Phi } from "./Phi";
 import { Place } from "./Place";
 
 export class HIRBuilder {
   #program: NodePath<t.Program>;
   #blocks: Map<BlockId, BasicBlock>;
   #currentBlockId: BlockId;
+  #phis: Map<string, Phi>;
+  #variablePlaces: Map<string, Place>; // Map from variable name to current Place
 
   #nextBlockId = 0;
   #nextIdentifierId = 0;
@@ -24,6 +20,8 @@ export class HIRBuilder {
   constructor(program: NodePath<t.Program>) {
     this.#program = program;
     this.#blocks = new Map();
+    this.#phis = new Map();
+    this.#variablePlaces = new Map();
 
     this.#blocks.set(0, makeEmptyBlock(this.#nextBlockId++));
     this.#currentBlockId = 0;
@@ -31,6 +29,10 @@ export class HIRBuilder {
 
   public get blocks() {
     return this.#blocks;
+  }
+
+  public get phis() {
+    return this.#phis;
   }
 
   get #currentBlock() {
@@ -65,6 +67,9 @@ export class HIRBuilder {
         const alternateBlockId = this.#nextBlockId++;
         const fallthroughBlockId = this.#nextBlockId++;
 
+        // Save current variable places
+        const savedPlaces = new Map(this.#variablePlaces);
+
         const branchId = makeInstructionId(this.#nextInstructionId++);
         this.#currentBlock.terminal = {
           kind: "branch",
@@ -75,26 +80,45 @@ export class HIRBuilder {
           id: branchId,
         };
 
+        // Process consequent
         this.#blocks.set(consequentBlockId, makeEmptyBlock(consequentBlockId));
-
         this.#currentBlockId = consequentBlockId;
-        const consequent = statement.get("consequent") as NodePath<t.Statement>;
-        this.#buildStatement(consequent);
+        this.#buildStatement(
+          statement.get("consequent") as NodePath<t.Statement>,
+        );
+        const consequentPlaces = new Map(this.#variablePlaces);
 
+        // Process alternate
         this.#blocks.set(alternateBlockId, makeEmptyBlock(alternateBlockId));
-
+        this.#variablePlaces = new Map(savedPlaces);
         if (statement.node.alternate) {
           this.#currentBlockId = alternateBlockId;
-          const alternate = statement.get("alternate") as NodePath<t.Statement>;
-          this.#buildStatement(alternate);
+          this.#buildStatement(
+            statement.get("alternate") as NodePath<t.Statement>,
+          );
         }
+        const alternatePlaces = new Map(this.#variablePlaces);
 
+        // Create fallthrough block and phi nodes
         this.#blocks.set(
           fallthroughBlockId,
           makeEmptyBlock(fallthroughBlockId),
         );
-
         this.#currentBlockId = fallthroughBlockId;
+
+        // Create phi nodes for variables modified in either branch
+        for (const [name, phi] of this.#phis) {
+          const consequentPlace = consequentPlaces.get(name);
+          const alternatePlace = alternatePlaces.get(name);
+
+          if (consequentPlace || alternatePlace) {
+            phi.operands.set(consequentBlockId, consequentPlace || phi.place);
+            phi.operands.set(alternateBlockId, alternatePlace || phi.place);
+            // Update the current place to be the phi's place
+            this.#variablePlaces.set(name, phi.place);
+          }
+        }
+
         break;
       }
 
@@ -102,21 +126,10 @@ export class HIRBuilder {
         statement.assertVariableDeclaration();
         for (const declaration of statement.get("declarations")) {
           const init = declaration.get("init");
-          if (init.hasNode()) {
+          if (init.node) {
             const valuePlace = this.#buildExpression(init);
-            const identifierId = this.#nextIdentifierId++;
-            const id = makeIdentifierId(identifierId);
-
-            const targetPlace = {
-              kind: "Identifier" as const,
-              identifier: {
-                id,
-                name: makeIdentifierName(id),
-              },
-            };
-
+            const targetPlace = this.#createTemporaryPlace();
             const name = (declaration.node.id as t.Identifier).name;
-            declaration.scope.setData(name, id);
 
             this.#currentBlock.instructions.push({
               id: makeInstructionId(this.#nextInstructionId++),
@@ -127,12 +140,55 @@ export class HIRBuilder {
                 place: valuePlace,
               },
             });
+
+            this.#variablePlaces.set(name, targetPlace);
+
+            if (statementNode.kind === "let") {
+              const phiPlace = this.#createTemporaryPlace();
+              this.#phis.set(name, {
+                source: this.#currentBlockId,
+                place: phiPlace,
+                operands: new Map([[this.#currentBlockId, targetPlace]]),
+              });
+            }
           }
         }
         break;
       }
 
-      default:
+      case "ExpressionStatement": {
+        statement.assertExpressionStatement();
+        const expression = statement.get("expression");
+
+        if (expression.isAssignmentExpression()) {
+          const left = expression.get("left");
+          if (left.isIdentifier()) {
+            const name = left.node.name;
+            const valuePlace = this.#buildExpression(expression.get("right"));
+            const targetPlace = this.#createTemporaryPlace();
+
+            this.#currentBlock.instructions.push({
+              id: makeInstructionId(this.#nextInstructionId++),
+              kind: "StoreLocal",
+              target: targetPlace,
+              value: {
+                kind: "Load",
+                place: valuePlace,
+              },
+            });
+
+            this.#variablePlaces.set(name, targetPlace);
+
+            const phi = this.#phis.get(name);
+            if (phi) {
+              phi.operands.set(this.#currentBlockId, targetPlace);
+            }
+          }
+        }
+        break;
+      }
+
+      default: {
         const resultPlace = this.#createTemporaryPlace();
         this.#currentBlock.instructions.push({
           id: makeInstructionId(this.#nextInstructionId++),
@@ -140,48 +196,57 @@ export class HIRBuilder {
           target: resultPlace,
           node: statementNode,
         });
-        break;
+      }
     }
   }
 
   #buildExpression(expression: NodePath<t.Expression>): Place {
     const expressionNode = expression.node;
-    const instructionId = makeInstructionId(this.#nextInstructionId++);
-
     switch (expressionNode.type) {
-      case "BooleanLiteral":
-      case "NumericLiteral": {
-        expression.assertLiteral();
+      case "Identifier": {
+        const name = expressionNode.name;
+        const place = this.#variablePlaces.get(name);
+        if (!place) {
+          throw new Error(`Undefined variable: ${name}`);
+        }
+        return place;
+      }
 
+      case "NumericLiteral":
+      case "StringLiteral":
+      case "BooleanLiteral": {
         const resultPlace = this.#createTemporaryPlace();
-        const instruction: StoreLocalInstruction = {
-          id: instructionId,
+        this.#currentBlock.instructions.push({
+          id: makeInstructionId(this.#nextInstructionId++),
           kind: "StoreLocal",
           target: resultPlace,
           value: {
             kind: "Primitive",
             value: expressionNode.value,
           },
-        };
-        this.#currentBlock.instructions.push(instruction);
+        });
         return resultPlace;
       }
 
-      case "Identifier": {
-        // Look up the binding for this identifier
-        const binding = expression.scope.getData(expressionNode.name);
-        if (binding === undefined) {
-          throw new Error(`Undefined variable: ${expressionNode.name}`);
-        }
+      case "BinaryExpression": {
+        const leftPlace = this.#buildExpression(
+          expression.get("left") as NodePath<t.Expression>,
+        );
+        const rightPlace = this.#buildExpression(
+          expression.get("right") as NodePath<t.Expression>,
+        );
+        const resultPlace = this.#createTemporaryPlace();
 
-        // Return a place referencing this identifier
-        return {
-          kind: "Identifier",
-          identifier: {
-            id: binding,
-            name: makeIdentifierName(binding),
-          },
-        };
+        this.#currentBlock.instructions.push({
+          id: makeInstructionId(this.#nextInstructionId++),
+          kind: "BinaryExpression",
+          target: resultPlace,
+          operator: expressionNode.operator,
+          left: leftPlace,
+          right: rightPlace,
+        });
+
+        return resultPlace;
       }
 
       case "UnaryExpression": {
@@ -189,38 +254,16 @@ export class HIRBuilder {
         const operandPlace = this.#buildExpression(
           expression.get("argument") as NodePath<t.Expression>,
         );
-
         const resultPlace = this.#createTemporaryPlace();
-        const instruction: UnaryExpressionInstruction = {
-          id: instructionId,
+
+        this.#currentBlock.instructions.push({
+          id: makeInstructionId(this.#nextInstructionId++),
           kind: "UnaryExpression",
           target: resultPlace,
           operator: expressionNode.operator as "!" | "~",
           value: operandPlace,
-        };
-        this.#currentBlock.instructions.push(instruction);
-        return resultPlace;
-      }
+        });
 
-      case "BinaryExpression": {
-        expression.assertBinaryExpression();
-        const leftPlace = this.#buildExpression(
-          expression.get("left") as NodePath<t.Expression>,
-        );
-        const rightPlace = this.#buildExpression(
-          expression.get("right") as NodePath<t.Expression>,
-        );
-
-        const resultPlace = this.#createTemporaryPlace();
-        const instruction: BinaryExpressionInstruction = {
-          id: instructionId,
-          kind: "BinaryExpression",
-          target: resultPlace,
-          operator: expressionNode.operator as "+" | "-" | "/" | "*",
-          left: leftPlace,
-          right: rightPlace,
-        };
-        this.#currentBlock.instructions.push(instruction);
         return resultPlace;
       }
 
@@ -229,30 +272,28 @@ export class HIRBuilder {
         const argumentPlace = this.#buildExpression(
           expression.get("argument") as NodePath<t.Expression>,
         );
-
         const resultPlace = this.#createTemporaryPlace();
-        const instruction: UpdateExpressionInstruction = {
-          id: instructionId,
+
+        this.#currentBlock.instructions.push({
+          id: makeInstructionId(this.#nextInstructionId++),
           kind: "UpdateExpression",
           target: resultPlace,
           operator: expressionNode.operator,
           prefix: expressionNode.prefix,
           value: argumentPlace,
-        };
-        this.#currentBlock.instructions.push(instruction);
+        });
+
         return resultPlace;
       }
 
       default: {
-        console.log("Unsupported node", expressionNode.type);
         const resultPlace = this.#createTemporaryPlace();
-        const instruction: UnsupportedNodeInstruction = {
-          id: instructionId,
+        this.#currentBlock.instructions.push({
+          id: makeInstructionId(this.#nextInstructionId++),
           kind: "UnsupportedNode",
           target: resultPlace,
           node: expressionNode,
-        };
-        this.#currentBlock.instructions.push(instruction);
+        });
         return resultPlace;
       }
     }

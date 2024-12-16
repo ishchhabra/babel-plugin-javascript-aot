@@ -15,6 +15,6 @@ export function compileProgram(
     constantPropagation(builder.blocks);
   }
 
-  const codegen = new Codegen(builder.blocks);
+  const codegen = new Codegen(builder.blocks, builder.phis);
   return codegen.generate();
 }
