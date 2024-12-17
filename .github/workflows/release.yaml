@@ -23,9 +23,13 @@ jobs:
           node-version: "lts/*"
           cache: "pnpm"
 
-      - name: Get commit count
+      - name: Get next version number
         id: vars
-        run: echo "tag=v0.0.$(git rev-list --count HEAD)" >> $GITHUB_OUTPUT
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LAST_NUM=$(echo $LATEST_TAG | grep -o '[0-9]*$')
+          NEXT_NUM=$((LAST_NUM + 1))
+          echo "tag=$(echo $LATEST_TAG | sed "s/[0-9]*$/$NEXT_NUM/")" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
