@@ -85,6 +85,19 @@ export class Codegen {
         ]);
       }
 
+      case "FunctionDeclaration": {
+        const params = instruction.params.map((param) =>
+          t.identifier(param.identifier.name),
+        );
+        const functionBody: t.Statement[] = [];
+        this.#generateBlock(instruction.body, functionBody);
+        return t.functionDeclaration(
+          t.identifier(instruction.target.identifier.name),
+          params,
+          t.blockStatement(functionBody),
+        );
+      }
+
       case "ArrayExpression": {
         return t.variableDeclaration("const", [
           t.variableDeclarator(

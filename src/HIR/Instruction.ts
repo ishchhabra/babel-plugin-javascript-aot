@@ -1,4 +1,5 @@
 import * as t from "@babel/types";
+import { BlockId } from "./Block";
 import { Place } from "./Place";
 import { Value } from "./Value";
 
@@ -8,6 +9,12 @@ export interface BaseInstruction {
   id: InstructionId;
   target: Place;
   type: "const" | "let";
+}
+
+export interface FunctionDeclarationInstruction extends BaseInstruction {
+  kind: "FunctionDeclaration";
+  params: Place[];
+  body: BlockId;
 }
 
 export interface StoreLocalInstruction extends BaseInstruction {
@@ -62,7 +69,8 @@ export type Instruction =
   | BinaryExpressionInstruction
   | UpdateExpressionInstruction
   | ArrayExpressionInstruction
-  | UnsupportedNodeInstruction;
+  | UnsupportedNodeInstruction
+  | FunctionDeclarationInstruction;
 
 export function makeInstructionId(id: number): InstructionId {
   return id;

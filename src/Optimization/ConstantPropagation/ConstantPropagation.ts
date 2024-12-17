@@ -1,13 +1,13 @@
 import * as t from "@babel/types";
-import { BasicBlock, BlockId } from "../HIR/Block";
-import { IdentifierId } from "../HIR/Identifier";
+import { BasicBlock, BlockId } from "../../HIR/Block";
+import { IdentifierId } from "../../HIR/Identifier";
 import {
   BinaryExpressionInstruction,
   Instruction,
   UnaryExpressionInstruction,
-} from "../HIR/Instruction";
-import { Place } from "../HIR/Place";
-import { PrimitiveValue } from "../HIR/Value";
+} from "../../HIR/Instruction";
+import { Place } from "../../HIR/Place";
+import { PrimitiveValue } from "../../HIR/Value";
 
 type Constant = {
   readonly kind: "Primitive";

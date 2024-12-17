@@ -1,5 +1,6 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { getFunctionName } from "../Babel/utils";
 import { BasicBlock, BlockId, makeEmptyBlock } from "./Block";
 import { makeDeclarationId } from "./Declaration";
 import { makeIdentifierId, makeIdentifierName } from "./Identifier";
@@ -120,6 +121,86 @@ export class HIRBuilder {
           makeEmptyBlock(fallthroughBlockId),
         );
         this.#currentBlockId = fallthroughBlockId;
+        break;
+      }
+
+      case "FunctionDeclaration": {
+        statement.assertFunctionDeclaration();
+
+        // Create a new block for the function body
+        const bodyBlockId = this.#nextBlockId++;
+        this.#blocks.set(bodyBlockId, makeEmptyBlock(bodyBlockId));
+
+        // Create a place for the function
+        const functionPlace = this.#createTemporaryPlace();
+
+        // Handle function name
+        const functionName = getFunctionName(statement);
+        if (!functionName) {
+          throw new Error("Function declaration must have a name");
+        }
+
+        if (!this.#currentScope) {
+          throw new Error("No current scope");
+        }
+
+        // Enter a new scope for the function
+        this.#enterScope();
+
+        const body = statement.get("body");
+
+        // Process parameters
+        const params = statement.get("params").map((param) => {
+          if (!param.isIdentifier()) {
+            throw new Error("Only identifier parameters are supported");
+          }
+
+          const paramPlace = this.#createTemporaryPlace();
+          const name = param.node.name;
+
+          body.scope.rename(name, paramPlace.identifier.name);
+
+          // Add parameter to current scope
+          const declarationId = makeDeclarationId(this.#nextDeclarationId++);
+          // Using paramPlace.identifier.name because we're renaming the parameter.
+          this.#currentScope!.setDeclarationId(
+            paramPlace.identifier.name,
+            declarationId,
+          );
+          this.#currentScope!.setBinding(declarationId, paramPlace);
+
+          return paramPlace;
+        });
+
+        // Save current block ID
+        const previousBlockId = this.#currentBlockId;
+        this.#currentBlockId = bodyBlockId;
+
+        // Build function body
+        this.#buildStatement(body);
+
+        // Restore previous block and scope
+        this.#currentBlockId = previousBlockId;
+        this.#exitScope();
+
+        // Add function declaration instruction
+        this.#currentBlock.instructions.push({
+          id: makeInstructionId(this.#nextInstructionId++),
+          kind: "FunctionDeclaration",
+          target: functionPlace,
+          params,
+          body: bodyBlockId,
+          type: "const",
+        });
+
+        // Store the function in the current scope
+        const declarationId = makeDeclarationId(this.#nextDeclarationId++);
+        this.#currentScope.setDeclarationId(
+          functionName.node.name,
+          declarationId,
+        );
+        this.#currentScope.setBinding(declarationId, functionPlace);
+
         break;
       }
 
