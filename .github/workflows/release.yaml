@@ -19,7 +19,7 @@ jobs:
       - name: Update package.json version
         run: |
           # Remove the 'v' prefix for package.json
-          VERSION="${{ steps.vars.tag }}"
+          VERSION="${{ steps.vars.outputs.tag }}"
           VERSION_NO_V="${VERSION#v}"
           npm version $VERSION_NO_V --no-git-tag-version
 
@@ -27,15 +27,20 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json
-          git commit -m "chore: update version to ${{ steps.vars.tag }}"
-          git push
+          # Only commit if there are changes
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git add package.json
+            git commit -m "chore: update version to ${{ steps.vars.outputs.tag }}"
+            git push
+          else
+            echo "No changes to commit"
+          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.vars.tag }}
-          name: Release ${{ steps.vars.tag }}
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: Release ${{ steps.vars.outputs.tag }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
