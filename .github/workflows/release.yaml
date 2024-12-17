@@ -14,7 +14,7 @@ jobs:
 
       - name: Get commit count
         id: vars
-        run: echo "tag=v1.0.$(git rev-list --count HEAD)" >> $GITHUB_OUTPUT
+        run: echo "tag=v0.0.$(git rev-list --count HEAD)" >> $GITHUB_OUTPUT
 
       - name: Update package.json version
         run: |
