@@ -15,6 +15,16 @@ export interface StoreLocalInstruction extends BaseInstruction {
   value: Value;
 }
 
+export interface SpreadElement {
+  kind: "SpreadElement";
+  place: Place;
+}
+
+export interface ArrayExpressionInstruction extends BaseInstruction {
+  kind: "ArrayExpression";
+  elements: (Place | SpreadElement)[];
+}
+
 export interface UnaryExpressionInstruction extends BaseInstruction {
   kind: "UnaryExpression";
   operator: Exclude<
@@ -51,6 +61,7 @@ export type Instruction =
   | UnaryExpressionInstruction
   | BinaryExpressionInstruction
   | UpdateExpressionInstruction
+  | ArrayExpressionInstruction
   | UnsupportedNodeInstruction;
 
 export function makeInstructionId(id: number): InstructionId {

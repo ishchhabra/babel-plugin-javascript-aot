@@ -2,6 +2,7 @@ import * as t from "@babel/types";
 import { BasicBlock, BlockId } from "./Block";
 import { Instruction } from "./Instruction";
 import { Phi } from "./Phi";
+import { Place } from "./Place";
 import { Terminal } from "./Terminal";
 import { Value } from "./Value";
 
@@ -84,6 +85,23 @@ export class Codegen {
         ]);
       }
 
+      case "ArrayExpression": {
+        return t.variableDeclaration("const", [
+          t.variableDeclarator(
+            t.identifier(instruction.target.identifier.name),
+            t.arrayExpression(
+              instruction.elements.map((element) => {
+                if (element.kind === "SpreadElement") {
+                  return t.spreadElement(this.#generatePlace(element.place));
+                }
+
+                return this.#generatePlace(element);
+              }),
+            ),
+          ),
+        ]);
+      }
+
       case "UnaryExpression": {
         return t.variableDeclaration("const", [
           t.variableDeclarator(
@@ -123,8 +141,24 @@ export class Codegen {
       }
 
       case "UnsupportedNode": {
+        if (!t.isStatement(instruction.node)) {
+          return t.variableDeclaration("const", [
+            t.variableDeclarator(
+              t.identifier(instruction.target.identifier.name),
+              instruction.node as t.Expression,
+            ),
+          ]);
+        }
+
         return instruction.node as t.Statement;
       }
+    }
+  }
+
+  #generatePlace(place: Place): t.Expression {
+    switch (place.kind) {
+      case "Identifier":
+        return t.identifier(place.identifier.name);
     }
   }
 

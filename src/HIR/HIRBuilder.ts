@@ -3,7 +3,7 @@ import * as t from "@babel/types";
 import { BasicBlock, BlockId, makeEmptyBlock } from "./Block";
 import { makeDeclarationId } from "./Declaration";
 import { makeIdentifierId, makeIdentifierName } from "./Identifier";
-import { makeInstructionId } from "./Instruction";
+import { makeInstructionId, SpreadElement } from "./Instruction";
 import { Phi } from "./Phi";
 import { Place } from "./Place";
 import { Scope } from "./Scope";
@@ -252,6 +252,28 @@ export class HIRBuilder {
         return place;
       }
 
+      case "ArrayExpression":
+        expression.assertArrayExpression();
+
+        const resultPlace = this.#createTemporaryPlace();
+        const elements = expression.get("elements");
+        const elementsPlaces = elements.map((element) => {
+          if (element.isSpreadElement()) {
+            return this.#buildSpreadElement(element);
+          }
+
+          return this.#buildExpression(element as NodePath<t.Expression>);
+        });
+        this.#currentBlock.instructions.push({
+          id: makeInstructionId(this.#nextInstructionId++),
+          kind: "ArrayExpression",
+          target: resultPlace,
+          elements: elementsPlaces,
+          type: "const",
+        });
+
+        return resultPlace;
+
       case "NumericLiteral":
       case "StringLiteral":
       case "BooleanLiteral": {
@@ -342,6 +364,19 @@ export class HIRBuilder {
         return resultPlace;
       }
     }
+  }
+
+  #buildSpreadElement(expression: NodePath<t.SpreadElement>): SpreadElement {
+    const argument = expression.get("argument");
+    if (!argument) {
+      throw new Error("Spread element has no argument");
+    }
+
+    const place = this.#buildExpression(argument);
+    return {
+      kind: "SpreadElement",
+      place,
+    };
   }
 
   #createTemporaryPlace(): Place {
