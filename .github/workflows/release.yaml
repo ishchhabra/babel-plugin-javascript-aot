@@ -33,6 +33,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Force add dist directory
+        run: |
+          git add --force dist/
+          git status
+
       - name: Update package.json version
         run: |
           # Remove the 'v' prefix for package.json
@@ -40,7 +45,7 @@ jobs:
           VERSION_NO_V="${VERSION#v}"
           pnpm version $VERSION_NO_V --no-git-tag-version
 
-      - name: Commit package.json changes
+      - name: Commit
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
