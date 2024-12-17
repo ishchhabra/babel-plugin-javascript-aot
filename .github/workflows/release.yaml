@@ -12,29 +12,42 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "lts/*"
+          cache: "pnpm"
+
       - name: Get commit count
         id: vars
         run: echo "tag=v0.0.$(git rev-list --count HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
 
       - name: Update package.json version
         run: |
           # Remove the 'v' prefix for package.json
           VERSION="${{ steps.vars.outputs.tag }}"
           VERSION_NO_V="${VERSION#v}"
-          npm version $VERSION_NO_V --no-git-tag-version
+          pnpm version $VERSION_NO_V --no-git-tag-version
 
-      - name: Commit package.json changes
+      - name: Create and push tag
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          # Only commit if there are changes
-          if [[ -n "$(git status --porcelain)" ]]; then
-            git add package.json
-            git commit -m "chore: update version to ${{ steps.vars.outputs.tag }}"
-            git push
-          else
-            echo "No changes to commit"
-          fi
+          git add package.json
+          git commit -m "chore: update version to ${{ steps.vars.outputs.tag }}"
+          git tag ${{ steps.vars.outputs.tag }}
+          git push origin ${{ steps.vars.outputs.tag }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -42,5 +55,7 @@ jobs:
           tag_name: ${{ steps.vars.outputs.tag }}
           name: Release ${{ steps.vars.outputs.tag }}
           generate_release_notes: true
+          files: |
+            dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
