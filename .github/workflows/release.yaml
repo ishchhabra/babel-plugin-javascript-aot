@@ -1,4 +1,4 @@
-name: Release
+name: Create Release
 
 on:
   push:
@@ -7,20 +7,35 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Get commit count
         id: vars
-        run: echo "tag=v0.0.$(git rev-list --count HEAD)" >> $GITHUB_OUTPUT
+        run: echo "tag=v1.0.$(git rev-list --count HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Create release
-        id: release
+      - name: Update package.json version
+        run: |
+          # Remove the 'v' prefix for package.json
+          VERSION="${{ steps.vars.tag }}"
+          VERSION_NO_V="${VERSION#v}"
+          npm version $VERSION_NO_V --no-git-tag-version
+
+      - name: Commit package.json changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json
+          git commit -m "chore: update version to ${{ steps.vars.tag }}"
+          git push
+
+      - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.vars.outputs.tag }}
-          release_name: Release ${{ steps.vars.outputs.tag }}
+          tag_name: ${{ steps.vars.tag }}
+          name: Release ${{ steps.vars.tag }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
