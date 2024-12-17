@@ -58,6 +58,12 @@ export interface UpdateExpressionInstruction extends BaseInstruction {
   value: Place;
 }
 
+export interface CallExpressionInstruction extends BaseInstruction {
+  kind: "CallExpression";
+  callee: Place;
+  args: (Place | SpreadElement)[];
+}
+
 export interface UnsupportedNodeInstruction extends BaseInstruction {
   kind: "UnsupportedNode";
   node: t.Node;
@@ -70,7 +76,8 @@ export type Instruction =
   | UpdateExpressionInstruction
   | ArrayExpressionInstruction
   | UnsupportedNodeInstruction
-  | FunctionDeclarationInstruction;
+  | FunctionDeclarationInstruction
+  | CallExpressionInstruction;
 
 export function makeInstructionId(id: number): InstructionId {
   return id;

@@ -193,6 +193,11 @@ export class HIRBuilder {
           type: "const",
         });
 
+        // Rename function in scope
+        statement.scope.rename(
+          functionName.node.name,
+          functionPlace.identifier.name,
+        );
         // Store the function in the current scope
         const declarationId = makeDeclarationId(this.#nextDeclarationId++);
         this.#currentScope.setDeclarationId(
@@ -315,6 +320,36 @@ export class HIRBuilder {
   #buildExpression(expression: NodePath<t.Expression>): Place {
     const expressionNode = expression.node;
     switch (expressionNode.type) {
+      case "CallExpression": {
+        expression.assertCallExpression();
+
+        const callee: NodePath<t.Expression | t.V8IntrinsicIdentifier> =
+          expression.get("callee");
+        callee.assertExpression();
+
+        const calleePlace = this.#buildExpression(callee);
+
+        const args = expression.get("arguments");
+        const argsPlaces = args.map((arg) => {
+          if (arg.isSpreadElement()) {
+            return this.#buildSpreadElement(arg);
+          }
+
+          return this.#buildExpression(arg as NodePath<t.Expression>);
+        });
+
+        const resultPlace = this.#createTemporaryPlace();
+        this.#currentBlock.instructions.push({
+          id: makeInstructionId(this.#nextInstructionId++),
+          kind: "CallExpression",
+          target: resultPlace,
+          callee: calleePlace,
+          args: argsPlaces,
+          type: "const",
+        });
+
+        return resultPlace;
+      }
       case "Identifier": {
         const name = expressionNode.name;
         if (!this.#currentScope) {

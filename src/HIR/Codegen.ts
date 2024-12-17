@@ -85,6 +85,23 @@ export class Codegen {
         ]);
       }
 
+      case "CallExpression": {
+        const callee = this.#generatePlace(instruction.callee);
+        const args = instruction.args.map((arg) => {
+          if (arg.kind === "SpreadElement") {
+            return t.spreadElement(this.#generatePlace(arg.place));
+          }
+
+          return this.#generatePlace(arg);
+        });
+        return t.variableDeclaration("const", [
+          t.variableDeclarator(
+            t.identifier(instruction.target.identifier.name),
+            t.callExpression(callee, args),
+          ),
+        ]);
+      }
+
       case "FunctionDeclaration": {
         const params = instruction.params.map((param) =>
           t.identifier(param.identifier.name),
