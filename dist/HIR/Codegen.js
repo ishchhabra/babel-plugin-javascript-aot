@@ -89,6 +89,16 @@ class Codegen {
                     t.variableDeclarator(t.identifier(instruction.target.identifier.name), value),
                 ]);
             }
+            case "ArrayExpression": {
+                return t.variableDeclaration("const", [
+                    t.variableDeclarator(t.identifier(instruction.target.identifier.name), t.arrayExpression(instruction.elements.map((element) => {
+                        if (element.kind === "SpreadElement") {
+                            return t.spreadElement(this.#generatePlace(element.place));
+                        }
+                        return this.#generatePlace(element);
+                    }))),
+                ]);
+            }
             case "UnaryExpression": {
                 return t.variableDeclaration("const", [
                     t.variableDeclarator(t.identifier(instruction.target.identifier.name), t.unaryExpression(instruction.operator, t.identifier(instruction.value.identifier.name))),
@@ -105,8 +115,19 @@ class Codegen {
                 ]);
             }
             case "UnsupportedNode": {
+                if (!t.isStatement(instruction.node)) {
+                    return t.variableDeclaration("const", [
+                        t.variableDeclarator(t.identifier(instruction.target.identifier.name), instruction.node),
+                    ]);
+                }
                 return instruction.node;
             }
+        }
+    }
+    #generatePlace(place) {
+        switch (place.kind) {
+            case "Identifier":
+                return t.identifier(place.identifier.name);
         }
     }
     #generateValue(value) {

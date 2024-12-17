@@ -205,6 +205,24 @@ class HIRBuilder {
                 }
                 return place;
             }
+            case "ArrayExpression":
+                expression.assertArrayExpression();
+                const resultPlace = this.#createTemporaryPlace();
+                const elements = expression.get("elements");
+                const elementsPlaces = elements.map((element) => {
+                    if (element.isSpreadElement()) {
+                        return this.#buildSpreadElement(element);
+                    }
+                    return this.#buildExpression(element);
+                });
+                this.#currentBlock.instructions.push({
+                    id: (0, Instruction_1.makeInstructionId)(this.#nextInstructionId++),
+                    kind: "ArrayExpression",
+                    target: resultPlace,
+                    elements: elementsPlaces,
+                    type: "const",
+                });
+                return resultPlace;
             case "NumericLiteral":
             case "StringLiteral":
             case "BooleanLiteral": {
@@ -277,6 +295,17 @@ class HIRBuilder {
                 return resultPlace;
             }
         }
+    }
+    #buildSpreadElement(expression) {
+        const argument = expression.get("argument");
+        if (!argument) {
+            throw new Error("Spread element has no argument");
+        }
+        const place = this.#buildExpression(argument);
+        return {
+            kind: "SpreadElement",
+            place,
+        };
     }
     #createTemporaryPlace() {
         const identifierId = (0, Identifier_1.makeIdentifierId)(this.#nextIdentifierId++);
