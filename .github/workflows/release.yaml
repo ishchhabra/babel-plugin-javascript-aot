@@ -40,14 +40,18 @@ jobs:
           VERSION_NO_V="${VERSION#v}"
           pnpm version $VERSION_NO_V --no-git-tag-version
 
-      - name: Create and push tag
+      - name: Commit package.json changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json
-          git commit -m "chore: update version to ${{ steps.vars.outputs.tag }}"
-          git tag ${{ steps.vars.outputs.tag }}
-          git push origin ${{ steps.vars.outputs.tag }}
+          # Only commit if there are changes
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git add package.json
+            git commit -m "create release: ${{ steps.vars.outputs.tag }}"
+            git push
+          else
+            echo "No changes to commit"
+          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
