@@ -1,6 +1,6 @@
 {
   "name": "babel-plugin-javascript-aot",
-  "version": "0.0.36",
+  "version": "0.0.38",
   "description": "",
   "main": "./dist/index.js",
   "scripts": {
