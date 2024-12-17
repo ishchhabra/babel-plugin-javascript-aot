@@ -1,9 +1,12 @@
-import { makeEmptyBlock } from "./Block";
-import { makeDeclarationId } from "./Declaration";
-import { makeIdentifierId, makeIdentifierName } from "./Identifier";
-import { makeInstructionId } from "./Instruction";
-import { Scope } from "./Scope";
-export class HIRBuilder {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HIRBuilder = void 0;
+const Block_1 = require("./Block");
+const Declaration_1 = require("./Declaration");
+const Identifier_1 = require("./Identifier");
+const Instruction_1 = require("./Instruction");
+const Scope_1 = require("./Scope");
+class HIRBuilder {
     #program;
     #blocks;
     #currentBlockId;
@@ -18,7 +21,7 @@ export class HIRBuilder {
         this.#program = program;
         this.#blocks = new Map();
         this.#currentScope = null;
-        this.#blocks.set(0, makeEmptyBlock(this.#nextBlockId++));
+        this.#blocks.set(0, (0, Block_1.makeEmptyBlock)(this.#nextBlockId++));
         this.#currentBlockId = 0;
         this.#enterScope(); // Create initial global scope
     }
@@ -29,7 +32,7 @@ export class HIRBuilder {
         return this.#scopes.flatMap((scope) => Array.from(scope.phis.values()));
     }
     #enterScope() {
-        const newScope = new Scope(this.#nextScopeId++, this.#currentScope);
+        const newScope = new Scope_1.Scope(this.#nextScopeId++, this.#currentScope);
         this.#scopes.push(newScope);
         this.#currentScope = newScope;
     }
@@ -67,7 +70,7 @@ export class HIRBuilder {
                 const consequentBlockId = this.#nextBlockId++;
                 const alternateBlockId = this.#nextBlockId++;
                 const fallthroughBlockId = this.#nextBlockId++;
-                const branchId = makeInstructionId(this.#nextInstructionId++);
+                const branchId = (0, Instruction_1.makeInstructionId)(this.#nextInstructionId++);
                 this.#currentBlock.terminal = {
                     kind: "branch",
                     test: testPlace,
@@ -77,11 +80,11 @@ export class HIRBuilder {
                     id: branchId,
                 };
                 // Process consequent
-                this.#blocks.set(consequentBlockId, makeEmptyBlock(consequentBlockId));
+                this.#blocks.set(consequentBlockId, (0, Block_1.makeEmptyBlock)(consequentBlockId));
                 this.#currentBlockId = consequentBlockId;
                 this.#buildStatement(statement.get("consequent"));
                 // Process alternate
-                this.#blocks.set(alternateBlockId, makeEmptyBlock(alternateBlockId));
+                this.#blocks.set(alternateBlockId, (0, Block_1.makeEmptyBlock)(alternateBlockId));
                 if (statement.node.alternate) {
                     this.#currentBlockId = alternateBlockId;
                     this.#buildStatement(statement.get("alternate"));
@@ -90,7 +93,7 @@ export class HIRBuilder {
                     this.#currentScope?.setBinding(declarationId, phi.place);
                 }
                 // Create fallthrough block
-                this.#blocks.set(fallthroughBlockId, makeEmptyBlock(fallthroughBlockId));
+                this.#blocks.set(fallthroughBlockId, (0, Block_1.makeEmptyBlock)(fallthroughBlockId));
                 this.#currentBlockId = fallthroughBlockId;
                 break;
             }
@@ -103,7 +106,7 @@ export class HIRBuilder {
                         const targetPlace = this.#createTemporaryPlace();
                         const name = declaration.node.id.name;
                         this.#currentBlock.instructions.push({
-                            id: makeInstructionId(this.#nextInstructionId++),
+                            id: (0, Instruction_1.makeInstructionId)(this.#nextInstructionId++),
                             kind: "StoreLocal",
                             target: targetPlace,
                             value: {
@@ -116,7 +119,7 @@ export class HIRBuilder {
                             throw new Error("No current scope");
                         }
                         declaration.scope.rename(name, targetPlace.identifier.name);
-                        const declarationId = makeDeclarationId(this.#nextDeclarationId++);
+                        const declarationId = (0, Declaration_1.makeDeclarationId)(this.#nextDeclarationId++);
                         this.#currentScope.setDeclarationId(
                         // Using targetPlace.identifier.name because we're renaming the variable.
                         targetPlace.identifier.name, declarationId);
@@ -148,7 +151,7 @@ export class HIRBuilder {
                         const valuePlace = this.#buildExpression(expression.get("right"));
                         const targetPlace = this.#createTemporaryPlace();
                         this.#currentBlock.instructions.push({
-                            id: makeInstructionId(this.#nextInstructionId++),
+                            id: (0, Instruction_1.makeInstructionId)(this.#nextInstructionId++),
                             kind: "StoreLocal",
                             target: targetPlace,
                             value: {
@@ -174,7 +177,7 @@ export class HIRBuilder {
             default: {
                 const resultPlace = this.#createTemporaryPlace();
                 this.#currentBlock.instructions.push({
-                    id: makeInstructionId(this.#nextInstructionId++),
+                    id: (0, Instruction_1.makeInstructionId)(this.#nextInstructionId++),
                     kind: "UnsupportedNode",
                     target: resultPlace,
                     node: statementNode,
@@ -207,7 +210,7 @@ export class HIRBuilder {
             case "BooleanLiteral": {
                 const resultPlace = this.#createTemporaryPlace();
                 this.#currentBlock.instructions.push({
-                    id: makeInstructionId(this.#nextInstructionId++),
+                    id: (0, Instruction_1.makeInstructionId)(this.#nextInstructionId++),
                     kind: "StoreLocal",
                     target: resultPlace,
                     value: {
@@ -223,7 +226,7 @@ export class HIRBuilder {
                 const rightPlace = this.#buildExpression(expression.get("right"));
                 const resultPlace = this.#createTemporaryPlace();
                 this.#currentBlock.instructions.push({
-                    id: makeInstructionId(this.#nextInstructionId++),
+                    id: (0, Instruction_1.makeInstructionId)(this.#nextInstructionId++),
                     kind: "BinaryExpression",
                     target: resultPlace,
                     operator: expressionNode.operator,
@@ -238,7 +241,7 @@ export class HIRBuilder {
                 const operandPlace = this.#buildExpression(expression.get("argument"));
                 const resultPlace = this.#createTemporaryPlace();
                 this.#currentBlock.instructions.push({
-                    id: makeInstructionId(this.#nextInstructionId++),
+                    id: (0, Instruction_1.makeInstructionId)(this.#nextInstructionId++),
                     kind: "UnaryExpression",
                     target: resultPlace,
                     operator: expressionNode.operator,
@@ -252,7 +255,7 @@ export class HIRBuilder {
                 const argumentPlace = this.#buildExpression(expression.get("argument"));
                 const resultPlace = this.#createTemporaryPlace();
                 this.#currentBlock.instructions.push({
-                    id: makeInstructionId(this.#nextInstructionId++),
+                    id: (0, Instruction_1.makeInstructionId)(this.#nextInstructionId++),
                     kind: "UpdateExpression",
                     target: resultPlace,
                     operator: expressionNode.operator,
@@ -265,7 +268,7 @@ export class HIRBuilder {
             default: {
                 const resultPlace = this.#createTemporaryPlace();
                 this.#currentBlock.instructions.push({
-                    id: makeInstructionId(this.#nextInstructionId++),
+                    id: (0, Instruction_1.makeInstructionId)(this.#nextInstructionId++),
                     kind: "UnsupportedNode",
                     target: resultPlace,
                     node: expressionNode,
@@ -276,14 +279,15 @@ export class HIRBuilder {
         }
     }
     #createTemporaryPlace() {
-        const identifierId = makeIdentifierId(this.#nextIdentifierId++);
+        const identifierId = (0, Identifier_1.makeIdentifierId)(this.#nextIdentifierId++);
         return {
             kind: "Identifier",
             identifier: {
                 id: identifierId,
-                declarationId: makeDeclarationId(this.#nextDeclarationId++),
-                name: makeIdentifierName(identifierId),
+                declarationId: (0, Declaration_1.makeDeclarationId)(this.#nextDeclarationId++),
+                name: (0, Identifier_1.makeIdentifierName)(identifierId),
             },
         };
     }
 }
+exports.HIRBuilder = HIRBuilder;

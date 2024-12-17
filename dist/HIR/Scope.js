@@ -1,4 +1,8 @@
-export class Scope {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Scope = void 0;
+exports.makeScopeId = makeScopeId;
+class Scope {
     id;
     parent;
     #declarations = new Map();
@@ -43,6 +47,7 @@ export class Scope {
         this.#phis.set(declarationId, phi);
     }
 }
-export function makeScopeId(id) {
+exports.Scope = Scope;
+function makeScopeId(id) {
     return id;
 }

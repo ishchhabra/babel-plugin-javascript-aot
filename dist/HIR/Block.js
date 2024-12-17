@@ -1,7 +1,11 @@
-export function makeBlockId(id) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.makeBlockId = makeBlockId;
+exports.makeEmptyBlock = makeEmptyBlock;
+function makeBlockId(id) {
     return id;
 }
-export function makeEmptyBlock(id) {
+function makeEmptyBlock(id) {
     return {
         kind: "block",
         id,

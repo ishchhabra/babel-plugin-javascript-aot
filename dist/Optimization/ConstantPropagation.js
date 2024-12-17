@@ -1,8 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.constantPropagation = constantPropagation;
 const DEFAULT_OPTIONS = {
     debug: false,
     maxIterations: 1000,
 };
-export function constantPropagation(blocks, options) {
+function constantPropagation(blocks, options) {
     if (!blocks || blocks.size === 0) {
         return { iterations: 0, optimizationsApplied: 0 };
     }
