@@ -4,7 +4,18 @@ import { getFunctionName } from "../Babel/utils";
 import { BasicBlock, BlockId, makeEmptyBlock } from "./Block";
 import { makeDeclarationId } from "./Declaration";
 import { makeIdentifierId, makeIdentifierName } from "./Identifier";
-import { makeInstructionId, SpreadElement } from "./Instruction";
+import {
+  ArrayExpressionInstruction,
+  BinaryExpressionInstruction,
+  CallExpressionInstruction,
+  FunctionDeclarationInstruction,
+  makeInstructionId,
+  SpreadElement,
+  StoreLocalInstruction,
+  UnaryExpressionInstruction,
+  UnsupportedNodeInstruction,
+  UpdateExpressionInstruction,
+} from "./Instruction";
 import { Phi } from "./Phi";
 import { Place } from "./Place";
 import { Scope } from "./Scope";
@@ -184,14 +195,14 @@ export class HIRBuilder {
         this.#exitScope();
 
         // Add function declaration instruction
-        this.#currentBlock.instructions.push({
-          id: makeInstructionId(this.#nextInstructionId++),
-          kind: "FunctionDeclaration",
-          target: functionPlace,
-          params,
-          body: bodyBlockId,
-          type: "const",
-        });
+        this.#currentBlock.instructions.push(
+          new FunctionDeclarationInstruction(
+            makeInstructionId(this.#nextInstructionId++),
+            functionPlace,
+            params,
+            bodyBlockId,
+          ),
+        );
 
         // Rename function in scope
         statement.scope.rename(
@@ -218,16 +229,17 @@ export class HIRBuilder {
             const targetPlace = this.#createTemporaryPlace();
             const name = (declaration.node.id as t.Identifier).name;
 
-            this.#currentBlock.instructions.push({
-              id: makeInstructionId(this.#nextInstructionId++),
-              kind: "StoreLocal",
-              target: targetPlace,
-              value: {
-                kind: "Load",
-                place: valuePlace,
-              },
-              type: statementNode.kind === "const" ? "const" : "let",
-            });
+            this.#currentBlock.instructions.push(
+              new StoreLocalInstruction(
+                makeInstructionId(this.#nextInstructionId++),
+                targetPlace,
+                {
+                  kind: "Load",
+                  place: valuePlace,
+                },
+                statementNode.kind === "const" ? "const" : "let",
+              ),
+            );
 
             if (!this.#currentScope) {
               throw new Error("No current scope");
@@ -273,16 +285,17 @@ export class HIRBuilder {
             const valuePlace = this.#buildExpression(expression.get("right"));
             const targetPlace = this.#createTemporaryPlace();
 
-            this.#currentBlock.instructions.push({
-              id: makeInstructionId(this.#nextInstructionId++),
-              kind: "StoreLocal",
-              target: targetPlace,
-              value: {
-                kind: "Load",
-                place: valuePlace,
-              },
-              type: "const",
-            });
+            this.#currentBlock.instructions.push(
+              new StoreLocalInstruction(
+                makeInstructionId(this.#nextInstructionId++),
+                targetPlace,
+                {
+                  kind: "Load",
+                  place: valuePlace,
+                },
+                "const",
+              ),
+            );
 
             if (!this.#currentScope) {
               throw new Error("No current scope");
@@ -305,13 +318,13 @@ export class HIRBuilder {
 
       default: {
         const resultPlace = this.#createTemporaryPlace();
-        this.#currentBlock.instructions.push({
-          id: makeInstructionId(this.#nextInstructionId++),
-          kind: "UnsupportedNode",
-          target: resultPlace,
-          node: statementNode,
-          type: "const",
-        });
+        this.#currentBlock.instructions.push(
+          new UnsupportedNodeInstruction(
+            makeInstructionId(this.#nextInstructionId++),
+            resultPlace,
+            statementNode,
+          ),
+        );
         statement.skip();
       }
     }
@@ -339,14 +352,14 @@ export class HIRBuilder {
         });
 
         const resultPlace = this.#createTemporaryPlace();
-        this.#currentBlock.instructions.push({
-          id: makeInstructionId(this.#nextInstructionId++),
-          kind: "CallExpression",
-          target: resultPlace,
-          callee: calleePlace,
-          args: argsPlaces,
-          type: "const",
-        });
+        this.#currentBlock.instructions.push(
+          new CallExpressionInstruction(
+            makeInstructionId(this.#nextInstructionId++),
+            resultPlace,
+            calleePlace,
+            argsPlaces,
+          ),
+        );
 
         return resultPlace;
       }
@@ -380,13 +393,13 @@ export class HIRBuilder {
 
           return this.#buildExpression(element as NodePath<t.Expression>);
         });
-        this.#currentBlock.instructions.push({
-          id: makeInstructionId(this.#nextInstructionId++),
-          kind: "ArrayExpression",
-          target: resultPlace,
-          elements: elementsPlaces,
-          type: "const",
-        });
+        this.#currentBlock.instructions.push(
+          new ArrayExpressionInstruction(
+            makeInstructionId(this.#nextInstructionId++),
+            resultPlace,
+            elementsPlaces,
+          ),
+        );
 
         return resultPlace;
 
@@ -394,16 +407,17 @@ export class HIRBuilder {
       case "StringLiteral":
       case "BooleanLiteral": {
         const resultPlace = this.#createTemporaryPlace();
-        this.#currentBlock.instructions.push({
-          id: makeInstructionId(this.#nextInstructionId++),
-          kind: "StoreLocal",
-          target: resultPlace,
-          value: {
-            kind: "Primitive",
-            value: expressionNode.value,
-          },
-          type: "const",
-        });
+        this.#currentBlock.instructions.push(
+          new StoreLocalInstruction(
+            makeInstructionId(this.#nextInstructionId++),
+            resultPlace,
+            {
+              kind: "Primitive",
+              value: expressionNode.value,
+            },
+            "const",
+          ),
+        );
         return resultPlace;
       }
 
@@ -416,15 +430,15 @@ export class HIRBuilder {
         );
         const resultPlace = this.#createTemporaryPlace();
 
-        this.#currentBlock.instructions.push({
-          id: makeInstructionId(this.#nextInstructionId++),
-          kind: "BinaryExpression",
-          target: resultPlace,
-          operator: expressionNode.operator as "+",
-          left: leftPlace,
-          right: rightPlace,
-          type: "const",
-        });
+        this.#currentBlock.instructions.push(
+          new BinaryExpressionInstruction(
+            makeInstructionId(this.#nextInstructionId++),
+            resultPlace,
+            expressionNode.operator as "+",
+            leftPlace,
+            rightPlace,
+          ),
+        );
 
         return resultPlace;
       }
@@ -436,14 +450,14 @@ export class HIRBuilder {
         );
         const resultPlace = this.#createTemporaryPlace();
 
-        this.#currentBlock.instructions.push({
-          id: makeInstructionId(this.#nextInstructionId++),
-          kind: "UnaryExpression",
-          target: resultPlace,
-          operator: expressionNode.operator as "!" | "~",
-          value: operandPlace,
-          type: "const",
-        });
+        this.#currentBlock.instructions.push(
+          new UnaryExpressionInstruction(
+            makeInstructionId(this.#nextInstructionId++),
+            resultPlace,
+            expressionNode.operator as "!" | "~",
+            operandPlace,
+          ),
+        );
 
         return resultPlace;
       }
@@ -455,28 +469,28 @@ export class HIRBuilder {
         );
         const resultPlace = this.#createTemporaryPlace();
 
-        this.#currentBlock.instructions.push({
-          id: makeInstructionId(this.#nextInstructionId++),
-          kind: "UpdateExpression",
-          target: resultPlace,
-          operator: expressionNode.operator,
-          prefix: expressionNode.prefix,
-          value: argumentPlace,
-          type: "const",
-        });
+        this.#currentBlock.instructions.push(
+          new UpdateExpressionInstruction(
+            makeInstructionId(this.#nextInstructionId++),
+            resultPlace,
+            expressionNode.operator,
+            expressionNode.prefix,
+            argumentPlace,
+          ),
+        );
 
         return resultPlace;
       }
 
       default: {
         const resultPlace = this.#createTemporaryPlace();
-        this.#currentBlock.instructions.push({
-          id: makeInstructionId(this.#nextInstructionId++),
-          kind: "UnsupportedNode",
-          target: resultPlace,
-          node: expressionNode,
-          type: "const",
-        });
+        this.#currentBlock.instructions.push(
+          new UnsupportedNodeInstruction(
+            makeInstructionId(this.#nextInstructionId++),
+            resultPlace,
+            expressionNode,
+          ),
+        );
         return resultPlace;
       }
     }
