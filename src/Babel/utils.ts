@@ -1,5 +1,6 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+
 export function getFunctionName(
   path: NodePath<t.FunctionDeclaration | t.ArrowFunctionExpression>,
 ): NodePath<t.Identifier> | null {
