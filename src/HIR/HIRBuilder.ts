@@ -77,6 +77,23 @@ export class HIRBuilder {
   #buildStatement(statement: NodePath<t.Statement>) {
     const statementNode = statement.node;
     switch (statementNode.type) {
+      case "ReturnStatement": {
+        statement.assertReturnStatement();
+
+        const argument = statement.get("argument");
+        if (argument.hasNode()) {
+          const returnPlace = this.#buildExpression(argument);
+
+          this.#currentBlock.terminal = {
+            kind: "return",
+            id: makeInstructionId(this.#nextInstructionId++),
+            value: returnPlace,
+          };
+        }
+
+        break;
+      }
+
       case "BlockStatement": {
         statement.assertBlockStatement();
         this.#enterScope();
@@ -155,6 +172,29 @@ export class HIRBuilder {
           throw new Error("No current scope");
         }
 
+        // Add function declaration instruction
+        this.#currentBlock.instructions.push(
+          new FunctionDeclarationInstruction(
+            makeInstructionId(this.#nextInstructionId++),
+            functionPlace,
+            [], // Temporary empty params array
+            bodyBlockId,
+          ),
+        );
+
+        // Rename function in scope
+        statement.scope.rename(
+          functionName.node.name,
+          functionPlace.identifier.name,
+        );
+        // Store the function in the current scope
+        const declarationId = makeDeclarationId(this.#nextDeclarationId++);
+        this.#currentScope.setDeclarationId(
+          functionName.node.name,
+          declarationId,
+        );
+        this.#currentScope.setBinding(declarationId, functionPlace);
+
         // Enter a new scope for the function
         this.#enterScope();
 
@@ -183,6 +223,16 @@ export class HIRBuilder {
           return paramPlace;
         });
 
+        // Update the function declaration with actual params
+        this.#currentBlock.instructions[
+          this.#currentBlock.instructions.length - 1
+        ] = new FunctionDeclarationInstruction(
+          makeInstructionId(this.#nextInstructionId - 1),
+          functionPlace,
+          params,
+          bodyBlockId,
+        );
+
         // Save current block ID
         const previousBlockId = this.#currentBlockId;
         this.#currentBlockId = bodyBlockId;
@@ -193,29 +243,6 @@ export class HIRBuilder {
         // Restore previous block and scope
         this.#currentBlockId = previousBlockId;
         this.#exitScope();
-
-        // Add function declaration instruction
-        this.#currentBlock.instructions.push(
-          new FunctionDeclarationInstruction(
-            makeInstructionId(this.#nextInstructionId++),
-            functionPlace,
-            params,
-            bodyBlockId,
-          ),
-        );
-
-        // Rename function in scope
-        statement.scope.rename(
-          functionName.node.name,
-          functionPlace.identifier.name,
-        );
-        // Store the function in the current scope
-        const declarationId = makeDeclarationId(this.#nextDeclarationId++);
-        this.#currentScope.setDeclarationId(
-          functionName.node.name,
-          declarationId,
-        );
-        this.#currentScope.setBinding(declarationId, functionPlace);
 
         break;
       }
@@ -511,13 +538,10 @@ export class HIRBuilder {
 
   #createTemporaryPlace(): Place {
     const identifierId = makeIdentifierId(this.#nextIdentifierId++);
-    return {
-      kind: "Identifier",
-      identifier: {
-        id: identifierId,
-        declarationId: makeDeclarationId(this.#nextDeclarationId++),
-        name: makeIdentifierName(identifierId),
-      },
-    };
+    return new Place({
+      id: identifierId,
+      declarationId: makeDeclarationId(this.#nextDeclarationId++),
+      name: makeIdentifierName(identifierId),
+    });
   }
 }

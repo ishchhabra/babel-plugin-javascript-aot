@@ -1,5 +1,6 @@
 import * as t from "@babel/types";
 import { BlockId } from "./Block";
+import { IdentifierId } from "./Identifier";
 import { Place } from "./Place";
 import { Value } from "./Value";
 
@@ -19,6 +20,14 @@ export abstract class BaseInstruction {
   getPlaces(): Place[] {
     return [this.target];
   }
+
+  /**
+   * Clones the function declaration instruction with remapped places.
+   *
+   * @param places - A map of identifier ids to their new places.
+   * @returns A new FunctionDeclarationInstruction with remapped places.
+   */
+  abstract cloneWithPlaces(places: Map<IdentifierId, Place>): Instruction;
 }
 
 export class FunctionDeclarationInstruction extends BaseInstruction {
@@ -40,6 +49,21 @@ export class FunctionDeclarationInstruction extends BaseInstruction {
 
   getPlaces(): Place[] {
     return [...super.getPlaces(), ...this.params];
+  }
+
+  cloneWithPlaces(
+    places: Map<IdentifierId, Place>,
+  ): FunctionDeclarationInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newParams = this.params.map(
+      (param) => places.get(param.identifier.id) ?? param,
+    );
+    return new FunctionDeclarationInstruction(
+      this.id,
+      newTarget,
+      newParams,
+      this.body,
+    );
   }
 }
 
@@ -63,6 +87,11 @@ export class StoreLocalInstruction extends BaseInstruction {
   getPlaces(): Place[] {
     return [...super.getPlaces()];
   }
+
+  cloneWithPlaces(places: Map<IdentifierId, Place>): StoreLocalInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    return new StoreLocalInstruction(this.id, newTarget, this.value, this.type);
+  }
 }
 
 export interface SpreadElement {
@@ -82,6 +111,18 @@ export class ArrayExpressionInstruction extends BaseInstruction {
     super(id, target, "const");
     this.kind = "ArrayExpression";
     this.elements = elements;
+  }
+
+  cloneWithPlaces(
+    places: Map<IdentifierId, Place>,
+  ): ArrayExpressionInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newElements = this.elements.map((element) =>
+      element.kind === "SpreadElement"
+        ? element
+        : (places.get(element.identifier.id) ?? element),
+    );
+    return new ArrayExpressionInstruction(this.id, newTarget, newElements);
   }
 }
 
@@ -106,6 +147,19 @@ export class UnaryExpressionInstruction extends BaseInstruction {
     this.kind = "UnaryExpression";
     this.operator = operator;
     this.value = value;
+  }
+
+  cloneWithPlaces(
+    places: Map<IdentifierId, Place>,
+  ): UnaryExpressionInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newValue = places.get(this.value.identifier.id) ?? this.value;
+    return new UnaryExpressionInstruction(
+      this.id,
+      newTarget,
+      this.operator,
+      newValue,
+    );
   }
 }
 
@@ -134,6 +188,21 @@ export class BinaryExpressionInstruction extends BaseInstruction {
     this.left = left;
     this.right = right;
   }
+
+  cloneWithPlaces(
+    places: Map<IdentifierId, Place>,
+  ): BinaryExpressionInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newLeft = places.get(this.left.identifier.id) ?? this.left;
+    const newRight = places.get(this.right.identifier.id) ?? this.right;
+    return new BinaryExpressionInstruction(
+      this.id,
+      newTarget,
+      this.operator,
+      newLeft,
+      newRight,
+    );
+  }
 }
 
 export class UpdateExpressionInstruction extends BaseInstruction {
@@ -155,6 +224,20 @@ export class UpdateExpressionInstruction extends BaseInstruction {
     this.prefix = prefix;
     this.value = value;
   }
+
+  cloneWithPlaces(
+    places: Map<IdentifierId, Place>,
+  ): UpdateExpressionInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newValue = places.get(this.value.identifier.id) ?? this.value;
+    return new UpdateExpressionInstruction(
+      this.id,
+      newTarget,
+      this.operator,
+      this.prefix,
+      newValue,
+    );
+  }
 }
 
 export class CallExpressionInstruction extends BaseInstruction {
@@ -173,6 +256,22 @@ export class CallExpressionInstruction extends BaseInstruction {
     this.callee = callee;
     this.args = args;
   }
+
+  cloneWithPlaces(places: Map<IdentifierId, Place>): CallExpressionInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newCallee = places.get(this.callee.identifier.id) ?? this.callee;
+    const newArgs = this.args.map((arg) =>
+      arg.kind === "SpreadElement"
+        ? arg
+        : (places.get(arg.identifier.id) ?? arg),
+    );
+    return new CallExpressionInstruction(
+      this.id,
+      newTarget,
+      newCallee,
+      newArgs,
+    );
+  }
 }
 
 export class UnsupportedNodeInstruction extends BaseInstruction {
@@ -183,6 +282,13 @@ export class UnsupportedNodeInstruction extends BaseInstruction {
     super(id, target, "const");
     this.kind = "UnsupportedNode";
     this.node = node;
+  }
+
+  cloneWithPlaces(
+    places: Map<IdentifierId, Place>,
+  ): UnsupportedNodeInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    return new UnsupportedNodeInstruction(this.id, newTarget, this.node);
   }
 }
 

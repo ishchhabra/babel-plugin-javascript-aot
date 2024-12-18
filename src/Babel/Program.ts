@@ -3,6 +3,7 @@ import * as t from "@babel/types";
 import { Codegen } from "../HIR/Codegen";
 import { HIRBuilder } from "../HIR/HIRBuilder";
 import { constantPropagation } from "../Optimization/ConstantPropagation";
+import { functionInlining } from "../Optimization/FunctionInlining";
 import { OptimizationOptions } from "../Optimization/OptimizationOptions";
 
 export function compileProgram(
@@ -13,6 +14,10 @@ export function compileProgram(
 
   if (options.enableConstantPropagation) {
     constantPropagation(builder.blocks);
+  }
+
+  if (options.enableFunctionInlining) {
+    functionInlining(builder.blocks);
   }
 
   const codegen = new Codegen(builder.blocks, builder.phis);

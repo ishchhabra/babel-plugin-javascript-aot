@@ -1,4 +1,5 @@
 import { Instruction } from "./Instruction";
+import { Phi } from "./Phi";
 import { Terminal } from "./Terminal";
 
 export type BlockId = number;
@@ -9,6 +10,7 @@ export type BasicBlock = {
   kind: BlockKind;
   id: BlockId;
   instructions: Instruction[];
+  phis: Set<Phi>;
   terminal: Terminal;
 };
 
@@ -21,6 +23,7 @@ export function makeEmptyBlock(id: BlockId): BasicBlock {
     kind: "block",
     id,
     instructions: [],
+    phis: new Set(),
     terminal: { kind: "unsupported" },
   };
 }
