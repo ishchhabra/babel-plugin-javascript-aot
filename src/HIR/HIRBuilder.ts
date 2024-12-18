@@ -18,7 +18,7 @@ import {
 } from "./Instruction";
 import { Phi } from "./Phi";
 import { Place } from "./Place";
-import { Scope } from "./Scope";
+import { BlockScope, FunctionScope, GlobalScope, Scope } from "./Scope";
 
 export class HIRBuilder {
   #program: NodePath<t.Program>;
@@ -39,7 +39,9 @@ export class HIRBuilder {
     this.#currentScope = null;
     this.#blocks.set(0, makeEmptyBlock(this.#nextBlockId++));
     this.#currentBlockId = 0;
-    this.#enterScope(); // Create initial global scope
+    // Create initial global scope with correct type
+    this.#currentScope = new GlobalScope(this.#nextScopeId++);
+    this.#scopes.push(this.#currentScope);
   }
 
   public get blocks() {
@@ -50,8 +52,14 @@ export class HIRBuilder {
     return this.#scopes.flatMap((scope) => Array.from(scope.phis.values()));
   }
 
-  #enterScope() {
-    const newScope = new Scope(this.#nextScopeId++, this.#currentScope);
+  #enterFunctionScope() {
+    const newScope = new FunctionScope(this.#nextScopeId++, this.#currentScope);
+    this.#scopes.push(newScope);
+    this.#currentScope = newScope;
+  }
+
+  #enterBlockScope() {
+    const newScope = new BlockScope(this.#nextScopeId++, this.#currentScope);
     this.#scopes.push(newScope);
     this.#currentScope = newScope;
   }
@@ -96,7 +104,7 @@ export class HIRBuilder {
 
       case "BlockStatement": {
         statement.assertBlockStatement();
-        this.#enterScope();
+        this.#enterBlockScope();
         for (const stmt of statement.get("body")) {
           this.#buildStatement(stmt);
         }
@@ -195,8 +203,8 @@ export class HIRBuilder {
         );
         this.#currentScope.setBinding(declarationId, functionPlace);
 
-        // Enter a new scope for the function
-        this.#enterScope();
+        // Enter a new function scope
+        this.#enterFunctionScope();
 
         const body = statement.get("body");
 
@@ -213,7 +221,6 @@ export class HIRBuilder {
 
           // Add parameter to current scope
           const declarationId = makeDeclarationId(this.#nextDeclarationId++);
-          // Using paramPlace.identifier.name because we're renaming the parameter.
           this.#currentScope!.setDeclarationId(
             paramPlace.identifier.name,
             declarationId,
@@ -275,7 +282,6 @@ export class HIRBuilder {
             declaration.scope.rename(name, targetPlace.identifier.name);
             const declarationId = makeDeclarationId(this.#nextDeclarationId++);
             this.#currentScope.setDeclarationId(
-              // Using targetPlace.identifier.name because we're renaming the variable.
               targetPlace.identifier.name,
               declarationId,
             );
@@ -408,7 +414,7 @@ export class HIRBuilder {
         return place;
       }
 
-      case "ArrayExpression":
+      case "ArrayExpression": {
         expression.assertArrayExpression();
 
         const resultPlace = this.#createTemporaryPlace();
@@ -429,6 +435,7 @@ export class HIRBuilder {
         );
 
         return resultPlace;
+      }
 
       case "NumericLiteral":
       case "StringLiteral":

@@ -4,7 +4,7 @@ import { Place } from "./Place";
 
 export type ScopeId = number;
 
-export class Scope {
+export abstract class Scope {
   readonly id: ScopeId;
   readonly parent: Scope | null;
   readonly #declarations: Map<string, DeclarationId> = new Map();
@@ -61,6 +61,57 @@ export class Scope {
 
   setPhi(declarationId: DeclarationId, phi: Phi) {
     this.#phis.set(declarationId, phi);
+  }
+
+  getGlobalScope(): GlobalScope | undefined {
+    if (this.parent instanceof GlobalScope) {
+      return this.parent;
+    }
+
+    return this.parent?.getGlobalScope();
+  }
+}
+
+export class GlobalScope extends Scope {
+  constructor(id: ScopeId) {
+    super(id, null);
+  }
+}
+
+abstract class LocalScope extends Scope {
+  constructor(id: ScopeId, parent: Scope | null) {
+    super(id, parent);
+  }
+
+  getFunctionScope(): FunctionScope | undefined {
+    if (this.parent instanceof FunctionScope) {
+      return this.parent;
+    }
+
+    if (this.parent instanceof LocalScope) {
+      return this.parent.getFunctionScope();
+    }
+
+    return undefined;
+  }
+}
+
+/**
+ * A scope that represents a function.
+ *
+ * Function scopes are needed because JavaScript's `var` declarations are function-scoped, not block-scoped.
+ * Variables declared with `var` are hoisted to their containing function (or global scope), so we need a
+ * distinct scope type to handle this behavior correctly during analysis.
+ */
+export class FunctionScope extends LocalScope {
+  constructor(id: ScopeId, parent: Scope | null) {
+    super(id, parent);
+  }
+}
+
+export class BlockScope extends LocalScope {
+  constructor(id: ScopeId, parent: Scope | null) {
+    super(id, parent);
   }
 }
 
