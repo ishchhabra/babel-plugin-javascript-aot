@@ -7,12 +7,10 @@ function $0($2) {
   }
   const $6 = 1;
   const $7 = $2 - $6;
-  const $inline2 = 1;
-  const $8 = $7 <= $inline2;
+  const $8 = $0($7);
   const $9 = $2 * $8;
   return $9;
 }
+
 const $10 = 5;
-const $inline0 = 1;
-const $11 = $10 <= $inline0;
-const $1 = $11;
+const $1 = $0($10);
