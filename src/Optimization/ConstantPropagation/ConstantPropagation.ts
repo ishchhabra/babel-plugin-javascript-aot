@@ -4,6 +4,7 @@ import { IdentifierId } from "../../HIR/Identifier";
 import {
   BinaryExpressionInstruction,
   Instruction,
+  StoreLocalInstruction,
   UnaryExpressionInstruction,
 } from "../../HIR/Instruction";
 import { Place } from "../../HIR/Place";
@@ -125,15 +126,15 @@ function processBlock(
           constantCache.set(targetId, evaluatedValue);
 
           // Create new instruction with the evaluated value
-          block.instructions[i] = {
-            ...instruction,
-            kind: "StoreLocal",
-            target: instruction.target,
-            value: {
+          block.instructions[i] = new StoreLocalInstruction(
+            instruction.id,
+            instruction.target,
+            {
               kind: "Primitive",
               value: evaluatedValue.value,
             },
-          };
+            instruction.type,
+          );
 
           hasChanges = true;
           optimizationsApplied++;
