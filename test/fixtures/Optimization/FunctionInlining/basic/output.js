@@ -1,8 +1,8 @@
-function $0($1, $2) {
-  const $3 = $1 + $2;
-  return $3;
+function $0($2, $3) {
+  const $4 = $2 + $3;
+  return $4;
 }
-const $4 = 1;
-const $5 = 2;
-const $6 = $4 + $5;
-const $7 = $6;
+const $5 = 1;
+const $6 = 2;
+const $7 = $5 + $6;
+const $1 = $7;

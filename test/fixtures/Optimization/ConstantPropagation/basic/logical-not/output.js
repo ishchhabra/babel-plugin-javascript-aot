@@ -1,3 +1,3 @@
-const $0 = true;
-const $1 = false;
+const $1 = true;
 const $2 = false;
+const $0 = false;

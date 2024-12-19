@@ -1,16 +1,18 @@
-function $0($1) {
-  const $2 = 1;
-  const $3 = $1 <= $2;
-  if ($3) {
-    const $4 = 1;
-    return $4;
+function $0($2) {
+  const $3 = 1;
+  const $4 = $2 <= $3;
+  if ($4) {
+    const $5 = 1;
+    return $5;
   }
-  const $5 = 1;
-  const $6 = $1 - $5;
-  const $7 = $0($6);
-  const $8 = $1 * $7;
-  return $8;
+  const $6 = 1;
+  const $7 = $2 - $6;
+  const $inline2 = 1;
+  const $8 = $7 <= $inline2;
+  const $9 = $2 * $8;
+  return $9;
 }
-const $9 = 5;
-const $10 = $0($9);
-const $11 = $10;
+const $10 = 5;
+const $inline0 = 1;
+const $11 = $10 <= $inline0;
+const $1 = $11;

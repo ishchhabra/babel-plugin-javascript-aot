@@ -24,6 +24,10 @@ export abstract class Scope {
     return this.#declarations;
   }
 
+  get bindings() {
+    return this.#bindings;
+  }
+
   getDeclarationId(name: string): DeclarationId | undefined {
     return this.#declarations.get(name) ?? this.parent?.getDeclarationId(name);
   }

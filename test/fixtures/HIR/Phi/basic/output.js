@@ -1,15 +1,15 @@
-let $2;
-const $0 = 1;
-let $1 = $0;
-$2 = $1;
-const $3 = true;
-if ($3) {
-  const $4 = 2;
-  const $5 = $4;
-  $2 = $5;
+let $3;
+const $2 = 1;
+let $0 = $2;
+$3 = $0;
+const $4 = true;
+if ($4) {
+  const $5 = 2;
+  const $6 = $5;
+  $3 = $6;
 } else {
-  const $6 = 3;
-  const $7 = $6;
-  $2 = $7;
+  const $7 = 3;
+  const $8 = $7;
+  $3 = $8;
 }
-const $8 = $2;
+const $1 = $3;

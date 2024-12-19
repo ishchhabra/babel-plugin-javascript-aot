@@ -1,6 +1,6 @@
 let $2;
-const $0 = 0;
-let $1 = $0;
+const $1 = 0;
+let $0 = $1;
 const $3 = 1;
 const $4 = $3;
 $2 = $4;

@@ -1,4 +1,4 @@
-const $0 = 2;
-const $1 = 3;
-const $2 = 8;
+const $1 = 2;
+const $2 = 3;
 const $3 = 8;
+const $0 = 8;

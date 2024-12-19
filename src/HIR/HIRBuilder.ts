@@ -21,31 +21,26 @@ import { Place } from "./Place";
 import { BlockScope, FunctionScope, GlobalScope, Scope } from "./Scope";
 
 export class HIRBuilder {
-  // Core program state
-  readonly #program: NodePath<t.Program>;
+  #blocks: Map<BlockId, BasicBlock> = new Map();
+  #program: NodePath<t.Program>;
+  #scopes: Array<Scope> = [];
 
-  // Block-related state
-  readonly #blocks: Map<BlockId, BasicBlock>;
-  #currentBlockId: BlockId;
-  #nextBlockId = 0;
-
-  // Scope-related state
+  #currentBlockId = 0;
   #currentScope: Scope | null = null;
-  readonly #scopes: Array<Scope> = [];
-  #nextScopeId = 0;
 
   // ID generators
+  #nextBlockId = 0;
   #nextDeclarationId = 0;
   #nextIdentifierId = 0;
   #nextInstructionId = 0;
+  #nextScopeId = 0;
 
   constructor(program: NodePath<t.Program>) {
     this.#program = program;
-    this.#blocks = new Map();
     this.#blocks.set(0, makeEmptyBlock(this.#nextBlockId++));
     this.#currentBlockId = 0;
-    this.#currentScope = new GlobalScope(this.#nextScopeId++);
-    this.#scopes.push(this.#currentScope);
+
+    this.#enterGlobalScope(program);
   }
 
   // Public API
@@ -67,22 +62,95 @@ export class HIRBuilder {
   }
 
   // Scope Management
-  #enterFunctionScope() {
+  #enterGlobalScope(path: NodePath<t.Program>) {
+    const newScope = new GlobalScope(this.#nextScopeId++);
+    this.#scopes.push(newScope);
+    this.#currentScope = newScope;
+
+    this.#buildBindings(path);
+  }
+
+  #enterFunctionScope(path: NodePath<t.FunctionDeclaration>) {
     const newScope = new FunctionScope(this.#nextScopeId++, this.#currentScope);
     this.#scopes.push(newScope);
     this.#currentScope = newScope;
+
+    this.#buildBindings(path);
   }
 
-  #enterBlockScope() {
+  #enterBlockScope(path: NodePath<t.BlockStatement>) {
     const newScope = new BlockScope(this.#nextScopeId++, this.#currentScope);
     this.#scopes.push(newScope);
     this.#currentScope = newScope;
+
+    this.#buildBindings(path);
   }
 
   #exitScope() {
     if (this.#currentScope?.parent) {
       this.#currentScope = this.#currentScope.parent;
     }
+  }
+
+  #buildBindings(bindingPath: NodePath) {
+    if (!this.#currentScope) {
+      throw new Error("No current scope");
+    }
+
+    bindingPath.traverse({
+      Declaration: (path: NodePath<t.Declaration>) => {
+        switch (path.node.type) {
+          case "FunctionDeclaration":
+            path.assertFunctionDeclaration();
+
+            if (path.parentPath !== bindingPath) {
+              return;
+            }
+
+            const functionName = getFunctionName(path);
+            if (!functionName) {
+              return;
+            }
+
+            const declarationId = makeDeclarationId(this.#nextDeclarationId++);
+            this.#currentScope?.setDeclarationId(
+              functionName.node.name,
+              declarationId,
+            );
+            this.#currentScope?.setBinding(
+              declarationId,
+              this.#createTemporaryPlace(),
+            );
+            break;
+          case "VariableDeclaration":
+            path.assertVariableDeclaration();
+
+            if (
+              path.parentPath !== bindingPath &&
+              !(bindingPath.isFunctionDeclaration() && path.node.kind === "var")
+            ) {
+              return;
+            }
+
+            for (const declaration of path.node.declarations) {
+              if (t.isIdentifier(declaration.id)) {
+                const declarationId = makeDeclarationId(
+                  this.#nextDeclarationId++,
+                );
+                this.#currentScope?.setDeclarationId(
+                  declaration.id.name,
+                  declarationId,
+                );
+                this.#currentScope?.setBinding(
+                  declarationId,
+                  this.#createTemporaryPlace(),
+                );
+              }
+            }
+            break;
+        }
+      },
+    });
   }
 
   // Block Management
@@ -137,7 +205,7 @@ export class HIRBuilder {
 
   #buildBlockStatement(statement: NodePath<t.BlockStatement>) {
     statement.assertBlockStatement();
-    this.#enterBlockScope();
+    this.#enterBlockScope(statement);
     for (const stmt of statement.get("body")) {
       this.#buildStatement(stmt);
     }
@@ -191,10 +259,22 @@ export class HIRBuilder {
     const bodyBlockId = this.#nextBlockId++;
     this.#blocks.set(bodyBlockId, makeEmptyBlock(bodyBlockId));
 
-    const functionPlace = this.#createTemporaryPlace();
     const functionName = getFunctionName(statement);
     if (!functionName || !this.#currentScope) {
       throw new Error("Invalid function declaration");
+    }
+
+    const declarationId = this.#currentScope.getDeclarationId(
+      functionName.node.name,
+    );
+    if (declarationId === undefined) {
+      throw new Error(`Undefined variable: ${functionName.node.name}`);
+    }
+    const functionPlace = this.#currentScope.getBinding(declarationId);
+    if (!functionPlace) {
+      throw new Error(
+        `Internal error: Missing binding for ${functionName.node.name}`,
+      );
     }
 
     const instruction = new FunctionDeclarationInstruction(
@@ -205,16 +285,7 @@ export class HIRBuilder {
     );
     this.#currentBlock.instructions.push(instruction);
 
-    // Update scope
-    statement.scope.rename(
-      functionName.node.name,
-      functionPlace.identifier.name,
-    );
-    const declarationId = makeDeclarationId(this.#nextDeclarationId++);
-    this.#currentScope.setDeclarationId(functionName.node.name, declarationId);
-    this.#currentScope.setBinding(declarationId, functionPlace);
-
-    this.#enterFunctionScope();
+    this.#enterFunctionScope(statement);
     const params = this.#buildFunctionParameters(statement);
     instruction.params = params;
 
@@ -256,8 +327,21 @@ export class HIRBuilder {
       const init = declaration.get("init");
       if (init.hasNode()) {
         const valuePlace = this.#buildExpression(init);
-        const targetPlace = this.#createTemporaryPlace();
         const name = (declaration.node.id as t.Identifier).name;
+
+        if (!this.#currentScope) {
+          throw new Error("No current scope");
+        }
+
+        const declarationId = this.#currentScope.getDeclarationId(name);
+        if (declarationId === undefined) {
+          throw new Error(`Undefined variable: ${name}`);
+        }
+
+        const targetPlace = this.#currentScope.getBinding(declarationId);
+        if (targetPlace === undefined) {
+          throw new Error(`Undefined variable: ${name}`);
+        }
 
         this.#currentBlock.instructions.push(
           new StoreLocalInstruction(
@@ -270,19 +354,6 @@ export class HIRBuilder {
             statement.node.kind === "const" ? "const" : "let",
           ),
         );
-
-        if (!this.#currentScope) {
-          throw new Error("No current scope");
-        }
-
-        declaration.scope.rename(name, targetPlace.identifier.name);
-        const declarationId = makeDeclarationId(this.#nextDeclarationId++);
-        this.#currentScope.setDeclarationId(
-          targetPlace.identifier.name,
-          declarationId,
-        );
-
-        this.#currentScope.setBinding(declarationId, targetPlace);
 
         if (statement.node.kind === "let") {
           const phiPlace = this.#createTemporaryPlace();
@@ -305,7 +376,7 @@ export class HIRBuilder {
       if (left.isIdentifier()) {
         const name = left.node.name;
         const declarationId = this.#currentScope?.getDeclarationId(name);
-        if (!declarationId) {
+        if (declarationId === undefined) {
           throw new Error(`Undefined variable: ${name}`);
         }
 
@@ -419,7 +490,7 @@ export class HIRBuilder {
     }
 
     const declarationId = this.#currentScope.getDeclarationId(name);
-    if (!declarationId) {
+    if (declarationId === undefined) {
       throw new Error(`Undefined variable: ${name}`);
     }
 
