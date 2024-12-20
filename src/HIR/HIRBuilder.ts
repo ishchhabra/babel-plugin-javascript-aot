@@ -114,14 +114,15 @@ export class HIRBuilder {
             }
 
             const declarationId = makeDeclarationId(this.#nextDeclarationId++);
+            const place = this.#createTemporaryPlace();
+
+            path.scope.rename(functionName.node.name, place.identifier.name);
+
             this.#currentScope?.setDeclarationId(
-              functionName.node.name,
+              place.identifier.name,
               declarationId,
             );
-            this.#currentScope?.setBinding(
-              declarationId,
-              this.#createTemporaryPlace(),
-            );
+            this.#currentScope?.setBinding(declarationId, place);
             break;
           case "VariableDeclaration":
             path.assertVariableDeclaration();
@@ -138,14 +139,14 @@ export class HIRBuilder {
                 const declarationId = makeDeclarationId(
                   this.#nextDeclarationId++,
                 );
+                const place = this.#createTemporaryPlace();
+
+                path.scope.rename(declaration.id.name, place.identifier.name);
                 this.#currentScope?.setDeclarationId(
-                  declaration.id.name,
+                  place.identifier.name,
                   declarationId,
                 );
-                this.#currentScope?.setBinding(
-                  declarationId,
-                  this.#createTemporaryPlace(),
-                );
+                this.#currentScope?.setBinding(declarationId, place);
               }
             }
             break;
@@ -423,7 +424,6 @@ export class HIRBuilder {
   }
 
   #buildUnsupportedStatement(statement: NodePath<t.Statement>) {
-    console.log(`Building unsupported statement: ${statement.node.type}`);
     const resultPlace = this.#createTemporaryPlace();
     this.#currentBlock.instructions.push(
       new UnsupportedNodeInstruction(
