@@ -36,9 +36,9 @@ export class Codegen {
   }
 
   #generateBlock(blockId: BlockId, body: t.Statement[]) {
-    if (this.#generatedBlocks.has(blockId)) {
-      return;
-    }
+    // if (this.#generatedBlocks.has(blockId)) {
+    //   return;
+    // }
 
     const block = this.#blocks.get(blockId);
     if (!block) {

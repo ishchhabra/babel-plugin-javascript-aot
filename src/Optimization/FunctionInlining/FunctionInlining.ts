@@ -6,6 +6,7 @@ import {
   Instruction,
 } from "../../HIR/Instruction";
 import { Place } from "../../HIR/Place";
+import { CallGraph } from "./CallGraph";
 
 export function functionInlining(blocks: Map<BlockId, BasicBlock>): void {
   new FunctionInliner(blocks).optimize();
@@ -14,65 +15,56 @@ export function functionInlining(blocks: Map<BlockId, BasicBlock>): void {
 export class FunctionInliner {
   #blocks: Map<BlockId, BasicBlock>;
   #nextIdentifierId = 0;
+  #callGraph: CallGraph;
 
   constructor(blocks: Map<BlockId, BasicBlock>) {
     this.#blocks = blocks;
+    this.#callGraph = CallGraph.fromBlocks(blocks);
   }
 
   public optimize(): void {
-    this.#getFunctionDeclarations();
-    this.#inlineFunctionCalls();
+    this.#inlineEligibleFunctions();
   }
 
-  #getFunctionDeclarations(): Map<
-    IdentifierId,
-    FunctionDeclarationInstruction
-  > {
-    const functionDeclarations = new Map<
-      IdentifierId,
-      FunctionDeclarationInstruction
-    >();
-
+  #inlineEligibleFunctions(): void {
     for (const block of this.#blocks.values()) {
-      for (const instruction of block.instructions) {
-        if (instruction.kind === "FunctionDeclaration") {
-          functionDeclarations.set(
-            instruction.target.identifier.id,
-            instruction,
-          );
-        }
-      }
-    }
-
-    return functionDeclarations;
-  }
-
-  #inlineFunctionCalls(): void {
-    const functionDeclarations = this.#getFunctionDeclarations();
-
-    for (const block of this.#blocks.values()) {
-      for (const [index, instruction] of block.instructions.entries()) {
-        if (instruction.kind !== "CallExpression") {
-          continue;
-        }
-
-        const callee = instruction.callee.identifier.id;
-        const functionInfo = functionDeclarations.get(callee);
-
-        if (!functionInfo) {
-          continue;
-        }
-
-        const inlinedInstructions = this.inlineFunction(
-          instruction,
-          functionInfo,
-        );
-        block.instructions.splice(index, 1, ...inlinedInstructions);
-      }
+      this.#inlineFunctionsInBlock(block);
     }
   }
 
-  private createInlinedPlace(originalPlace: Place): Place {
+  #inlineFunctionsInBlock(block: BasicBlock): void {
+    for (const [index, instruction] of block.instructions.entries()) {
+      if (!this.#isInlineable(instruction)) {
+        continue;
+      }
+
+      const targetFunction = this.#callGraph
+        .getFunctionDeclarations()
+        .get((instruction as CallExpressionInstruction).callee.identifier.id);
+
+      if (!targetFunction) {
+        continue;
+      }
+
+      const inlinedCode = this.#inlineFunction(
+        instruction as CallExpressionInstruction,
+        targetFunction,
+      );
+
+      block.instructions.splice(index, 1, ...inlinedCode);
+    }
+  }
+
+  #isInlineable(instruction: Instruction): boolean {
+    if (instruction.kind !== "CallExpression") {
+      return false;
+    }
+
+    const callee = instruction.callee.identifier.id;
+    return !this.#callGraph.isFunctionRecursive(callee);
+  }
+
+  #generateUniquePlace(originalPlace: Place): Place {
     const id = this.#nextIdentifierId++;
     return {
       kind: "Identifier",
@@ -84,73 +76,120 @@ export class FunctionInliner {
     };
   }
 
-  private inlineFunction(
-    callInstruction: CallExpressionInstruction,
-    functionInfo: FunctionDeclarationInstruction,
+  #inlineFunction(
+    call: CallExpressionInstruction,
+    targetFunction: FunctionDeclarationInstruction,
   ): Instruction[] {
-    const functionBlock = this.#blocks.get(functionInfo.body);
-
-    if (!functionBlock) {
-      return [callInstruction];
+    const functionBody = this.#blocks.get(targetFunction.body);
+    if (!functionBody) {
+      return [call];
     }
 
-    const placeMapping = this.createPlaceMapping(callInstruction, functionInfo);
-    const fullMapping = this.createFullMapping(
-      functionBlock,
-      placeMapping,
-      callInstruction,
+    const { paramMap, localVarMap } = this.#buildVariableMaps(
+      call,
+      targetFunction,
     );
 
-    return functionBlock.instructions.map((instruction) =>
-      instruction.cloneWithPlaces(fullMapping),
+    return this.#transformInstructions(
+      functionBody,
+      paramMap,
+      localVarMap,
+      call,
     );
   }
 
-  private createPlaceMapping(
-    callInstruction: CallExpressionInstruction,
-    declaration: FunctionDeclarationInstruction,
-  ): Map<IdentifierId, Place> {
-    const placeMapping = new Map<IdentifierId, Place>();
+  #buildVariableMaps(
+    call: CallExpressionInstruction,
+    targetFunction: FunctionDeclarationInstruction,
+  ) {
+    const paramMap = new Map<IdentifierId, Place>();
+    const localVarMap = new Map<IdentifierId, Place>();
 
-    declaration.params.forEach((param, index) => {
-      const arg = callInstruction.args[index];
+    targetFunction.params.forEach((param, index) => {
+      const arg = call.args[index];
       if (arg && arg.kind !== "SpreadElement") {
-        placeMapping.set(param.identifier.id, arg);
+        paramMap.set(param.identifier.id, arg);
       }
     });
 
-    return placeMapping;
+    return { paramMap, localVarMap };
   }
 
-  private createFullMapping(
-    functionBlock: BasicBlock,
-    placeMapping: Map<IdentifierId, Place>,
-    callInstruction: CallExpressionInstruction,
-  ): Map<IdentifierId, Place> {
-    const internalPlaceMapping = new Map<IdentifierId, Place>();
+  #transformInstructions(
+    functionBody: BasicBlock,
+    paramMap: Map<IdentifierId, Place>,
+    localVarMap: Map<IdentifierId, Place>,
+    call: CallExpressionInstruction,
+  ): Instruction[] {
+    const transformed: Instruction[] = [];
 
-    functionBlock.instructions.forEach((instruction) => {
-      instruction.getPlaces().forEach((place) => {
-        if (!placeMapping.has(place.identifier.id)) {
-          internalPlaceMapping.set(
-            place.identifier.id,
-            this.createInlinedPlace(place),
-          );
-        }
-      });
-    });
+    for (const instruction of functionBody.instructions) {
+      if (instruction.kind === "FunctionDeclaration") {
+        continue;
+      }
 
-    const fullMapping = new Map([...placeMapping, ...internalPlaceMapping]);
+      const newPlace = this.#generateUniquePlace(instruction.target);
+      localVarMap.set(instruction.target.identifier.id, newPlace);
 
-    const lastInstruction =
-      functionBlock.instructions[functionBlock.instructions.length - 1];
-    if (lastInstruction) {
-      fullMapping.set(
-        lastInstruction.target.identifier.id,
-        callInstruction.target,
+      const remappedInstruction = this.#remapVariables(
+        instruction,
+        paramMap,
+        localVarMap,
       );
+
+      if (this.#isNestedFunctionCall(remappedInstruction)) {
+        transformed.push(...this.#handleNestedCall(remappedInstruction));
+        continue;
+      }
+
+      transformed.push(remappedInstruction);
     }
 
-    return fullMapping;
+    return this.#mapReturnValue(transformed, call);
+  }
+
+  #remapVariables(
+    instruction: Instruction,
+    paramMap: Map<IdentifierId, Place>,
+    localVarMap: Map<IdentifierId, Place>,
+  ): Instruction {
+    return instruction.cloneWithPlaces(new Map([...paramMap, ...localVarMap]));
+  }
+
+  #isNestedFunctionCall(
+    instruction: Instruction,
+  ): instruction is CallExpressionInstruction {
+    return (
+      instruction.kind === "CallExpression" &&
+      this.#callGraph
+        .getFunctionDeclarations()
+        .has(instruction.callee.identifier.id)
+    );
+  }
+
+  #handleNestedCall(instruction: CallExpressionInstruction): Instruction[] {
+    const nestedFunction = this.#callGraph
+      .getFunctionDeclarations()
+      .get(instruction.callee.identifier.id)!;
+    return this.#inlineFunction(instruction, nestedFunction);
+  }
+
+  #mapReturnValue(
+    instructions: Instruction[],
+    call: CallExpressionInstruction,
+  ): Instruction[] {
+    const lastInstruction = instructions[instructions.length - 1];
+    if (!lastInstruction) {
+      return instructions;
+    }
+
+    const finalMapping = new Map<IdentifierId, Place>([
+      [lastInstruction.target.identifier.id, call.target],
+    ]);
+
+    instructions[instructions.length - 1] =
+      lastInstruction.cloneWithPlaces(finalMapping);
+
+    return instructions;
   }
 }

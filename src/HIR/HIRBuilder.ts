@@ -25,8 +25,8 @@ export class HIRBuilder {
   #program: NodePath<t.Program>;
   #scopes: Array<Scope> = [];
 
-  #currentBlockId = 0;
-  #currentScope: Scope | null = null;
+  #currentBlock!: BasicBlock;
+  #currentScope!: Scope;
 
   // ID generators
   #nextBlockId = 0;
@@ -37,10 +37,11 @@ export class HIRBuilder {
 
   constructor(program: NodePath<t.Program>) {
     this.#program = program;
-    this.#blocks.set(0, makeEmptyBlock(this.#nextBlockId++));
-    this.#currentBlockId = 0;
-
     this.#enterGlobalScope(program);
+
+    const entryBlock = makeEmptyBlock(this.#nextBlockId++, null);
+    this.#blocks.set(entryBlock.id, entryBlock);
+    this.#currentBlock = entryBlock;
   }
 
   // Public API
@@ -153,11 +154,6 @@ export class HIRBuilder {
     });
   }
 
-  // Block Management
-  get #currentBlock() {
-    return this.#blocks.get(this.#currentBlockId)!;
-  }
-
   // Statement Building
   #buildStatement(statement: NodePath<t.Statement>) {
     const statementNode = statement.node;
@@ -230,14 +226,22 @@ export class HIRBuilder {
     };
 
     // Process consequent
-    this.#blocks.set(consequentBlockId, makeEmptyBlock(consequentBlockId));
-    this.#currentBlockId = consequentBlockId;
+    const consequentBlock = makeEmptyBlock(
+      consequentBlockId,
+      this.#currentBlock.id,
+    );
+    this.#blocks.set(consequentBlockId, consequentBlock);
+    this.#currentBlock = consequentBlock;
     this.#buildStatement(statement.get("consequent"));
 
     // Process alternate
-    this.#blocks.set(alternateBlockId, makeEmptyBlock(alternateBlockId));
+    const alternateBlock = makeEmptyBlock(
+      alternateBlockId,
+      this.#currentBlock.id,
+    );
+    this.#blocks.set(alternateBlockId, alternateBlock);
     if (statement.node.alternate) {
-      this.#currentBlockId = alternateBlockId;
+      this.#currentBlock = alternateBlock;
       const alternate = statement.get("alternate");
       if (alternate.hasNode()) {
         this.#buildStatement(alternate);
@@ -250,14 +254,21 @@ export class HIRBuilder {
     }
 
     // Create fallthrough block
-    this.#blocks.set(fallthroughBlockId, makeEmptyBlock(fallthroughBlockId));
-    this.#currentBlockId = fallthroughBlockId;
+    const fallthroughBlock = makeEmptyBlock(
+      fallthroughBlockId,
+      this.#currentBlock.parent,
+    );
+    this.#blocks.set(fallthroughBlockId, fallthroughBlock);
+    this.#currentBlock = fallthroughBlock;
   }
 
   #buildFunctionDeclaration(statement: NodePath<t.FunctionDeclaration>) {
     statement.assertFunctionDeclaration();
     const bodyBlockId = this.#nextBlockId++;
-    this.#blocks.set(bodyBlockId, makeEmptyBlock(bodyBlockId));
+    this.#blocks.set(
+      bodyBlockId,
+      makeEmptyBlock(bodyBlockId, this.#currentBlock.id),
+    );
 
     const functionName = getFunctionName(statement);
     if (!functionName || !this.#currentScope) {
@@ -289,10 +300,10 @@ export class HIRBuilder {
     const params = this.#buildFunctionParameters(statement);
     instruction.params = params;
 
-    const previousBlockId = this.#currentBlockId;
-    this.#currentBlockId = bodyBlockId;
+    const previousBlock = this.#currentBlock;
+    this.#currentBlock = this.#blocks.get(bodyBlockId)!;
     this.#buildStatement(statement.get("body"));
-    this.#currentBlockId = previousBlockId;
+    this.#currentBlock = previousBlock;
     this.#exitScope();
   }
 
@@ -358,9 +369,9 @@ export class HIRBuilder {
         if (statement.node.kind === "let") {
           const phiPlace = this.#createTemporaryPlace();
           const phi: Phi = {
-            source: this.#currentBlockId,
+            source: this.#currentBlock.id,
             place: phiPlace,
-            operands: new Map([[this.#currentBlockId, targetPlace]]),
+            operands: new Map([[this.#currentBlock.id, targetPlace]]),
           };
           this.#currentScope.setPhi(declarationId, phi);
         }
@@ -404,7 +415,7 @@ export class HIRBuilder {
         this.#currentScope.setBinding(declarationId, targetPlace);
         const phi = this.#currentScope.getPhi(declarationId);
         if (phi) {
-          phi.operands.set(this.#currentBlockId, targetPlace);
+          phi.operands.set(this.#currentBlock.id, targetPlace);
         }
       }
     }

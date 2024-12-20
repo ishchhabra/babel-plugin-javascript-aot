@@ -12,18 +12,23 @@ export type BasicBlock = {
   instructions: Instruction[];
   phis: Set<Phi>;
   terminal: Terminal;
+  parent: BlockId | null;
 };
 
 export function makeBlockId(id: number): BlockId {
   return id;
 }
 
-export function makeEmptyBlock(id: BlockId): BasicBlock {
+export function makeEmptyBlock(
+  id: BlockId,
+  parent: BlockId | null,
+): BasicBlock {
   return {
     kind: "block",
     id,
     instructions: [],
     phis: new Set(),
     terminal: { kind: "unsupported" },
+    parent,
   };
 }

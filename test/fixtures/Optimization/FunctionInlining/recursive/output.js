@@ -11,6 +11,6 @@ function $0($2) {
   const $9 = $2 * $8;
   return $9;
 }
-
 const $10 = 5;
-const $1 = $0($10);
+const $11 = $0($10);
+const $1 = $11;
