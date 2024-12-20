@@ -200,7 +200,6 @@ export class HIRBuilder {
   }
 
   #buildBlockStatement(statement: NodePath<t.BlockStatement>) {
-    statement.assertBlockStatement();
     this.#enterBlockScope(statement);
     for (const stmt of statement.get("body")) {
       this.#buildStatement(stmt);
@@ -263,7 +262,6 @@ export class HIRBuilder {
   }
 
   #buildFunctionDeclaration(statement: NodePath<t.FunctionDeclaration>) {
-    statement.assertFunctionDeclaration();
     const bodyBlockId = this.#nextBlockId++;
     this.#blocks.set(
       bodyBlockId,
@@ -302,6 +300,7 @@ export class HIRBuilder {
 
     const previousBlock = this.#currentBlock;
     this.#currentBlock = this.#blocks.get(bodyBlockId)!;
+
     this.#buildStatement(statement.get("body"));
     this.#currentBlock = previousBlock;
     this.#exitScope();
@@ -418,10 +417,13 @@ export class HIRBuilder {
           phi.operands.set(this.#currentBlock.id, targetPlace);
         }
       }
+    } else {
+      this.#buildUnsupportedStatement(statement);
     }
   }
 
   #buildUnsupportedStatement(statement: NodePath<t.Statement>) {
+    console.log(`Building unsupported statement: ${statement.node.type}`);
     const resultPlace = this.#createTemporaryPlace();
     this.#currentBlock.instructions.push(
       new UnsupportedNodeInstruction(
