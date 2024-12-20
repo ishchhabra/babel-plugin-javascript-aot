@@ -27,7 +27,7 @@ export class FunctionInliner {
   }
 
   #inlineEligibleFunctions(): void {
-    for (const block of this.#blocks.values()) {
+    for (const block of [...this.#blocks.values()].reverse()) {
       this.#inlineFunctionsInBlock(block);
     }
   }
@@ -131,18 +131,9 @@ export class FunctionInliner {
       const newPlace = this.#generateUniquePlace(instruction.target);
       localVarMap.set(instruction.target.identifier.id, newPlace);
 
-      const remappedInstruction = this.#remapVariables(
-        instruction,
-        paramMap,
-        localVarMap,
+      transformed.push(
+        this.#remapVariables(instruction, paramMap, localVarMap),
       );
-
-      if (this.#isNestedFunctionCall(remappedInstruction)) {
-        transformed.push(...this.#handleNestedCall(remappedInstruction));
-        continue;
-      }
-
-      transformed.push(remappedInstruction);
     }
 
     return this.#mapReturnValue(transformed, call);
@@ -154,24 +145,6 @@ export class FunctionInliner {
     localVarMap: Map<IdentifierId, Place>,
   ): Instruction {
     return instruction.cloneWithPlaces(new Map([...paramMap, ...localVarMap]));
-  }
-
-  #isNestedFunctionCall(
-    instruction: Instruction,
-  ): instruction is CallExpressionInstruction {
-    return (
-      instruction.kind === "CallExpression" &&
-      this.#callGraph
-        .getFunctionDeclarations()
-        .has(instruction.callee.identifier.id)
-    );
-  }
-
-  #handleNestedCall(instruction: CallExpressionInstruction): Instruction[] {
-    const nestedFunction = this.#callGraph
-      .getFunctionDeclarations()
-      .get(instruction.callee.identifier.id)!;
-    return this.#inlineFunction(instruction, nestedFunction);
   }
 
   #mapReturnValue(
