@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Codegen = void 0;
 const t = __importStar(require("@babel/types"));
+const Block_1 = require("./Block");
 class Codegen {
     #blocks;
     #phis;
@@ -51,35 +52,53 @@ class Codegen {
     }
     generatePhiAssignments(blockId, body) {
         const blockPhis = this.#phis
-            .filter((phi) => phi.source === blockId)
+            .filter((phi) => phi.source === blockId && phi.operands.size > 1)
             .map((phi) => t.variableDeclaration("let", [
             t.variableDeclarator(t.identifier(phi.place.identifier.name)),
         ]));
         body.push(...blockPhis);
     }
     #generateBlock(blockId, body) {
-        if (this.#generatedBlocks.has(blockId)) {
+        const block = this.#blocks.get(blockId);
+        if (block === undefined || this.#generatedBlocks.has(blockId)) {
             return;
         }
-        const block = this.#blocks.get(blockId);
-        if (!block) {
-            throw new Error(`Block ${blockId} not found`);
-        }
         this.#generatedBlocks.add(blockId);
-        this.generatePhiAssignments(blockId, body);
+        if (block instanceof Block_1.BasicBlock) {
+            return this.#generateBasicBlock(block, body);
+        }
+        if (block instanceof Block_1.ForLoopBlock) {
+            return this.#generateForLoopBlock(block, body);
+        }
+    }
+    #generateBasicBlock(block, body) {
+        this.#generatedBlocks.add(block.id);
+        this.generatePhiAssignments(block.id, body);
         for (const instruction of block.instructions) {
             const instructionNode = this.#generateInstruction(instruction);
             body.push(instructionNode);
             if (instruction.kind === "StoreLocal") {
                 for (const phi of this.#phis.values()) {
-                    const phiOperand = phi.operands.get(blockId);
+                    const phiOperand = phi.operands.get(block.id);
                     if (phiOperand?.identifier.id === instruction.target.identifier.id) {
                         body.push(t.expressionStatement(t.assignmentExpression("=", t.identifier(phi.place.identifier.name), t.identifier(instruction.target.identifier.name))));
                     }
                 }
             }
         }
-        this.#generateTerminal(block.terminal, body);
+        if (block.terminal !== null) {
+            this.#generateTerminal(block.terminal, body);
+        }
+    }
+    #generateForLoopBlock(block, body) {
+        const bodyBlock = block.body;
+        const bodyStatements = [];
+        this.#generateBlock(bodyBlock.id, bodyStatements);
+        const forLoop = t.forStatement(block.init.node, block.test.node, block.update.node, t.blockStatement(bodyStatements));
+        if (bodyBlock.terminal) {
+            this.#generateTerminal(bodyBlock.terminal, bodyStatements);
+        }
+        body.push(forLoop);
     }
     #generateInstruction(instruction) {
         switch (instruction.kind) {
@@ -89,30 +108,20 @@ class Codegen {
                     t.variableDeclarator(t.identifier(instruction.target.identifier.name), value),
                 ]);
             }
+            case "CallExpression":
+            case "UnaryExpression":
+            case "BinaryExpression":
+            case "UpdateExpression":
             case "ArrayExpression": {
                 return t.variableDeclaration("const", [
-                    t.variableDeclarator(t.identifier(instruction.target.identifier.name), t.arrayExpression(instruction.elements.map((element) => {
-                        if (element.kind === "SpreadElement") {
-                            return t.spreadElement(this.#generatePlace(element.place));
-                        }
-                        return this.#generatePlace(element);
-                    }))),
+                    t.variableDeclarator(t.identifier(instruction.target.identifier.name), this.#generateExpression(instruction)),
                 ]);
             }
-            case "UnaryExpression": {
-                return t.variableDeclaration("const", [
-                    t.variableDeclarator(t.identifier(instruction.target.identifier.name), t.unaryExpression(instruction.operator, t.identifier(instruction.value.identifier.name))),
-                ]);
-            }
-            case "BinaryExpression": {
-                return t.variableDeclaration("const", [
-                    t.variableDeclarator(t.identifier(instruction.target.identifier.name), t.binaryExpression(instruction.operator, t.identifier(instruction.left.identifier.name), t.identifier(instruction.right.identifier.name))),
-                ]);
-            }
-            case "UpdateExpression": {
-                return t.variableDeclaration("const", [
-                    t.variableDeclarator(t.identifier(instruction.target.identifier.name), t.updateExpression(instruction.operator, t.identifier(instruction.value.identifier.name), instruction.prefix)),
-                ]);
+            case "FunctionDeclaration": {
+                const params = instruction.params.map((param) => t.identifier(param.identifier.name));
+                const functionBody = [];
+                this.#generateBlock(instruction.body, functionBody);
+                return t.functionDeclaration(t.identifier(instruction.target.identifier.name), params, t.blockStatement(functionBody));
             }
             case "UnsupportedNode": {
                 if (!t.isStatement(instruction.node)) {
@@ -121,6 +130,37 @@ class Codegen {
                     ]);
                 }
                 return instruction.node;
+            }
+        }
+    }
+    #generateExpression(instruction) {
+        switch (instruction.kind) {
+            case "CallExpression": {
+                const callee = this.#generatePlace(instruction.callee);
+                const args = instruction.args.map((arg) => {
+                    if (arg.kind === "SpreadElement") {
+                        return t.spreadElement(this.#generatePlace(arg.place));
+                    }
+                    return this.#generatePlace(arg);
+                });
+                return t.callExpression(callee, args);
+            }
+            case "UnaryExpression": {
+                return t.unaryExpression(instruction.operator, t.identifier(instruction.value.identifier.name));
+            }
+            case "BinaryExpression": {
+                return t.binaryExpression(instruction.operator, t.identifier(instruction.left.identifier.name), t.identifier(instruction.right.identifier.name));
+            }
+            case "UpdateExpression": {
+                return t.updateExpression(instruction.operator, t.identifier(instruction.value.identifier.name), instruction.prefix);
+            }
+            case "ArrayExpression": {
+                return t.arrayExpression(instruction.elements.map((element) => {
+                    if (element.kind === "SpreadElement") {
+                        return t.spreadElement(this.#generatePlace(element.place));
+                    }
+                    return this.#generatePlace(element);
+                }));
             }
         }
     }
@@ -150,12 +190,15 @@ class Codegen {
                 this.#generateBlock(terminal.fallthrough, body);
                 break;
             }
+            case "jump": {
+                this.#generateBlock(terminal.target, body);
+                this.#generateBlock(terminal.fallthrough, body);
+                break;
+            }
             case "return": {
                 body.push(t.returnStatement(t.identifier(terminal.value.identifier.name)));
                 break;
             }
-            case "unsupported":
-                break;
         }
     }
 }
