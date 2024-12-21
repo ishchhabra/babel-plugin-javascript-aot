@@ -87,12 +87,7 @@ export class Codegen {
     const bodyBlock = block.body;
     const bodyStatements: t.Statement[] = [];
 
-    this.generatePhiAssignments(bodyBlock.id, bodyStatements);
-    for (const instruction of bodyBlock.instructions) {
-      const instructionNode = this.#generateInstruction(instruction);
-      bodyStatements.push(instructionNode);
-    }
-
+    this.#generateBlock(bodyBlock.id, bodyStatements);
     const forLoop = t.forStatement(
       block.init.node,
       block.test.node,
@@ -100,11 +95,11 @@ export class Codegen {
       t.blockStatement(bodyStatements),
     );
 
-    body.push(forLoop);
-
     if (bodyBlock.terminal) {
       this.#generateTerminal(bodyBlock.terminal, bodyStatements);
     }
+
+    body.push(forLoop);
   }
 
   #generateInstruction(instruction: Instruction): t.Statement {
