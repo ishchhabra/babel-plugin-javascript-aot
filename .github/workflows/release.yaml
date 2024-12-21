@@ -11,9 +11,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Fetch Tags
-        run: git fetch --tags
+          fetch-tags: true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -27,7 +25,7 @@ jobs:
       - name: Get next version number
         id: vars
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n 1 || echo "v0.0.0")
           LAST_NUM=$(echo $LATEST_TAG | grep -o '[0-9]*$')
           NEXT_NUM=$((LAST_NUM + 1))
           echo "tag=$(echo $LATEST_TAG | sed "s/[0-9]*$/$NEXT_NUM/")" >> $GITHUB_OUTPUT
