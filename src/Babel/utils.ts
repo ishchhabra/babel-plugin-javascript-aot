@@ -15,3 +15,13 @@ export function getFunctionName(
 
   return null;
 }
+
+export function getExpressionName(
+  expression: NodePath<t.Expression>,
+): string | null {
+  if (expression.isIdentifier()) {
+    return expression.node.name;
+  }
+
+  return null;
+}

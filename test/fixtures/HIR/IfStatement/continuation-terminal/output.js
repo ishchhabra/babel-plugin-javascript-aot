@@ -1,7 +1,13 @@
 const $0 = true;
 if ($0) {
-  console.log("reachable");
+  const $1 = console.log;
+  const $2 = "reachable";
+  const $3 = $1($2);
 } else {
-  console.log("unreachable");
+  const $4 = console.log;
+  const $5 = "unreachable";
+  const $6 = $4($5);
 }
-console.log("reachable");
+const $7 = console.log;
+const $8 = "reachable";
+const $9 = $7($8);

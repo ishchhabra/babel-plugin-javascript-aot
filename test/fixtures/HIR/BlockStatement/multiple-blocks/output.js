@@ -1,6 +1,8 @@
 const $1 = 1;
 const $0 = $1;
-console.log($0);
-const $4 = 2;
-const $3 = $4;
-console.log($3);
+const $2 = console.log;
+const $3 = $2($0);
+const $5 = 2;
+const $4 = $5;
+const $6 = console.log;
+const $7 = $6($4);

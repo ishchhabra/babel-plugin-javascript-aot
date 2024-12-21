@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
-import { getFunctionName } from "../Babel/utils";
-import { BasicBlock, Block, BlockId, ForLoopBlock } from "./Block";
+import { getExpressionName, getFunctionName } from "../Babel/utils";
+import { BasicBlock, Block, BlockId, ForLoopBlock, LoopBlock } from "./Block";
 import { makeDeclarationId } from "./Declaration";
 import { makeIdentifierId, makeIdentifierName } from "./Identifier";
 import {
@@ -80,7 +80,7 @@ export class HIRBuilder {
     this.#buildBindings(path);
   }
 
-  #enterBlockScope(path: NodePath<t.BlockStatement | t.ForStatement>) {
+  #enterBlockScope(path: NodePath) {
     const newScope = new BlockScope(this.#nextScopeId++, this.#currentScope);
     this.#scopes.push(newScope);
     this.#currentScope = newScope;
@@ -188,6 +188,10 @@ export class HIRBuilder {
         statement.assertForStatement();
         this.#buildForStatement(statement);
         break;
+      case "WhileStatement":
+        statement.assertWhileStatement();
+        this.#buildWhileStatement(statement);
+        break;
       default:
         this.#buildUnsupportedStatement(statement);
     }
@@ -236,6 +240,73 @@ export class HIRBuilder {
     this.#buildStatement(statement.get("body"));
 
     // Continue with statements after the loop in the exit block
+    this.#currentBlock = exitBlock;
+    this.#exitScope();
+  }
+
+  #buildWhileStatement(statement: NodePath<t.WhileStatement>) {
+    this.#enterBlockScope(statement);
+
+    const previousBlock = this.#currentBlock;
+
+    const headerBlock = BasicBlock.empty(
+      this.#nextBlockId++,
+      this.#currentBlock.id,
+    );
+    const bodyBlock = BasicBlock.empty(this.#nextBlockId++, headerBlock.id);
+    const exitBlock = BasicBlock.empty(this.#nextBlockId++, headerBlock.id);
+
+    this.#blocks.set(headerBlock.id, headerBlock);
+    this.#blocks.set(bodyBlock.id, bodyBlock);
+    this.#blocks.set(exitBlock.id, exitBlock);
+
+    // Create initial test condition
+    const test = statement.get("test");
+    const initialTestPlace = this.#buildExpression(test);
+
+    // Create phi node for the test condition
+    const testPhiPlace = this.#createPhiPlace();
+    const testDeclarationId = makeDeclarationId(this.#nextDeclarationId++);
+    const testPhi: Phi = {
+      source: previousBlock.id,
+      place: testPhiPlace,
+      operands: new Map([[previousBlock.id, initialTestPlace]]),
+    };
+
+    this.#currentScope?.setDeclarationId(
+      testPhiPlace.identifier.name,
+      testDeclarationId,
+    );
+    this.#currentScope?.setBinding(testDeclarationId, testPhiPlace);
+    this.#currentScope?.setPhi(testDeclarationId, testPhi);
+
+    // Build body using phi node
+    this.#currentBlock = bodyBlock;
+    const body = statement.get("body");
+    this.#buildStatement(body);
+
+    // Add updated test condition at end of body
+    const updatedTestPlace = this.#buildExpression(test);
+    testPhi.operands.set(bodyBlock.id, updatedTestPlace);
+
+    const loopBlock = new LoopBlock(
+      this.#nextBlockId++,
+      headerBlock,
+      bodyBlock,
+      testPhiPlace, // Use phi place for the test condition
+      previousBlock.id,
+    );
+
+    // Jump to loop block first
+    previousBlock.setTerminal({
+      kind: "jump",
+      id: makeInstructionId(this.#nextInstructionId++),
+      target: loopBlock.id,
+      fallthrough: exitBlock.id,
+    });
+
+    this.#blocks.set(loopBlock.id, loopBlock);
+
     this.#currentBlock = exitBlock;
     this.#exitScope();
   }
@@ -425,6 +496,9 @@ export class HIRBuilder {
             place: phiPlace,
             operands: new Map([[this.#currentBlock.id, targetPlace]]),
           };
+          statement.scope.rename(name, phiPlace.identifier.name);
+          this.#currentScope.setBinding(declarationId, phiPlace);
+          this.#currentScope.renameDeclaration(name, phiPlace.identifier.name);
           this.#currentScope.setPhi(declarationId, phi);
         }
       }
@@ -433,7 +507,61 @@ export class HIRBuilder {
 
   #buildExpressionStatement(statement: NodePath<t.ExpressionStatement>) {
     const expression = statement.get("expression");
+    this.#buildExpression(expression);
+  }
 
+  #buildUnsupportedStatement(statement: NodePath<t.Statement>) {
+    const resultPlace = this.#createTemporaryPlace();
+    this.#currentBlock.addInstruction(
+      new UnsupportedNodeInstruction(
+        makeInstructionId(this.#nextInstructionId++),
+        resultPlace,
+        statement.node,
+      ),
+    );
+  }
+
+  // Expression Building
+  #buildExpression(expression: NodePath): Place {
+    const expressionNode = expression.node;
+    switch (expressionNode.type) {
+      case "AssignmentExpression":
+        expression.assertAssignmentExpression();
+        return this.#buildAssignmentExpression(expression);
+      case "CallExpression":
+        expression.assertCallExpression();
+        return this.#buildCallExpression(expression);
+      case "Identifier":
+        expression.assertIdentifier();
+        return this.#buildIdentifier(expression);
+      case "ArrayExpression":
+        expression.assertArrayExpression();
+        return this.#buildArrayExpression(expression);
+      case "BinaryExpression":
+        expression.assertBinaryExpression();
+        return this.#buildBinaryExpression(expression);
+      case "UnaryExpression":
+        expression.assertUnaryExpression();
+        return this.#buildUnaryExpression(expression);
+      case "UpdateExpression":
+        expression.assertUpdateExpression();
+        return this.#buildUpdateExpression(expression);
+      case "NumericLiteral":
+      case "StringLiteral":
+      case "BooleanLiteral":
+        return this.#buildLiteral(
+          expression as NodePath<
+            t.NumericLiteral | t.StringLiteral | t.BooleanLiteral
+          >,
+        );
+      default:
+        return this.#buildUnsupportedExpression(expression);
+    }
+  }
+
+  #buildAssignmentExpression(
+    expression: NodePath<t.AssignmentExpression>,
+  ): Place {
     if (expression.isAssignmentExpression()) {
       const left = expression.get("left");
       if (left.isIdentifier()) {
@@ -458,10 +586,6 @@ export class HIRBuilder {
           ),
         );
 
-        if (!this.#currentScope) {
-          throw new Error("No current scope");
-        }
-
         expression.scope.rename(name, targetPlace.identifier.name);
         this.#currentScope.renameDeclaration(name, targetPlace.identifier.name);
         this.#currentScope.setBinding(declarationId, targetPlace);
@@ -469,60 +593,12 @@ export class HIRBuilder {
         if (phi) {
           phi.operands.set(this.#currentBlock.id, targetPlace);
         }
+
+        return targetPlace;
       }
-    } else {
-      this.#buildUnsupportedStatement(statement);
     }
-  }
 
-  #buildUnsupportedStatement(statement: NodePath<t.Statement>) {
-    const resultPlace = this.#createTemporaryPlace();
-    this.#currentBlock.addInstruction(
-      new UnsupportedNodeInstruction(
-        makeInstructionId(this.#nextInstructionId++),
-        resultPlace,
-        statement.node,
-      ),
-    );
-  }
-
-  // Expression Building
-  #buildExpression(expression: NodePath): Place {
-    const expressionNode = expression.node;
-    switch (expressionNode.type) {
-      case "CallExpression":
-        return this.#buildCallExpression(
-          expression as NodePath<t.CallExpression>,
-        );
-      case "Identifier":
-        return this.#buildIdentifier(expression as NodePath<t.Identifier>);
-      case "ArrayExpression":
-        return this.#buildArrayExpression(
-          expression as NodePath<t.ArrayExpression>,
-        );
-      case "BinaryExpression":
-        return this.#buildBinaryExpression(
-          expression as NodePath<t.BinaryExpression>,
-        );
-      case "UnaryExpression":
-        return this.#buildUnaryExpression(
-          expression as NodePath<t.UnaryExpression>,
-        );
-      case "UpdateExpression":
-        return this.#buildUpdateExpression(
-          expression as NodePath<t.UpdateExpression>,
-        );
-      case "NumericLiteral":
-      case "StringLiteral":
-      case "BooleanLiteral":
-        return this.#buildLiteral(
-          expression as NodePath<
-            t.NumericLiteral | t.StringLiteral | t.BooleanLiteral
-          >,
-        );
-      default:
-        return this.#buildUnsupportedExpression(expression);
-    }
+    return this.#buildUnsupportedExpression(expression);
   }
 
   #buildCallExpression(expression: NodePath<t.CallExpression>): Place {
@@ -631,9 +707,8 @@ export class HIRBuilder {
 
   #buildUpdateExpression(expression: NodePath<t.UpdateExpression>): Place {
     expression.assertUpdateExpression();
-    const argumentPlace = this.#buildExpression(
-      expression.get("argument") as NodePath<t.Expression>,
-    );
+    const argument = expression.get("argument");
+    const argumentPlace = this.#buildExpression(argument);
     const resultPlace = this.#createTemporaryPlace();
 
     this.#currentBlock.addInstruction(
@@ -645,6 +720,24 @@ export class HIRBuilder {
         argumentPlace,
       ),
     );
+
+    const name = getExpressionName(argument);
+    if (name === null) {
+      throw new Error("Unsupported update expression");
+    }
+
+    const declarationId = this.#currentScope?.getDeclarationId(name);
+    if (declarationId === undefined) {
+      throw new Error(`Undefined variable: ${name}`);
+    }
+
+    expression.scope.rename(name, resultPlace.identifier.name);
+    this.#currentScope.renameDeclaration(name, resultPlace.identifier.name);
+    this.#currentScope.setBinding(declarationId, resultPlace);
+    const phi = this.#currentScope.getPhi(declarationId);
+    if (phi) {
+      phi.operands.set(this.#currentBlock.id, resultPlace);
+    }
 
     return resultPlace;
   }

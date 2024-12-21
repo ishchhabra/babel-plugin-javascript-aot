@@ -1,6 +1,7 @@
 function $0() {
-  console.log($1);
+  const $2 = console.log;
+  const $3 = $2($1);
 }
-const $3 = 1;
-const $1 = $3;
-$0();
+const $4 = 1;
+const $1 = $4;
+const $5 = $0();

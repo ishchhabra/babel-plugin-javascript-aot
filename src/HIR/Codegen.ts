@@ -1,5 +1,5 @@
 import * as t from "@babel/types";
-import { BasicBlock, Block, BlockId, ForLoopBlock } from "./Block";
+import { BasicBlock, Block, BlockId, ForLoopBlock, LoopBlock } from "./Block";
 import { ExpressionInstruction, Instruction } from "./Instruction";
 import { Phi } from "./Phi";
 import { Place } from "./Place";
@@ -50,6 +50,10 @@ export class Codegen {
     if (block instanceof ForLoopBlock) {
       return this.#generateForLoopBlock(block, body);
     }
+
+    if (block instanceof LoopBlock) {
+      return this.#generateLoopBlock(block, body);
+    }
   }
 
   #generateBasicBlock(block: BasicBlock, body: t.Statement[]) {
@@ -60,20 +64,25 @@ export class Codegen {
       const instructionNode = this.#generateInstruction(instruction);
       body.push(instructionNode);
 
-      if (instruction.kind === "StoreLocal") {
-        for (const phi of this.#phis.values()) {
-          const phiOperand = phi.operands.get(block.id);
-          if (phiOperand?.identifier.id === instruction.target.identifier.id) {
-            body.push(
-              t.expressionStatement(
-                t.assignmentExpression(
-                  "=",
-                  t.identifier(phi.place.identifier.name),
-                  t.identifier(instruction.target.identifier.name),
-                ),
+      for (const phi of this.#phis.values()) {
+        if (!phi.operands.has(block.id)) {
+          continue;
+        }
+
+        const phiOperand = phi.operands.get(block.id)!;
+        const targetName = instruction.target.identifier.name;
+        const phiName = phiOperand.identifier.name;
+
+        if (phiName === targetName) {
+          body.push(
+            t.expressionStatement(
+              t.assignmentExpression(
+                "=",
+                t.identifier(phi.place.identifier.name),
+                t.identifier(instruction.target.identifier.name),
               ),
-            );
-          }
+            ),
+          );
         }
       }
     }
@@ -100,6 +109,21 @@ export class Codegen {
     }
 
     body.push(forLoop);
+  }
+
+  #generateLoopBlock(block: LoopBlock, body: t.Statement[]) {
+    this.#generateBlock(block.header.id, body);
+
+    const bodyBlock = block.body;
+    const bodyStatements: t.Statement[] = [];
+
+    this.#generateBlock(bodyBlock.id, bodyStatements);
+    const whileLoop = t.whileStatement(
+      t.identifier(block.test.identifier.name),
+      t.blockStatement(bodyStatements),
+    );
+
+    body.push(whileLoop);
   }
 
   #generateInstruction(instruction: Instruction): t.Statement {

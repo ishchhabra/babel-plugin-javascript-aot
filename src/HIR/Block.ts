@@ -2,6 +2,7 @@ import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { ExpressionInstruction, Instruction } from "./Instruction";
 import { Phi } from "./Phi";
+import { Place } from "./Place";
 import { Terminal } from "./Terminal";
 
 export type BlockId = number;
@@ -95,5 +96,24 @@ export class ForLoopBlock extends Block {
     this.test = test;
     this.body = body;
     this.update = update;
+  }
+}
+
+export class LoopBlock extends Block {
+  header: BasicBlock;
+  test: Place;
+  body: BasicBlock;
+
+  constructor(
+    id: BlockId,
+    header: BasicBlock,
+    body: BasicBlock,
+    test: Place,
+    parent: BlockId | undefined,
+  ) {
+    super(id, [], parent, new Set(), null);
+    this.header = header;
+    this.body = body;
+    this.test = test;
   }
 }
