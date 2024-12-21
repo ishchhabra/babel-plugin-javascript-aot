@@ -25,7 +25,7 @@ export class Codegen {
 
   private generatePhiAssignments(blockId: BlockId, body: t.Statement[]) {
     const blockPhis = this.#phis
-      .filter((phi) => phi.source === blockId)
+      .filter((phi) => phi.source === blockId && phi.operands.size > 1)
       .map((phi) =>
         t.variableDeclaration("let", [
           t.variableDeclarator(t.identifier(phi.place.identifier.name)),
