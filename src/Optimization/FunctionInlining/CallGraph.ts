@@ -111,7 +111,7 @@ export class CallGraph {
             return true;
           }
           currentBlock =
-            currentBlock.parent !== null
+            currentBlock.parent !== undefined
               ? blocks.get(currentBlock.parent)
               : undefined;
         }

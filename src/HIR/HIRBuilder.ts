@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { getFunctionName } from "../Babel/utils";
-import { BasicBlock, BlockId, makeEmptyBlock } from "./Block";
+import { BasicBlock, Block, BlockId, ForLoopBlock } from "./Block";
 import { makeDeclarationId } from "./Declaration";
 import { makeIdentifierId, makeIdentifierName } from "./Identifier";
 import {
@@ -21,11 +21,11 @@ import { Place } from "./Place";
 import { BlockScope, FunctionScope, GlobalScope, Scope } from "./Scope";
 
 export class HIRBuilder {
-  #blocks: Map<BlockId, BasicBlock> = new Map();
+  #blocks: Map<BlockId, Block> = new Map();
   #program: NodePath<t.Program>;
   #scopes: Array<Scope> = [];
 
-  #currentBlock!: BasicBlock;
+  #currentBlock!: Block;
   #currentScope!: Scope;
 
   // ID generators
@@ -39,7 +39,7 @@ export class HIRBuilder {
     this.#program = program;
     this.#enterGlobalScope(program);
 
-    const entryBlock = makeEmptyBlock(this.#nextBlockId++, null);
+    const entryBlock = BasicBlock.empty(this.#nextBlockId++, undefined);
     this.#blocks.set(entryBlock.id, entryBlock);
     this.#currentBlock = entryBlock;
   }
@@ -79,7 +79,7 @@ export class HIRBuilder {
     this.#buildBindings(path);
   }
 
-  #enterBlockScope(path: NodePath<t.BlockStatement>) {
+  #enterBlockScope(path: NodePath<t.BlockStatement | t.ForStatement>) {
     const newScope = new BlockScope(this.#nextScopeId++, this.#currentScope);
     this.#scopes.push(newScope);
     this.#currentScope = newScope;
@@ -183,20 +183,71 @@ export class HIRBuilder {
         statement.assertExpressionStatement();
         this.#buildExpressionStatement(statement);
         break;
+      case "ForStatement":
+        statement.assertForStatement();
+        this.#buildForStatement(statement);
+        break;
       default:
         this.#buildUnsupportedStatement(statement);
     }
+  }
+
+  #buildForStatement(statement: NodePath<t.ForStatement>) {
+    this.#enterBlockScope(statement);
+
+    const bodyBlock = BasicBlock.empty(
+      this.#nextBlockId++,
+      this.#currentBlock.id,
+    );
+
+    const exitBlock = BasicBlock.empty(
+      this.#nextBlockId++,
+      this.#currentBlock.id,
+    );
+
+    const init = statement.get("init");
+    const test = statement.get("test");
+    const update = statement.get("update");
+
+    const forLoopBlock = new ForLoopBlock(
+      this.#nextBlockId++,
+      init,
+      test,
+      bodyBlock,
+      update,
+      this.#currentBlock.id,
+    );
+
+    this.#blocks.set(forLoopBlock.id, forLoopBlock);
+    this.#blocks.set(bodyBlock.id, bodyBlock);
+    this.#blocks.set(exitBlock.id, exitBlock);
+
+    // Jump to the for loop block
+    this.#currentBlock.setTerminal({
+      kind: "jump",
+      id: makeInstructionId(this.#nextInstructionId++),
+      target: forLoopBlock.id,
+      fallthrough: exitBlock.id,
+    });
+
+    // Only build the loop body statements in the body block
+    this.#currentBlock = bodyBlock;
+    this.#buildStatement(statement.get("body"));
+
+    // Continue with statements after the loop in the exit block
+    this.#currentBlock = exitBlock;
+    this.#exitScope();
   }
 
   #buildReturnStatement(statement: NodePath<t.ReturnStatement>) {
     const argument = statement.get("argument");
     if (argument.hasNode()) {
       const returnPlace = this.#buildExpression(argument);
-      this.#currentBlock.terminal = {
+      this.#currentBlock.setTerminal({
         kind: "return",
         id: makeInstructionId(this.#nextInstructionId++),
         value: returnPlace,
-      };
+      });
     }
   }
 
@@ -216,17 +267,17 @@ export class HIRBuilder {
     const alternateBlockId = this.#nextBlockId++;
     const fallthroughBlockId = this.#nextBlockId++;
 
-    this.#currentBlock.terminal = {
+    this.#currentBlock.setTerminal({
       kind: "branch",
       id: makeInstructionId(this.#nextInstructionId++),
       test: testPlace,
       consequent: consequentBlockId,
       alternate: alternateBlockId,
       fallthrough: fallthroughBlockId,
-    };
+    });
 
     // Process consequent
-    const consequentBlock = makeEmptyBlock(
+    const consequentBlock = BasicBlock.empty(
       consequentBlockId,
       this.#currentBlock.id,
     );
@@ -235,7 +286,7 @@ export class HIRBuilder {
     this.#buildStatement(statement.get("consequent"));
 
     // Process alternate
-    const alternateBlock = makeEmptyBlock(
+    const alternateBlock = BasicBlock.empty(
       alternateBlockId,
       this.#currentBlock.id,
     );
@@ -254,7 +305,7 @@ export class HIRBuilder {
     }
 
     // Create fallthrough block
-    const fallthroughBlock = makeEmptyBlock(
+    const fallthroughBlock = BasicBlock.empty(
       fallthroughBlockId,
       this.#currentBlock.parent,
     );
@@ -266,7 +317,7 @@ export class HIRBuilder {
     const bodyBlockId = this.#nextBlockId++;
     this.#blocks.set(
       bodyBlockId,
-      makeEmptyBlock(bodyBlockId, this.#currentBlock.id),
+      BasicBlock.empty(bodyBlockId, this.#currentBlock.id),
     );
 
     const functionName = getFunctionName(statement);
@@ -293,7 +344,7 @@ export class HIRBuilder {
       [], // Parameters filled later
       bodyBlockId,
     );
-    this.#currentBlock.instructions.push(instruction);
+    this.#currentBlock.addInstruction(instruction);
 
     this.#enterFunctionScope(statement);
     const params = this.#buildFunctionParameters(statement);
@@ -354,7 +405,7 @@ export class HIRBuilder {
           throw new Error(`Undefined variable: ${name}`);
         }
 
-        this.#currentBlock.instructions.push(
+        this.#currentBlock.addInstruction(
           new StoreLocalInstruction(
             makeInstructionId(this.#nextInstructionId++),
             targetPlace,
@@ -394,7 +445,7 @@ export class HIRBuilder {
         const valuePlace = this.#buildExpression(expression.get("right"));
         const targetPlace = this.#createTemporaryPlace();
 
-        this.#currentBlock.instructions.push(
+        this.#currentBlock.addInstruction(
           new StoreLocalInstruction(
             makeInstructionId(this.#nextInstructionId++),
             targetPlace,
@@ -425,7 +476,7 @@ export class HIRBuilder {
 
   #buildUnsupportedStatement(statement: NodePath<t.Statement>) {
     const resultPlace = this.#createTemporaryPlace();
-    this.#currentBlock.instructions.push(
+    this.#currentBlock.addInstruction(
       new UnsupportedNodeInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,
@@ -484,7 +535,7 @@ export class HIRBuilder {
     });
 
     const resultPlace = this.#createTemporaryPlace();
-    this.#currentBlock.instructions.push(
+    this.#currentBlock.addInstruction(
       new CallExpressionInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,
@@ -525,7 +576,7 @@ export class HIRBuilder {
       return this.#buildExpression(element as NodePath<t.Expression>);
     });
 
-    this.#currentBlock.instructions.push(
+    this.#currentBlock.addInstruction(
       new ArrayExpressionInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,
@@ -545,7 +596,7 @@ export class HIRBuilder {
     );
     const resultPlace = this.#createTemporaryPlace();
 
-    this.#currentBlock.instructions.push(
+    this.#currentBlock.addInstruction(
       new BinaryExpressionInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,
@@ -565,7 +616,7 @@ export class HIRBuilder {
     );
     const resultPlace = this.#createTemporaryPlace();
 
-    this.#currentBlock.instructions.push(
+    this.#currentBlock.addInstruction(
       new UnaryExpressionInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,
@@ -584,7 +635,7 @@ export class HIRBuilder {
     );
     const resultPlace = this.#createTemporaryPlace();
 
-    this.#currentBlock.instructions.push(
+    this.#currentBlock.addInstruction(
       new UpdateExpressionInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,
@@ -601,7 +652,7 @@ export class HIRBuilder {
     expression: NodePath<t.NumericLiteral | t.StringLiteral | t.BooleanLiteral>,
   ): Place {
     const resultPlace = this.#createTemporaryPlace();
-    this.#currentBlock.instructions.push(
+    this.#currentBlock.addInstruction(
       new StoreLocalInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,
@@ -617,7 +668,7 @@ export class HIRBuilder {
 
   #buildUnsupportedExpression(expression: NodePath): Place {
     const resultPlace = this.#createTemporaryPlace();
-    this.#currentBlock.instructions.push(
+    this.#currentBlock.addInstruction(
       new UnsupportedNodeInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,

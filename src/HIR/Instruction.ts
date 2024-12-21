@@ -292,6 +292,12 @@ export class UnsupportedNodeInstruction extends BaseInstruction {
   }
 }
 
+export type ExpressionStatementInstruction = {
+  kind: "ExpressionStatement";
+  id: InstructionId;
+  expression: Place;
+};
+
 export type Instruction =
   | StoreLocalInstruction
   | UnaryExpressionInstruction
@@ -300,6 +306,13 @@ export type Instruction =
   | ArrayExpressionInstruction
   | UnsupportedNodeInstruction
   | FunctionDeclarationInstruction
+  | CallExpressionInstruction;
+
+export type ExpressionInstruction =
+  | UnaryExpressionInstruction
+  | BinaryExpressionInstruction
+  | UpdateExpressionInstruction
+  | ArrayExpressionInstruction
   | CallExpressionInstruction;
 
 export function makeInstructionId(id: number): InstructionId {
