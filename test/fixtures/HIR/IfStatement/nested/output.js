@@ -3,15 +3,15 @@ const $0 = $1;
 const $2 = 2;
 const $3 = $0 > $2;
 if ($3) {
-  let $6;
+  let $p0;
   const $5 = 2;
   let $4 = $5;
-  $6 = $4;
-  const $7 = 3;
-  const $8 = $0 > $7;
-  if ($8) {
-    const $9 = 3;
-    const $10 = $9;
-    $6 = $10;
+  $p0 = $4;
+  const $6 = 3;
+  const $7 = $0 > $6;
+  if ($7) {
+    const $8 = 3;
+    const $9 = $8;
+    $p0 = $9;
   }
 }

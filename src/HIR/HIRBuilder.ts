@@ -16,7 +16,7 @@ import {
   UnsupportedNodeInstruction,
   UpdateExpressionInstruction,
 } from "./Instruction";
-import { Phi } from "./Phi";
+import { makePhiName, Phi } from "./Phi";
 import { Place } from "./Place";
 import { BlockScope, FunctionScope, GlobalScope, Scope } from "./Scope";
 
@@ -33,6 +33,7 @@ export class HIRBuilder {
   #nextDeclarationId = 0;
   #nextIdentifierId = 0;
   #nextInstructionId = 0;
+  #nextPhiId = 0;
   #nextScopeId = 0;
 
   constructor(program: NodePath<t.Program>) {
@@ -418,7 +419,7 @@ export class HIRBuilder {
         );
 
         if (statement.node.kind === "let") {
-          const phiPlace = this.#createTemporaryPlace();
+          const phiPlace = this.#createPhiPlace();
           const phi: Phi = {
             source: this.#currentBlock.id,
             place: phiPlace,
@@ -698,6 +699,15 @@ export class HIRBuilder {
       id: identifierId,
       declarationId: makeDeclarationId(this.#nextDeclarationId++),
       name: makeIdentifierName(identifierId),
+    });
+  }
+
+  #createPhiPlace(): Place {
+    const identifierId = makeIdentifierId(this.#nextPhiId++);
+    return new Place({
+      id: identifierId,
+      declarationId: makeDeclarationId(this.#nextDeclarationId++),
+      name: makePhiName(identifierId),
     });
   }
 }
