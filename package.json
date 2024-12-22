@@ -10,7 +10,7 @@
     "build": "tsc",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:update": "pnpm test -- --updateSnapshot",
-    "posttest": "pnpm format .",
+    "posttest:update": "pnpm format .",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write",
     "format-check": "prettier --check",
