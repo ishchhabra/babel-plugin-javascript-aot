@@ -64,7 +64,8 @@ export abstract class Scope {
   }
 
   setPhi(declarationId: DeclarationId, phi: Phi) {
-    this.#phis.set(declarationId, phi);
+    const scope = this.#findDeclarationScope(declarationId) ?? this;
+    scope.#phis.set(declarationId, phi);
   }
 
   getGlobalScope(): GlobalScope | undefined {
@@ -73,6 +74,14 @@ export abstract class Scope {
     }
 
     return this.parent?.getGlobalScope();
+  }
+
+  #findDeclarationScope(declarationId: DeclarationId): Scope | undefined {
+    if (this.parent !== null) {
+      return this.parent.#findDeclarationScope(declarationId);
+    }
+
+    return undefined;
   }
 }
 
