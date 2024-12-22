@@ -2,6 +2,13 @@
 
 A Babel plugin that performs Ahead-of-Time (AOT) compilation to optimize JavaScript code at build time.
 
+> [!IMPORTANT]
+> This project is currently under development and not production-ready.
+
+## Why?
+
+This project exists primarily as a learning exercise.
+
 ## Installation
 
 ```bash
