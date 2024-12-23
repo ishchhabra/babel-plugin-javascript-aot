@@ -8,10 +8,10 @@ import { Value } from "./Value";
 
 export class Codegen {
   readonly #blocks: Map<BlockId, Block>;
-  readonly #phis: Phi[];
+  readonly #phis: Set<Phi>;
   readonly #generatedBlocks: Set<BlockId>;
 
-  constructor(blocks: Map<BlockId, Block>, phis: Phi[]) {
+  constructor(blocks: Map<BlockId, Block>, phis: Set<Phi>) {
     this.#blocks = blocks;
     this.#phis = phis;
     this.#generatedBlocks = new Set();
@@ -24,7 +24,7 @@ export class Codegen {
   }
 
   private generatePhiAssignments(blockId: BlockId, body: t.Statement[]) {
-    const blockPhis = this.#phis
+    const blockPhis = Array.from(this.#phis.values())
       .filter((phi) => phi.source === blockId && phi.operands.size > 1)
       .map((phi) =>
         t.variableDeclaration("let", [
@@ -64,7 +64,7 @@ export class Codegen {
       const instructionNode = this.#generateInstruction(instruction);
       body.push(instructionNode);
 
-      for (const phi of this.#phis.values()) {
+      for (const phi of this.#phis) {
         if (!phi.operands.has(block.id)) {
           continue;
         }

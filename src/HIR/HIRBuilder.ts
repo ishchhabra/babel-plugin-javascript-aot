@@ -1,8 +1,8 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { getExpressionName, getFunctionName } from "../Babel/utils";
-import { BasicBlock, Block, BlockId, ForLoopBlock, LoopBlock } from "./Block";
-import { makeDeclarationId } from "./Declaration";
+import { BasicBlock, Block, BlockId } from "./Block";
+import { DeclarationId, makeDeclarationId } from "./Declaration";
 import { makeIdentifierId, makeIdentifierName } from "./Identifier";
 import {
   ArrayExpressionInstruction,
@@ -16,29 +16,24 @@ import {
   UnsupportedNodeInstruction,
   UpdateExpressionInstruction,
 } from "./Instruction";
-import { makePhiName, Phi } from "./Phi";
 import { Place } from "./Place";
-import { BlockScope, FunctionScope, GlobalScope, Scope } from "./Scope";
 
 export class HIRBuilder {
+  #bindings: Map<DeclarationId, Place> = new Map();
   #blocks: Map<BlockId, Block> = new Map();
   #program: NodePath<t.Program>;
-  #scopes: Array<Scope> = [];
 
   #currentBlock!: Block;
-  #currentScope!: Scope;
 
   // ID generators
   #nextBlockId = 0;
   #nextDeclarationId = 0;
   #nextIdentifierId = 0;
   #nextInstructionId = 0;
-  #nextPhiId = 0;
-  #nextScopeId = 0;
 
   constructor(program: NodePath<t.Program>) {
     this.#program = program;
-    this.#enterGlobalScope(program);
+    this.#buildBindings(program);
 
     const entryBlock = BasicBlock.empty(this.#nextBlockId++, undefined);
     this.#blocks.set(entryBlock.id, entryBlock);
@@ -52,53 +47,10 @@ export class HIRBuilder {
       this.#buildStatement(statement);
     }
 
-    return this;
-  }
-
-  public get blocks() {
     return this.#blocks;
   }
 
-  public get phis() {
-    return this.#scopes.flatMap((scope) => Array.from(scope.phis.values()));
-  }
-
-  // Scope Management
-  #enterGlobalScope(path: NodePath<t.Program>) {
-    const newScope = new GlobalScope(this.#nextScopeId++);
-    this.#scopes.push(newScope);
-    this.#currentScope = newScope;
-
-    this.#buildBindings(path);
-  }
-
-  #enterFunctionScope(path: NodePath<t.FunctionDeclaration>) {
-    const newScope = new FunctionScope(this.#nextScopeId++, this.#currentScope);
-    this.#scopes.push(newScope);
-    this.#currentScope = newScope;
-
-    this.#buildBindings(path);
-  }
-
-  #enterBlockScope(path: NodePath) {
-    const newScope = new BlockScope(this.#nextScopeId++, this.#currentScope);
-    this.#scopes.push(newScope);
-    this.#currentScope = newScope;
-
-    this.#buildBindings(path);
-  }
-
-  #exitScope() {
-    if (this.#currentScope?.parent) {
-      this.#currentScope = this.#currentScope.parent;
-    }
-  }
-
   #buildBindings(bindingPath: NodePath) {
-    if (!this.#currentScope) {
-      throw new Error("No current scope");
-    }
-
     bindingPath.traverse({
       Declaration: (path: NodePath<t.Declaration>) => {
         switch (path.node.type) {
@@ -114,16 +66,23 @@ export class HIRBuilder {
               return;
             }
 
+            // Set the function declaration id in the scope.
             const declarationId = makeDeclarationId(this.#nextDeclarationId++);
+            bindingPath.scope.setData(functionName.node.name, declarationId);
+
+            // Create a temporary place for the function and assign it to the declaration id.
             const place = this.#createTemporaryPlace();
+            this.#bindings.set(declarationId, place);
 
-            path.scope.rename(functionName.node.name, place.identifier.name);
-
-            this.#currentScope?.setDeclarationId(
+            // Rename the function name in the scope to the temporary place.
+            bindingPath.scope.rename(
+              functionName.node.name,
               place.identifier.name,
-              declarationId,
             );
-            this.#currentScope?.setBinding(declarationId, place);
+
+            // Also set the declaration id for place.
+            bindingPath.scope.setData(place.identifier.name, declarationId);
+
             break;
           case "VariableDeclaration":
             path.assertVariableDeclaration();
@@ -136,19 +95,28 @@ export class HIRBuilder {
             }
 
             for (const declaration of path.node.declarations) {
-              if (t.isIdentifier(declaration.id)) {
-                const declarationId = makeDeclarationId(
-                  this.#nextDeclarationId++,
-                );
-                const place = this.#createTemporaryPlace();
-
-                path.scope.rename(declaration.id.name, place.identifier.name);
-                this.#currentScope?.setDeclarationId(
-                  place.identifier.name,
-                  declarationId,
-                );
-                this.#currentScope?.setBinding(declarationId, place);
+              if (!t.isIdentifier(declaration.id)) {
+                continue;
               }
+
+              // Set the variable declaration id in the scope.
+              const declarationId = makeDeclarationId(
+                this.#nextDeclarationId++,
+              );
+              bindingPath.scope.setData(declaration.id.name, declarationId);
+
+              // Create a temporary place for the variable and assign it to the declaration id.
+              const place = this.#createTemporaryPlace();
+              this.#bindings.set(declarationId, place);
+
+              // Rename the variable name in the scope to the temporary place.
+              bindingPath.scope.rename(
+                declaration.id.name,
+                place.identifier.name,
+              );
+
+              // Also set the declaration id for place.
+              bindingPath.scope.setData(place.identifier.name, declarationId);
             }
             break;
         }
@@ -185,130 +153,12 @@ export class HIRBuilder {
         this.#buildExpressionStatement(statement);
         break;
       case "ForStatement":
-        statement.assertForStatement();
-        this.#buildForStatement(statement);
-        break;
+      case "DoWhileStatement":
       case "WhileStatement":
-        statement.assertWhileStatement();
-        this.#buildWhileStatement(statement);
-        break;
+        throw new Error("Loops are not supported");
       default:
         this.#buildUnsupportedStatement(statement);
     }
-  }
-
-  #buildForStatement(statement: NodePath<t.ForStatement>) {
-    this.#enterBlockScope(statement);
-
-    const bodyBlock = BasicBlock.empty(
-      this.#nextBlockId++,
-      this.#currentBlock.id,
-    );
-
-    const exitBlock = BasicBlock.empty(
-      this.#nextBlockId++,
-      this.#currentBlock.id,
-    );
-
-    const init = statement.get("init");
-    const test = statement.get("test");
-    const update = statement.get("update");
-
-    const forLoopBlock = new ForLoopBlock(
-      this.#nextBlockId++,
-      init,
-      test,
-      bodyBlock,
-      update,
-      this.#currentBlock.id,
-    );
-
-    this.#blocks.set(forLoopBlock.id, forLoopBlock);
-    this.#blocks.set(bodyBlock.id, bodyBlock);
-    this.#blocks.set(exitBlock.id, exitBlock);
-
-    // Jump to the for loop block
-    this.#currentBlock.setTerminal({
-      kind: "jump",
-      id: makeInstructionId(this.#nextInstructionId++),
-      target: forLoopBlock.id,
-      fallthrough: exitBlock.id,
-    });
-
-    // Only build the loop body statements in the body block
-    this.#currentBlock = bodyBlock;
-    this.#buildStatement(statement.get("body"));
-
-    // Continue with statements after the loop in the exit block
-    this.#currentBlock = exitBlock;
-    this.#exitScope();
-  }
-
-  #buildWhileStatement(statement: NodePath<t.WhileStatement>) {
-    this.#enterBlockScope(statement);
-
-    const previousBlock = this.#currentBlock;
-
-    const headerBlock = BasicBlock.empty(
-      this.#nextBlockId++,
-      this.#currentBlock.id,
-    );
-    const bodyBlock = BasicBlock.empty(this.#nextBlockId++, headerBlock.id);
-    const exitBlock = BasicBlock.empty(this.#nextBlockId++, headerBlock.id);
-
-    this.#blocks.set(headerBlock.id, headerBlock);
-    this.#blocks.set(bodyBlock.id, bodyBlock);
-    this.#blocks.set(exitBlock.id, exitBlock);
-
-    // Create initial test condition
-    const test = statement.get("test");
-    const initialTestPlace = this.#buildExpression(test);
-
-    // Create phi node for the test condition
-    const testPhiPlace = this.#createPhiPlace();
-    const testDeclarationId = makeDeclarationId(this.#nextDeclarationId++);
-    const testPhi: Phi = {
-      source: previousBlock.id,
-      place: testPhiPlace,
-      operands: new Map([[previousBlock.id, initialTestPlace]]),
-    };
-
-    this.#currentScope?.setDeclarationId(
-      testPhiPlace.identifier.name,
-      testDeclarationId,
-    );
-    this.#currentScope?.setBinding(testDeclarationId, testPhiPlace);
-    this.#currentScope?.setPhi(testDeclarationId, testPhi);
-
-    // Build body using phi node
-    this.#currentBlock = bodyBlock;
-    const body = statement.get("body");
-    this.#buildStatement(body);
-
-    // Add updated test condition at end of body
-    const updatedTestPlace = this.#buildExpression(test);
-    testPhi.operands.set(bodyBlock.id, updatedTestPlace);
-
-    const loopBlock = new LoopBlock(
-      this.#nextBlockId++,
-      headerBlock,
-      bodyBlock,
-      testPhiPlace, // Use phi place for the test condition
-      previousBlock.id,
-    );
-
-    // Jump to loop block first
-    previousBlock.setTerminal({
-      kind: "jump",
-      id: makeInstructionId(this.#nextInstructionId++),
-      target: loopBlock.id,
-      fallthrough: exitBlock.id,
-    });
-
-    this.#blocks.set(loopBlock.id, loopBlock);
-
-    this.#currentBlock = exitBlock;
-    this.#exitScope();
   }
 
   #buildReturnStatement(statement: NodePath<t.ReturnStatement>) {
@@ -324,11 +174,12 @@ export class HIRBuilder {
   }
 
   #buildBlockStatement(statement: NodePath<t.BlockStatement>) {
-    this.#enterBlockScope(statement);
-    for (const stmt of statement.get("body")) {
+    this.#buildBindings(statement);
+
+    const body = statement.get("body");
+    for (const stmt of body) {
       this.#buildStatement(stmt);
     }
-    this.#exitScope();
   }
 
   #buildIfStatement(statement: NodePath<t.IfStatement>) {
@@ -371,11 +222,6 @@ export class HIRBuilder {
       }
     }
 
-    // Update phi nodes
-    for (const [declarationId, phi] of this.#currentScope?.phis ?? []) {
-      this.#currentScope?.setBinding(declarationId, phi.place);
-    }
-
     // Create fallthrough block
     const fallthroughBlock = BasicBlock.empty(
       fallthroughBlockId,
@@ -393,17 +239,13 @@ export class HIRBuilder {
     );
 
     const functionName = getFunctionName(statement);
-    if (!functionName || !this.#currentScope) {
+    if (!functionName) {
       throw new Error("Invalid function declaration");
     }
 
-    const declarationId = this.#currentScope.getDeclarationId(
-      functionName.node.name,
-    );
-    if (declarationId === undefined) {
-      throw new Error(`Undefined variable: ${functionName.node.name}`);
-    }
-    const functionPlace = this.#currentScope.getBinding(declarationId);
+    // Get the binding for the function.
+    const declarationId = statement.scope.getData(functionName.node.name);
+    const functionPlace = this.#bindings.get(declarationId);
     if (!functionPlace) {
       throw new Error(
         `Internal error: Missing binding for ${functionName.node.name}`,
@@ -418,7 +260,7 @@ export class HIRBuilder {
     );
     this.#currentBlock.addInstruction(instruction);
 
-    this.#enterFunctionScope(statement);
+    this.#buildBindings(statement);
     const params = this.#buildFunctionParameters(statement);
     instruction.params = params;
 
@@ -427,29 +269,31 @@ export class HIRBuilder {
 
     this.#buildStatement(statement.get("body"));
     this.#currentBlock = previousBlock;
-    this.#exitScope();
   }
 
   #buildFunctionParameters(statement: NodePath<t.FunctionDeclaration>) {
     const params = statement.get("params");
-    const body = statement.get("body");
 
     return params.map((param) => {
       if (!param.isIdentifier()) {
         throw new Error("Only identifier parameters are supported");
       }
 
-      const paramPlace = this.#createTemporaryPlace();
       const name = param.node.name;
 
-      body.scope.rename(name, paramPlace.identifier.name);
-
+      // Set the param declaration id in the function scope.
       const declarationId = makeDeclarationId(this.#nextDeclarationId++);
-      this.#currentScope?.setDeclarationId(
-        paramPlace.identifier.name,
-        declarationId,
-      );
-      this.#currentScope?.setBinding(declarationId, paramPlace);
+      statement.scope.setData(name, declarationId);
+
+      // Create a temporary place for the param and assign it to the declaration id.
+      const paramPlace = this.#createTemporaryPlace();
+      this.#bindings.set(declarationId, paramPlace);
+
+      // Rename the param name in the scope to the temporary place.
+      statement.scope.rename(name, paramPlace.identifier.name);
+
+      // Also set the declaration id for param place.
+      statement.scope.setData(paramPlace.identifier.name, declarationId);
 
       return paramPlace;
     });
@@ -463,16 +307,9 @@ export class HIRBuilder {
         const valuePlace = this.#buildExpression(init);
         const name = (declaration.node.id as t.Identifier).name;
 
-        if (!this.#currentScope) {
-          throw new Error("No current scope");
-        }
-
-        const declarationId = this.#currentScope.getDeclarationId(name);
-        if (declarationId === undefined) {
-          throw new Error(`Undefined variable: ${name}`);
-        }
-
-        const targetPlace = this.#currentScope.getBinding(declarationId);
+        // Get the binding for the variable.
+        const declarationId = statement.scope.getData(name);
+        const targetPlace = this.#bindings.get(declarationId);
         if (targetPlace === undefined) {
           throw new Error(`Undefined variable: ${name}`);
         }
@@ -488,19 +325,6 @@ export class HIRBuilder {
             statement.node.kind === "const" ? "const" : "let",
           ),
         );
-
-        if (statement.node.kind === "let") {
-          const phiPlace = this.#createPhiPlace();
-          const phi: Phi = {
-            source: this.#currentBlock.id,
-            place: phiPlace,
-            operands: new Map([[this.#currentBlock.id, targetPlace]]),
-          };
-          statement.scope.rename(name, phiPlace.identifier.name);
-          this.#currentScope.setBinding(declarationId, phiPlace);
-          this.#currentScope.renameDeclaration(name, phiPlace.identifier.name);
-          this.#currentScope.setPhi(declarationId, phi);
-        }
       }
     }
   }
@@ -566,34 +390,30 @@ export class HIRBuilder {
       const left = expression.get("left");
       if (left.isIdentifier()) {
         const name = left.node.name;
-        const declarationId = this.#currentScope?.getDeclarationId(name);
-        if (declarationId === undefined) {
-          throw new Error(`Undefined variable: ${name}`);
-        }
 
-        const valuePlace = this.#buildExpression(expression.get("right"));
+        // Build instruction to store the assignment value.
+        const right = expression.get("right");
+        const valuePlace = this.#buildExpression(right);
         const targetPlace = this.#createTemporaryPlace();
 
-        this.#currentBlock.addInstruction(
-          new StoreLocalInstruction(
-            makeInstructionId(this.#nextInstructionId++),
-            targetPlace,
-            {
-              kind: "Load",
-              place: valuePlace,
-            },
-            "const",
-          ),
+        const instructionId = makeInstructionId(this.#nextInstructionId++);
+        const instruction = new StoreLocalInstruction(
+          instructionId,
+          targetPlace,
+          {
+            kind: "Load",
+            place: valuePlace,
+          },
+          "const",
         );
+        this.#currentBlock.addInstruction(instruction);
 
+        // Update the binding for the declaration id.
+        const declarationId = expression.scope.getData(name);
+        this.#bindings.set(declarationId, targetPlace);
+
+        // Rename the variable in the scope to target place.
         expression.scope.rename(name, targetPlace.identifier.name);
-        this.#currentScope.renameDeclaration(name, targetPlace.identifier.name);
-        this.#currentScope.setBinding(declarationId, targetPlace);
-        const phi = this.#currentScope.getPhi(declarationId);
-        if (phi) {
-          phi.operands.set(this.#currentBlock.id, targetPlace);
-        }
-
         return targetPlace;
       }
     }
@@ -626,19 +446,14 @@ export class HIRBuilder {
 
   #buildIdentifier(expression: NodePath<t.Identifier>): Place {
     const name = expression.node.name;
-    if (!this.#currentScope) {
-      throw new Error("No current scope");
-    }
 
-    const declarationId = this.#currentScope.getDeclarationId(name);
-    if (declarationId === undefined) {
+    // Get the binding for the identifier.
+    const declarationId = expression.scope.getData(name);
+    const place = this.#bindings.get(declarationId);
+    if (place === undefined) {
       throw new Error(`Undefined variable: ${name}`);
     }
 
-    const place = this.#currentScope.getBinding(declarationId);
-    if (!place) {
-      throw new Error(`Undefined variable: ${name}`);
-    }
     return place;
   }
 
@@ -726,18 +541,12 @@ export class HIRBuilder {
       throw new Error("Unsupported update expression");
     }
 
-    const declarationId = this.#currentScope?.getDeclarationId(name);
-    if (declarationId === undefined) {
-      throw new Error(`Undefined variable: ${name}`);
-    }
+    // Update the binding for the variable.
+    const declarationId = expression.scope.getData(name);
+    this.#bindings.set(declarationId, resultPlace);
 
+    // Rename the variable in the scope.
     expression.scope.rename(name, resultPlace.identifier.name);
-    this.#currentScope.renameDeclaration(name, resultPlace.identifier.name);
-    this.#currentScope.setBinding(declarationId, resultPlace);
-    const phi = this.#currentScope.getPhi(declarationId);
-    if (phi) {
-      phi.operands.set(this.#currentBlock.id, resultPlace);
-    }
 
     return resultPlace;
   }
@@ -792,15 +601,6 @@ export class HIRBuilder {
       id: identifierId,
       declarationId: makeDeclarationId(this.#nextDeclarationId++),
       name: makeIdentifierName(identifierId),
-    });
-  }
-
-  #createPhiPlace(): Place {
-    const identifierId = makeIdentifierId(this.#nextPhiId++);
-    return new Place({
-      id: identifierId,
-      declarationId: makeDeclarationId(this.#nextDeclarationId++),
-      name: makePhiName(identifierId),
     });
   }
 }
