@@ -190,6 +190,8 @@ export class HIRBuilder {
     const alternateBlockId = this.#nextBlockId++;
     const fallthroughBlockId = this.#nextBlockId++;
 
+    const currentBlockId = this.#currentBlock.id;
+
     this.#currentBlock.setTerminal({
       kind: "branch",
       id: makeInstructionId(this.#nextInstructionId++),
@@ -204,6 +206,7 @@ export class HIRBuilder {
       consequentBlockId,
       this.#currentBlock.id,
     );
+    consequentBlock.addPredecessor(currentBlockId);
     this.#blocks.set(consequentBlockId, consequentBlock);
     this.#currentBlock = consequentBlock;
     this.#buildStatement(statement.get("consequent"));
@@ -213,6 +216,7 @@ export class HIRBuilder {
       alternateBlockId,
       this.#currentBlock.id,
     );
+    alternateBlock.addPredecessor(currentBlockId);
     this.#blocks.set(alternateBlockId, alternateBlock);
     if (statement.node.alternate) {
       this.#currentBlock = alternateBlock;
@@ -227,16 +231,17 @@ export class HIRBuilder {
       fallthroughBlockId,
       this.#currentBlock.parent,
     );
+    fallthroughBlock.addPredecessor(consequentBlockId);
+    fallthroughBlock.addPredecessor(alternateBlockId);
     this.#blocks.set(fallthroughBlockId, fallthroughBlock);
     this.#currentBlock = fallthroughBlock;
   }
 
   #buildFunctionDeclaration(statement: NodePath<t.FunctionDeclaration>) {
     const bodyBlockId = this.#nextBlockId++;
-    this.#blocks.set(
-      bodyBlockId,
-      BasicBlock.empty(bodyBlockId, this.#currentBlock.id),
-    );
+    const bodyBlock = BasicBlock.empty(bodyBlockId, this.#currentBlock.id);
+    bodyBlock.addPredecessor(this.#currentBlock.id);
+    this.#blocks.set(bodyBlockId, bodyBlock);
 
     const functionName = getFunctionName(statement);
     if (!functionName) {
@@ -265,7 +270,7 @@ export class HIRBuilder {
     instruction.params = params;
 
     const previousBlock = this.#currentBlock;
-    this.#currentBlock = this.#blocks.get(bodyBlockId)!;
+    this.#currentBlock = bodyBlock;
 
     this.#buildStatement(statement.get("body"));
     this.#currentBlock = previousBlock;
