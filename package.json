@@ -29,7 +29,8 @@
     "@babel/parser": "^7.26.3",
     "@babel/traverse": "^7.26.4",
     "@babel/types": "^7.26.3",
-    "babel-plugin-tester": "^11.0.4"
+    "babel-plugin-tester": "^11.0.4",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@babel/helper-plugin-test-runner": "^7.25.9",
@@ -39,6 +40,7 @@
     "@swc/jest": "^0.2.37",
     "@types/babel__core": "^7.20.5",
     "@types/babel__traverse": "^7.20.6",
+    "@types/lodash": "^4.17.13",
     "@typescript-eslint/eslint-plugin": "^8.18.1",
     "@typescript-eslint/parser": "^8.18.2",
     "eslint": "^9.17.0",

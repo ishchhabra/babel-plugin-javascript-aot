@@ -11,8 +11,8 @@ export function compileProgram(
   program: NodePath<t.Program>,
   options: OptimizationOptions,
 ) {
-  const blocks = new HIRBuilder(program).build();
-  const phis = new PhiBuilder(blocks).build();
+  const { blocks, bindings } = new HIRBuilder(program).build();
+  const phis = new PhiBuilder(bindings, blocks).build();
 
   if (options.enableConstantPropagation) {
     constantPropagation(blocks);

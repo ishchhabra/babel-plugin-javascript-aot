@@ -1,7 +1,6 @@
 let $p0;
 const $2 = 1;
 let $0 = $2;
-$p0 = $0;
 const $3 = true;
 if ($3) {
   const $4 = 2;
