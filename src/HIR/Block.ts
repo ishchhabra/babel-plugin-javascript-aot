@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { Phi } from "../SSA/Phi";
 import { ExpressionInstruction, Instruction } from "./Instruction";
-import { Phi } from "./Phi";
 import { Place } from "./Place";
 import { Terminal } from "./Terminal";
 

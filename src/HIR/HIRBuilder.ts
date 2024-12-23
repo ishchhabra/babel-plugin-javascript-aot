@@ -41,7 +41,7 @@ export class HIRBuilder {
   }
 
   // Public API
-  public build() {
+  public build(): Map<BlockId, Block> {
     const body = this.#program.get("body");
     for (const statement of body) {
       this.#buildStatement(statement);

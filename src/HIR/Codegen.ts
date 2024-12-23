@@ -1,7 +1,7 @@
 import * as t from "@babel/types";
+import { Phi } from "../SSA/Phi";
 import { BasicBlock, Block, BlockId, ForLoopBlock, LoopBlock } from "./Block";
 import { ExpressionInstruction, Instruction } from "./Instruction";
-import { Phi } from "./Phi";
 import { Place } from "./Place";
 import { Terminal } from "./Terminal";
 import { Value } from "./Value";
