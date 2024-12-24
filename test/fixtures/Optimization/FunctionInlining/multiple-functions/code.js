@@ -9,3 +9,4 @@ function isOdd(n) {
 }
 
 const value = isEven(4);
+console.log(value);

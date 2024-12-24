@@ -4,7 +4,7 @@ import {
   AssignmentExpressionInstruction,
   StoreLocalInstruction,
 } from "../HIR/Instruction";
-import { Value } from "../HIR/Value";
+import { LoadValue } from "../HIR/Value";
 import { Phi } from "./Phi";
 
 export function eliminatePhis(
@@ -64,7 +64,7 @@ export class PhiEliminator {
         if (!predBlock) continue;
 
         // Create a move instruction (store) for the phi operand
-        const value: Value = { kind: "Load", place: predPlace };
+        const value = new LoadValue(predPlace);
         const instruction = new AssignmentExpressionInstruction(
           0,
           phi.place,
@@ -79,7 +79,7 @@ export class PhiEliminator {
         if (instruction instanceof StoreLocalInstruction) {
           // Replace phi usages with the actual assigned value
           if (
-            instruction.value.kind === "Load" &&
+            instruction.value instanceof LoadValue &&
             instruction.value.place === phi.place
           ) {
             instruction.value.place = phi.operands.get(phi.definition)!;

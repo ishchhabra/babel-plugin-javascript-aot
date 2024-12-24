@@ -22,3 +22,5 @@ const $inline8 = 2;
 const $inline9 = $inline7 * $inline8;
 const $13 = $inline5 + $inline9;
 const $1 = $13;
+const $14 = console.log;
+const $15 = $14($1);

@@ -6,3 +6,4 @@ function outer(x) {
 }
 
 const value = outer(5);
+console.log(value);

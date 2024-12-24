@@ -25,3 +25,5 @@ function $1($10) {
 const $17 = 4;
 const $18 = $0($17);
 const $2 = $18;
+const $19 = console.log;
+const $20 = $19($2);

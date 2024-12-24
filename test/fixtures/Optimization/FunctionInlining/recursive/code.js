@@ -7,3 +7,4 @@ function factorial(n) {
 }
 
 const value = factorial(5);
+console.log(value);

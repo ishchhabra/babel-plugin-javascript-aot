@@ -90,7 +90,8 @@ export class StoreLocalInstruction extends BaseInstruction {
 
   cloneWithPlaces(places: Map<IdentifierId, Place>): StoreLocalInstruction {
     const newTarget = places.get(this.target.identifier.id) ?? this.target;
-    return new StoreLocalInstruction(this.id, newTarget, this.value, this.type);
+    const newValue = this.value.cloneWithPlaces(places);
+    return new StoreLocalInstruction(this.id, newTarget, newValue, this.type);
   }
 }
 

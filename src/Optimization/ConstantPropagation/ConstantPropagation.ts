@@ -8,11 +8,11 @@ import {
   UnaryExpressionInstruction,
 } from "../../HIR/Instruction";
 import { Place } from "../../HIR/Place";
-import { PrimitiveValue } from "../../HIR/Value";
+import { TPrimitiveValue } from "../../HIR/Value";
 
 type Constant = {
   readonly kind: "Primitive";
-  readonly value: PrimitiveValue;
+  readonly value: TPrimitiveValue;
 };
 
 type Constants = Map<IdentifierId, Constant>;
@@ -380,7 +380,7 @@ function readConstant(constants: Constants, place: Place): Constant | null {
   return constants.get(place.identifier.id) ?? null;
 }
 
-function canAdd(left: PrimitiveValue, right: PrimitiveValue): boolean {
+function canAdd(left: TPrimitiveValue, right: TPrimitiveValue): boolean {
   // symbols cannot be added.
   if (typeof left === "symbol" || typeof right === "symbol") {
     return false;
@@ -404,6 +404,6 @@ function canAdd(left: PrimitiveValue, right: PrimitiveValue): boolean {
   return true;
 }
 
-function canArithmetic(left: PrimitiveValue, right: PrimitiveValue): boolean {
+function canArithmetic(left: TPrimitiveValue, right: TPrimitiveValue): boolean {
   return typeof left === "number" && typeof right === "number";
 }

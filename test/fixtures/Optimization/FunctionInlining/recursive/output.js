@@ -14,3 +14,5 @@ function $0($2) {
 const $10 = 5;
 const $11 = $0($10);
 const $1 = $11;
+const $12 = console.log;
+const $13 = $12($1);

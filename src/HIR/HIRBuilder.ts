@@ -17,6 +17,7 @@ import {
   UpdateExpressionInstruction,
 } from "./Instruction";
 import { Place } from "./Place";
+import { LoadValue, PrimitiveValue } from "./Value";
 
 export type Bindings = Map<DeclarationId, Map<BlockId, Place>>;
 
@@ -345,10 +346,7 @@ export class HIRBuilder {
           new StoreLocalInstruction(
             makeInstructionId(this.#nextInstructionId++),
             targetPlace,
-            {
-              kind: "Load",
-              place: valuePlace,
-            },
+            new LoadValue(valuePlace),
             statement.node.kind === "const" ? "const" : "let",
           ),
         );
@@ -433,10 +431,7 @@ export class HIRBuilder {
         const instruction = new StoreLocalInstruction(
           instructionId,
           targetPlace,
-          {
-            kind: "Load",
-            place: valuePlace,
-          },
+          new LoadValue(valuePlace),
           "const",
         );
         this.#currentBlock.addInstruction(instruction);
@@ -631,10 +626,7 @@ export class HIRBuilder {
       new StoreLocalInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,
-        {
-          kind: "Primitive",
-          value: expression.node.value,
-        },
+        new PrimitiveValue(expression.node.value),
         "const",
       ),
     );
