@@ -198,19 +198,6 @@ export class HIRBuilder {
     }
   }
 
-  // TODO: Fix predecessor handling for nested if statements
-  /*
-   * There appears to be an issue with buildIfStatement and nested if blocks:
-   *
-   * When a nested if statement is processed, it creates its own fallthrough block.
-   * The outer fallthrough block only has the nested if's fallthrough block as a
-   * predecessor, but loses the connection to the current block (since it was split
-   * into three parts).
-   *
-   * Need to investigate:
-   * 1. Should we create a new fallthrough block for the outer if?
-   * 2. How do we properly maintain predecessor relationships in nested cases?
-   */
   #buildIfStatement(statement: NodePath<t.IfStatement>) {
     const test = statement.get("test");
     const testPlace = this.#buildExpression(test);
