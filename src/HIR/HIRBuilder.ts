@@ -272,7 +272,9 @@ export class HIRBuilder {
 
     // Get the binding for the function.
     const declarationId = statement.scope.getData(functionName.node.name);
-    const functionPlace = this.#resolveBinding(
+    const functionPlace = resolveBinding(
+      this.#bindings,
+      this.#blocks,
       declarationId,
       this.#currentBlock.id,
     );
@@ -338,7 +340,9 @@ export class HIRBuilder {
 
         // Get the binding for the variable.
         const declarationId = statement.scope.getData(name);
-        const targetPlace = this.#resolveBinding(
+        const targetPlace = resolveBinding(
+          this.#bindings,
+          this.#blocks,
           declarationId,
           this.#currentBlock.id,
         );
@@ -488,7 +492,12 @@ export class HIRBuilder {
 
     // Get the binding for the identifier.
     const declarationId = expression.scope.getData(name);
-    const place = this.#resolveBinding(declarationId, this.#currentBlock.id);
+    const place = resolveBinding(
+      this.#bindings,
+      this.#blocks,
+      declarationId,
+      this.#currentBlock.id,
+    );
     return place;
   }
 
@@ -592,32 +601,6 @@ export class HIRBuilder {
     return resultPlace;
   }
 
-  // #buildMemberExpression(expression: NodePath<t.MemberExpression>): Place {
-  //   const object = this.#buildExpression(expression.get("object"));
-  //   const property = expression.node.computed
-  //     ? this.#buildExpression(expression.get("property"))
-  //     : this.#buildLiteral({
-  //         node: {
-  //           type: "StringLiteral",
-  //           value: (expression.node.property as t.Identifier).name,
-  //         },
-  //       } as NodePath<t.StringLiteral>);
-
-  //   const resultPlace = this.#createTemporaryPlace();
-
-  //   this.#currentBlock.addInstruction(
-  //     new MemberExpressionInstruction(
-  //       makeInstructionId(this.#nextInstructionId++),
-  //       resultPlace,
-  //       object,
-  //       property,
-  //       expression.node.computed,
-  //     ),
-  //   );
-
-  //   return resultPlace;
-  // }
-
   #buildLiteral(
     expression: NodePath<t.NumericLiteral | t.StringLiteral | t.BooleanLiteral>,
   ): Place {
@@ -669,29 +652,6 @@ export class HIRBuilder {
     });
   }
 
-  #resolveBinding(declarationId: DeclarationId, blockId: BlockId): Place {
-    const declarationBindings = this.#bindings.get(declarationId);
-    if (declarationBindings === undefined) {
-      throw new Error(`Undefined variable: ${declarationId}`);
-    }
-
-    const place = declarationBindings.get(blockId);
-    if (place !== undefined) {
-      return place;
-    }
-
-    const block = this.#blocks.get(blockId);
-    if (block === undefined) {
-      throw new Error(`Undefined block: ${blockId}`);
-    }
-
-    if (block.parent === undefined) {
-      throw new Error(`Undefined variable: ${declarationId}`);
-    }
-
-    return this.#resolveBinding(declarationId, block.parent);
-  }
-
   #copyDeclaration(scope: Scope, from: string, to: string) {
     let data;
     while (scope !== undefined && (data = scope.data[from]) === undefined) {
@@ -724,4 +684,32 @@ export class HIRBuilder {
         return block;
     }
   }
+}
+
+export function resolveBinding(
+  bindings: Bindings,
+  blocks: Map<BlockId, Block>,
+  declarationId: DeclarationId,
+  blockId: BlockId,
+) {
+  const declarationBindings = bindings.get(declarationId);
+  if (declarationBindings === undefined) {
+    throw new Error(`Undefined variable: ${declarationId}`);
+  }
+
+  const place = declarationBindings.get(blockId);
+  if (place !== undefined) {
+    return place;
+  }
+
+  const block = blocks.get(blockId);
+  if (block === undefined) {
+    throw new Error(`Undefined block: ${blockId}`);
+  }
+
+  if (block.parent === undefined) {
+    throw new Error(`Undefined variable: ${declarationId}`);
+  }
+
+  return resolveBinding(bindings, blocks, declarationId, block.parent);
 }

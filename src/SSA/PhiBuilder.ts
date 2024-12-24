@@ -1,6 +1,6 @@
 import { Block, BlockId } from "../HIR/Block";
 import { DeclarationId } from "../HIR/Declaration";
-import { Bindings } from "../HIR/HIRBuilder";
+import { Bindings, resolveBinding } from "../HIR/HIRBuilder";
 import { Place } from "../HIR/Place";
 import {
   computeDominators,
@@ -44,7 +44,7 @@ export class PhiBuilder {
       for (const [declarationId, declarationBindings] of this.#bindings) {
         const placesFromPreds = this.#getPredecessorPlaces(
           predecessors,
-          declarationBindings,
+          declarationId,
         );
 
         if (!this.#shouldCreatePhi(placesFromPreds)) {
@@ -82,17 +82,22 @@ export class PhiBuilder {
 
   #getPredecessorPlaces(
     predecessors: BlockId[],
-    declarationBindings: Map<BlockId, Place>,
+    declarationId: DeclarationId,
   ): { pred: BlockId; place: Place }[] {
     const places: { pred: BlockId; place: Place }[] = [];
 
     for (const predId of predecessors) {
-      const place = declarationBindings.get(predId);
-      if (place === undefined) {
+      try {
+        const place = resolveBinding(
+          this.#bindings,
+          this.#blocks,
+          declarationId,
+          predId,
+        );
+        places.push({ pred: predId, place });
+      } catch {
         continue;
       }
-
-      places.push({ pred: predId, place });
     }
 
     return places;

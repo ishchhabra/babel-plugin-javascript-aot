@@ -1,5 +1,6 @@
 import { Bindings } from "../HIR";
 import { Block, BlockId } from "../HIR/Block";
+import { resolveBinding } from "../HIR/HIRBuilder";
 import {
   AssignmentExpressionInstruction,
   StoreLocalInstruction,
@@ -38,8 +39,13 @@ export class PhiEliminator {
         continue;
       }
 
-      declarationBindings.get(phi.definition)!.identifier.name =
-        phi.place.identifier.name;
+      const bindingPlace = resolveBinding(
+        this.#bindings,
+        this.#blocks,
+        declarationId,
+        phi.definition,
+      );
+      bindingPlace.identifier.name = phi.place.identifier.name;
 
       const declarationPlace = declarationBindings.get(phi.definition)!;
       const storeLocal = this.#blocks
