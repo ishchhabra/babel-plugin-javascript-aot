@@ -1,2 +1,2 @@
-const value = 2;
+let value = 2;
 const incrementedValue = ++value;
