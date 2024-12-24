@@ -335,22 +335,18 @@ export type ExpressionStatementInstruction = {
   expression: Place;
 };
 
-export type Instruction =
-  | StoreLocalInstruction
-  | UnaryExpressionInstruction
-  | BinaryExpressionInstruction
-  | UpdateExpressionInstruction
-  | ArrayExpressionInstruction
-  | UnsupportedNodeInstruction
-  | FunctionDeclarationInstruction
-  | CallExpressionInstruction;
-
 export type ExpressionInstruction =
   | UnaryExpressionInstruction
   | BinaryExpressionInstruction
   | UpdateExpressionInstruction
   | ArrayExpressionInstruction
   | CallExpressionInstruction;
+
+export type Instruction =
+  | ExpressionInstruction
+  | StoreLocalInstruction
+  | UnsupportedNodeInstruction
+  | FunctionDeclarationInstruction;
 
 export function makeInstructionId(id: number): InstructionId {
   return id;
