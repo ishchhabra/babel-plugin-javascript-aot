@@ -1,6 +1,4 @@
-import { BlockId } from "../HIR/Block";
-import { IdentifierId } from "../HIR/Identifier";
-import { Place } from "../HIR/Place";
+import { BlockId, IdentifierId, Place } from "../HIR";
 
 export interface Phi {
   source: BlockId;

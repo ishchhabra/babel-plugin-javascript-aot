@@ -94,6 +94,21 @@ export class StoreLocalInstruction extends BaseInstruction {
   }
 }
 
+export class AssignmentExpressionInstruction extends BaseInstruction {
+  kind: "AssignmentExpression";
+  value: Value;
+
+  constructor(id: InstructionId, target: Place, value: Value) {
+    super(id, target, "const");
+    this.kind = "AssignmentExpression";
+    this.value = value;
+  }
+
+  cloneWithPlaces(places: Map<IdentifierId, Place>): Instruction {
+    throw new Error("Method not implemented.");
+  }
+}
+
 export interface SpreadElement {
   kind: "SpreadElement";
   place: Place;
@@ -240,43 +255,6 @@ export class UpdateExpressionInstruction extends BaseInstruction {
   }
 }
 
-// export class MemberExpressionInstruction extends BaseInstruction {
-//   kind: "MemberExpression";
-//   object: Place;
-//   property: Place;
-//   computed: boolean;
-
-//   constructor(
-//     id: InstructionId,
-//     target: Place,
-//     object: Place,
-//     property: Place,
-//     computed: boolean,
-//   ) {
-//     super(id, target, "const");
-//     this.kind = "MemberExpression";
-//     this.object = object;
-//     this.property = property;
-//     this.computed = computed;
-//   }
-
-//   cloneWithPlaces(
-//     places: Map<IdentifierId, Place>,
-//   ): MemberExpressionInstruction {
-//     const newTarget = places.get(this.target.identifier.id) ?? this.target;
-//     const newObject = places.get(this.object.identifier.id) ?? this.object;
-//     const newProperty =
-//       places.get(this.property.identifier.id) ?? this.property;
-//     return new MemberExpressionInstruction(
-//       this.id,
-//       newTarget,
-//       newObject,
-//       newProperty,
-//       this.computed,
-//     );
-//   }
-// }
-
 export class CallExpressionInstruction extends BaseInstruction {
   kind: "CallExpression";
   callee: Place;
@@ -340,7 +318,8 @@ export type ExpressionInstruction =
   | BinaryExpressionInstruction
   | UpdateExpressionInstruction
   | ArrayExpressionInstruction
-  | CallExpressionInstruction;
+  | CallExpressionInstruction
+  | AssignmentExpressionInstruction;
 
 export type Instruction =
   | ExpressionInstruction

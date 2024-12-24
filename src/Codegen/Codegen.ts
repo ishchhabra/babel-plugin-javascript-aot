@@ -1,19 +1,23 @@
 import * as t from "@babel/types";
-import { Phi } from "../SSA/Phi";
-import { BasicBlock, Block, BlockId, ForLoopBlock, LoopBlock } from "./Block";
-import { ExpressionInstruction, Instruction } from "./Instruction";
-import { Place } from "./Place";
-import { Terminal } from "./Terminal";
-import { Value } from "./Value";
+import {
+  BasicBlock,
+  Block,
+  BlockId,
+  ExpressionInstruction,
+  ForLoopBlock,
+  Instruction,
+  LoopBlock,
+  Place,
+  Terminal,
+  Value,
+} from "../HIR";
 
 export class Codegen {
   readonly #blocks: Map<BlockId, Block>;
-  readonly #phis: Set<Phi>;
   readonly #generatedBlocks: Set<BlockId>;
 
-  constructor(blocks: Map<BlockId, Block>, phis: Set<Phi>) {
+  constructor(blocks: Map<BlockId, Block>) {
     this.#blocks = blocks;
-    this.#phis = phis;
     this.#generatedBlocks = new Set();
   }
 
@@ -21,18 +25,6 @@ export class Codegen {
     const body: t.Statement[] = [];
     this.#generateBlock(0, body);
     return t.program(body);
-  }
-
-  private generatePhiAssignments(blockId: BlockId, body: t.Statement[]) {
-    const blockPhis = Array.from(this.#phis.values())
-      .filter((phi) => phi.source === blockId && phi.operands.size > 1)
-      .map((phi) =>
-        t.variableDeclaration("let", [
-          t.variableDeclarator(t.identifier(phi.place.identifier.name)),
-        ]),
-      );
-
-    body.push(...blockPhis);
   }
 
   #generateBlock(blockId: BlockId, body: t.Statement[]) {
@@ -58,33 +50,10 @@ export class Codegen {
 
   #generateBasicBlock(block: BasicBlock, body: t.Statement[]) {
     this.#generatedBlocks.add(block.id);
-    this.generatePhiAssignments(block.id, body);
 
     for (const instruction of block.instructions) {
       const instructionNode = this.#generateInstruction(instruction);
       body.push(instructionNode);
-
-      for (const phi of this.#phis) {
-        if (!phi.operands.has(block.id)) {
-          continue;
-        }
-
-        const phiOperand = phi.operands.get(block.id)!;
-        const targetName = instruction.target.identifier.name;
-        const phiName = phiOperand.identifier.name;
-
-        if (phiName === targetName) {
-          body.push(
-            t.expressionStatement(
-              t.assignmentExpression(
-                "=",
-                t.identifier(phi.place.identifier.name),
-                t.identifier(instruction.target.identifier.name),
-              ),
-            ),
-          );
-        }
-      }
     }
 
     if (block.terminal !== null) {
@@ -138,6 +107,10 @@ export class Codegen {
         ]);
       }
 
+      case "AssignmentExpression": {
+        return t.expressionStatement(this.#generateExpression(instruction));
+      }
+
       case "CallExpression":
       case "UnaryExpression":
       case "BinaryExpression":
@@ -181,6 +154,14 @@ export class Codegen {
 
   #generateExpression(instruction: ExpressionInstruction): t.Expression {
     switch (instruction.kind) {
+      case "AssignmentExpression": {
+        return t.assignmentExpression(
+          "=",
+          t.identifier(instruction.target.identifier.name),
+          this.#generateValue(instruction.value),
+        );
+      }
+
       case "CallExpression": {
         const callee = this.#generatePlace(instruction.callee);
         const args = instruction.args.map((arg) => {

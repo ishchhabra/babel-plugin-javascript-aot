@@ -1,4 +1,3 @@
-let $p0;
 const $2 = 1;
 let $0 = $2;
 const $3 = true;

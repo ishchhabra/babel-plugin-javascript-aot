@@ -1,11 +1,11 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
-import { Codegen } from "../HIR/Codegen";
-import { HIRBuilder } from "../HIR/HIRBuilder";
+import { Codegen } from "../Codegen";
+import { HIRBuilder } from "../HIR";
 import { constantPropagation } from "../Optimization/ConstantPropagation";
 import { functionInlining } from "../Optimization/FunctionInlining";
 import { OptimizationOptions } from "../Optimization/OptimizationOptions";
-import { PhiBuilder } from "../SSA/PhiBuilder";
+import { PhiBuilder, eliminatePhis } from "../SSA";
 
 export function compileProgram(
   program: NodePath<t.Program>,
@@ -22,6 +22,7 @@ export function compileProgram(
     functionInlining(blocks);
   }
 
-  const codegen = new Codegen(blocks, phis);
+  eliminatePhis(blocks, phis);
+  const codegen = new Codegen(blocks);
   return codegen.generate();
 }

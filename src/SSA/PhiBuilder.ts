@@ -1,8 +1,4 @@
-import { Block, BlockId } from "../HIR/Block";
-import { DeclarationId } from "../HIR/Declaration";
-import { Bindings } from "../HIR/HIRBuilder";
-import { StoreLocalInstruction } from "../HIR/Instruction";
-import { Place } from "../HIR/Place";
+import { Bindings, Block, BlockId, DeclarationId, Place } from "../HIR";
 import {
   computeDominators,
   getImmediateDominators,
@@ -14,11 +10,17 @@ export class PhiBuilder {
   #bindings: Bindings;
   #blocks: Map<BlockId, Block>;
 
+  #dominators: Map<BlockId, Set<BlockId>>;
+  #immediateDominators: Map<BlockId, BlockId | undefined>;
+
   #nextPhiId = 0;
 
   constructor(bindings: Bindings, blocks: Map<BlockId, Block>) {
     this.#bindings = bindings;
     this.#blocks = blocks;
+
+    this.#dominators = computeDominators(blocks, 0);
+    this.#immediateDominators = getImmediateDominators(this.#dominators);
   }
 
   /**
@@ -28,9 +30,6 @@ export class PhiBuilder {
    * show how to find the "common node" if you want it.
    */
   public build(): Set<Phi> {
-    const doms = computeDominators(this.#blocks, 0);
-    const iDom = getImmediateDominators(doms);
-
     const phis = new Set<Phi>();
 
     for (const [blockId, block] of this.#blocks) {
@@ -54,7 +53,7 @@ export class PhiBuilder {
         const leastCommonDominator = getLeastCommonDominator(
           placesFromPreds[0]!.pred,
           placesFromPreds[1]!.pred,
-          iDom,
+          this.#immediateDominators,
         );
 
         const phi: Phi = {
@@ -66,8 +65,6 @@ export class PhiBuilder {
           phi.operands.set(pred, place);
         }
         phis.add(phi);
-
-        this.#updateBindingsAfterPhi(blockId, declarationId, phi.place, phi);
       }
     }
 
@@ -99,52 +96,6 @@ export class PhiBuilder {
 
     const firstDefinition = places[0]!.place;
     return places.some((pp) => pp.place !== firstDefinition);
-  }
-
-  #updateBindingsAfterPhi(
-    blockId: BlockId,
-    declarationId: DeclarationId,
-    phiPlace: Place,
-    phi: Phi,
-  ) {
-    const declarationBindings = this.#bindings.get(declarationId);
-    if (!declarationBindings) return;
-
-    // Get the block where we want to insert the phi
-    const block = this.#blocks.get(blockId);
-    if (!block) return;
-
-    // Create a set of places we're looking to replace
-    const placesToReplace = new Set(Array.from(phi.operands.values()));
-
-    // Find the first load instruction that uses any of our operand places
-    for (let i = 0; i < block.instructions.length; i++) {
-      const inst = block.instructions[i];
-      if (
-        inst instanceof StoreLocalInstruction &&
-        inst.value.kind === "Load" &&
-        Array.from(placesToReplace).some(
-          (place) =>
-            inst.value.kind === "Load" &&
-            place.identifier.id === inst.value.place.identifier.id,
-        )
-      ) {
-        // Replace the load's place with our phi place
-        inst.value.place = phiPlace;
-        break;
-      }
-    }
-
-    // Update bindings as before
-    declarationBindings.set(blockId, phiPlace);
-    const doms = computeDominators(this.#blocks, blockId);
-
-    for (const [otherBlockId, _] of this.#blocks) {
-      if (otherBlockId === blockId) continue;
-      if (doms.has(otherBlockId) && !declarationBindings.has(otherBlockId)) {
-        declarationBindings.set(otherBlockId, phiPlace);
-      }
-    }
   }
 
   #createPhiPlace(declarationId: DeclarationId): Place {

@@ -80,21 +80,21 @@ export function computeDominators(
  * strictly dominates B (D ≠ B). In other words, D dominates B and there is no
  * other dominator of B that is dominated by D (except D itself).
  *
- * For the entry block or unreachable blocks, the immediate dominator is null.
+ * For the entry block or unreachable blocks, the immediate dominator is undefined.
  *
  * @param dominators - Map from block ID to the set of all blocks that dominate it
  *
- * @returns Map from block ID to its immediate dominator ID, or null if none exists
+ * @returns Map from block ID to its immediate dominator ID, or undefined if none exists
  */
 export function getImmediateDominators(
   dominators: Map<BlockId, Set<BlockId>>,
-): Map<BlockId, BlockId | null> {
-  const iDom = new Map<BlockId, BlockId | null>();
+): Map<BlockId, BlockId | undefined> {
+  const iDom = new Map<BlockId, BlockId | undefined>();
 
   for (const [blockId, domSet] of dominators) {
     if (domSet.size === 1) {
       // Possibly the entry block (only dominated by itself)
-      iDom.set(blockId, null);
+      iDom.set(blockId, undefined);
       continue;
     }
 
@@ -138,7 +138,7 @@ export function getImmediateDominators(
 export function getLeastCommonDominator(
   b1: BlockId,
   b2: BlockId,
-  iDom: Map<BlockId, BlockId | null>,
+  iDom: Map<BlockId, BlockId | undefined>,
 ): BlockId | null {
   // Traverse to the root from b1 and collect all ancestors
   const ancestors = new Set<BlockId>();
@@ -167,7 +167,7 @@ export function getLeastCommonDominator(
  */
 export function computeDominanceFrontier(
   blocks: Map<BlockId, Block>,
-  iDom: Map<BlockId, BlockId | null>,
+  iDom: Map<BlockId, BlockId | undefined>,
 ): Map<BlockId, Set<BlockId>> {
   const frontier = new Map<BlockId, Set<BlockId>>();
 
