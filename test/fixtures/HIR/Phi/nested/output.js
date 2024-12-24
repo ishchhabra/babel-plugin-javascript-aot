@@ -1,11 +1,9 @@
-let $p2;
 const $2 = 1;
-let $0 = $2;
+let $p2 = $2;
 const $3 = true;
 if ($3) {
-  let $p0;
   const $4 = 2;
-  const $5 = $4;
+  let $p0 = $4;
   const $6 = false;
   if ($6) {
     const $7 = 3;
@@ -16,17 +14,18 @@ if ($3) {
     const $10 = $9;
     $p0 = $10;
   }
+  $p2 = $p0;
 } else {
-  let $p1;
   const $11 = 5;
-  const $12 = $11;
-  $p1 = $12;
+  let $p1 = $11;
   const $13 = true;
+  $p1 = $p1;
   if ($13) {
     const $14 = 6;
     const $15 = $14;
     $p1 = $15;
   }
+  $p2 = $p1;
 }
 const $1 = $p2;
 const $16 = console.log;

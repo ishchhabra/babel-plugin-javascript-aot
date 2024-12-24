@@ -22,7 +22,6 @@ export function compileProgram(
     functionInlining(blocks);
   }
 
-  eliminatePhis(blocks, phis);
-  const codegen = new Codegen(blocks);
-  return codegen.generate();
+  eliminatePhis(bindings, blocks, phis);
+  return new Codegen(blocks).generate();
 }

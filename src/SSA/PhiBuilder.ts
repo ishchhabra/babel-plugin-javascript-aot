@@ -1,4 +1,7 @@
-import { Bindings, Block, BlockId, DeclarationId, Place } from "../HIR";
+import { Block, BlockId } from "../HIR/Block";
+import { DeclarationId } from "../HIR/Declaration";
+import { Bindings } from "../HIR/HIRBuilder";
+import { Place } from "../HIR/Place";
 import {
   computeDominators,
   getImmediateDominators,
@@ -26,8 +29,6 @@ export class PhiBuilder {
   /**
    * Build phi instructions for blocks that have multiple predecessors,
    * and unify variables that differ among those preds.
-   * This is the same logic you already have, but now we can also
-   * show how to find the "common node" if you want it.
    */
   public build(): Set<Phi> {
     const phis = new Set<Phi>();
@@ -55,16 +56,24 @@ export class PhiBuilder {
           placesFromPreds[1]!.pred,
           this.#immediateDominators,
         );
+        if (leastCommonDominator === null) {
+          throw new Error("No least common dominator found");
+        }
 
         const phi: Phi = {
-          source: leastCommonDominator!,
+          definition: leastCommonDominator,
+          join: blockId,
           place: this.#createPhiPlace(declarationId),
           operands: new Map(),
         };
         for (const { pred, place } of placesFromPreds) {
           phi.operands.set(pred, place);
         }
+
         phis.add(phi);
+
+        // TODO: Understand why this is needed (got from chatgpt)
+        this.#updateBindingsAfterPhi(blockId, declarationId, phi.place, phi);
       }
     }
 
@@ -96,6 +105,35 @@ export class PhiBuilder {
 
     const firstDefinition = places[0]!.place;
     return places.some((pp) => pp.place !== firstDefinition);
+  }
+
+  #updateBindingsAfterPhi(
+    blockId: BlockId,
+    declarationId: DeclarationId,
+    phiPlace: Place,
+    phi: Phi,
+  ) {
+    const declarationBindings = this.#bindings.get(declarationId);
+    if (!declarationBindings) return;
+
+    // Update the binding for the merge point block
+    declarationBindings.set(blockId, phiPlace);
+
+    // Use the precomputed dominators to determine which blocks are dominated by the merge block
+    const doms = this.#dominators;
+
+    // Update bindings for all blocks dominated by the merge point
+    for (const [otherBlockId, domSet] of doms) {
+      if (otherBlockId === blockId) continue;
+
+      // Check if this block is dominated by the merge point
+      if (domSet.has(blockId)) {
+        // Only update if the block doesn't already have its own definition
+        if (!declarationBindings.has(otherBlockId)) {
+          declarationBindings.set(otherBlockId, phiPlace);
+        }
+      }
+    }
   }
 
   #createPhiPlace(declarationId: DeclarationId): Place {

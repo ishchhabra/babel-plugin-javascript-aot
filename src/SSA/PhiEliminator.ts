@@ -1,3 +1,4 @@
+import { Bindings } from "../HIR";
 import { Block, BlockId } from "../HIR/Block";
 import {
   AssignmentExpressionInstruction,
@@ -6,8 +7,12 @@ import {
 import { Value } from "../HIR/Value";
 import { Phi } from "./Phi";
 
-export function eliminatePhis(blocks: Map<BlockId, Block>, phis: Set<Phi>) {
-  new PhiEliminator(blocks, phis).eliminate();
+export function eliminatePhis(
+  bindings: Bindings,
+  blocks: Map<BlockId, Block>,
+  phis: Set<Phi>,
+) {
+  new PhiEliminator(bindings, blocks, phis).eliminate();
 }
 
 // TODO: Phi elimination not working correctly for basic test case:
@@ -15,17 +20,40 @@ export function eliminatePhis(blocks: Map<BlockId, Block>, phis: Set<Phi>) {
 // - Not replacing variable access at merge points after if/else
 // - Incorrect handling of SSA variable assignments and phi nodes
 export class PhiEliminator {
+  #bindings: Bindings;
   #blocks: Map<BlockId, Block>;
   #phis: Set<Phi>;
 
-  constructor(blocks: Map<BlockId, Block>, phis: Set<Phi>) {
+  constructor(bindings: Bindings, blocks: Map<BlockId, Block>, phis: Set<Phi>) {
+    this.#bindings = bindings;
     this.#blocks = blocks;
     this.#phis = phis;
   }
 
   public eliminate(): Map<BlockId, Block> {
     for (const phi of this.#phis) {
-      const block = this.#blocks.get(phi.source);
+      const declarationId = phi.place.identifier.declarationId;
+      const declarationBindings = this.#bindings.get(declarationId);
+      if (declarationBindings === undefined) {
+        continue;
+      }
+
+      declarationBindings.get(phi.definition)!.identifier.name =
+        phi.place.identifier.name;
+
+      const declarationPlace = declarationBindings.get(phi.definition)!;
+      const storeLocal = this.#blocks
+        .get(phi.definition)
+        ?.instructions.find(
+          (instr) =>
+            instr instanceof StoreLocalInstruction &&
+            instr.target === declarationPlace,
+        ) as StoreLocalInstruction | undefined;
+      if (storeLocal) {
+        storeLocal.type = "let";
+      }
+
+      const block = this.#blocks.get(phi.definition);
       if (block === undefined) {
         continue;
       }
@@ -54,7 +82,7 @@ export class PhiEliminator {
             instruction.value.kind === "Load" &&
             instruction.value.place === phi.place
           ) {
-            instruction.value.place = phi.operands.get(phi.source)!;
+            instruction.value.place = phi.operands.get(phi.definition)!;
           }
         }
       }
