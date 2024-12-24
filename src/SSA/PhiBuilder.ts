@@ -1,7 +1,7 @@
 import { Block, BlockId } from "../HIR/Block";
 import { DeclarationId } from "../HIR/Declaration";
 import { Bindings, resolveBinding } from "../HIR/HIRBuilder";
-import { Place } from "../HIR/Place";
+import { Place, TemporaryPlace } from "../HIR/Place";
 import {
   computeDominators,
   getImmediateDominators,
@@ -144,13 +144,10 @@ export class PhiBuilder {
   #createPhiPlace(declarationId: DeclarationId): Place {
     const id = this.#nextPhiId++;
 
-    return {
-      kind: "Identifier",
-      identifier: {
-        id,
-        declarationId,
-        name: makePhiName(id),
-      },
-    };
+    return new TemporaryPlace({
+      id,
+      declarationId,
+      name: makePhiName(id),
+    });
   }
 }

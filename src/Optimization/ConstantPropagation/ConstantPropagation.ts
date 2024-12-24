@@ -8,7 +8,7 @@ import {
   UnaryExpressionInstruction,
 } from "../../HIR/Instruction";
 import { Place } from "../../HIR/Place";
-import { TPrimitiveValue } from "../../HIR/Value";
+import { LoadValue, PrimitiveValue, TPrimitiveValue } from "../../HIR/Value";
 
 type Constant = {
   readonly kind: "Primitive";
@@ -129,10 +129,7 @@ function processBlock(
           block.instructions[i] = new StoreLocalInstruction(
             instruction.id,
             instruction.target,
-            {
-              kind: "Primitive",
-              value: evaluatedValue.value,
-            },
+            new PrimitiveValue(evaluatedValue.value),
             instruction.type,
           );
 
@@ -164,12 +161,13 @@ function evaluateInstruction(
 ): Constant | null {
   switch (instruction.kind) {
     case "StoreLocal":
-      if (instruction.value.kind === "Primitive") {
+      if (instruction.value instanceof PrimitiveValue) {
         return { kind: "Primitive", value: instruction.value.value };
       }
-      if (instruction.value.kind === "Load") {
+      if (instruction.value instanceof LoadValue) {
         return readConstant(constants, instruction.value.place);
       }
+
       return null;
 
     case "UnaryExpression": {

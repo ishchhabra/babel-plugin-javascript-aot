@@ -5,7 +5,7 @@ import {
   FunctionDeclarationInstruction,
   Instruction,
 } from "../../HIR/Instruction";
-import { Place } from "../../HIR/Place";
+import { Place, TemporaryPlace } from "../../HIR/Place";
 import { CallGraph } from "./CallGraph";
 
 export function functionInlining(blocks: Map<BlockId, BasicBlock>): void {
@@ -66,14 +66,11 @@ export class FunctionInliner {
 
   #generateUniquePlace(originalPlace: Place): Place {
     const id = this.#nextIdentifierId++;
-    return {
-      kind: "Identifier",
-      identifier: {
-        id: makeIdentifierId(id),
-        name: `$inline${id}`,
-        declarationId: originalPlace.identifier.declarationId,
-      },
-    };
+    return new TemporaryPlace({
+      id: makeIdentifierId(id),
+      name: `$inline${id}`,
+      declarationId: originalPlace.identifier.declarationId,
+    });
   }
 
   #inlineFunction(
@@ -107,7 +104,7 @@ export class FunctionInliner {
 
     targetFunction.params.forEach((param, index) => {
       const arg = call.args[index];
-      if (arg && arg.kind !== "SpreadElement") {
+      if (arg && arg instanceof Place) {
         paramMap.set(param.identifier.id, arg);
       }
     });

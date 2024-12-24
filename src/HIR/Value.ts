@@ -11,18 +11,14 @@ export type TPrimitiveValue =
   | symbol;
 
 export abstract class Value {
-  abstract kind: "Primitive" | "Load";
-
   abstract cloneWithPlaces(places: Map<IdentifierId, Place>): Value;
 }
 
 export class PrimitiveValue extends Value {
-  kind: "Primitive";
   value: TPrimitiveValue;
 
   constructor(value: TPrimitiveValue) {
     super();
-    this.kind = "Primitive";
     this.value = value;
   }
 
@@ -32,12 +28,10 @@ export class PrimitiveValue extends Value {
 }
 
 export class LoadValue extends Value {
-  kind: "Load";
   place: Place;
 
   constructor(place: Place) {
     super();
-    this.kind = "Load";
     this.place = place;
   }
 

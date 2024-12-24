@@ -16,7 +16,7 @@ import {
   UnsupportedNodeInstruction,
   UpdateExpressionInstruction,
 } from "./Instruction";
-import { Place } from "./Place";
+import { Place, TemporaryPlace } from "./Place";
 import { LoadValue, PrimitiveValue } from "./Value";
 
 export type Bindings = Map<DeclarationId, Map<BlockId, Place>>;
@@ -644,7 +644,7 @@ export class HIRBuilder {
   // Utility Methods
   #createTemporaryPlace(declarationId?: DeclarationId): Place {
     const identifierId = makeIdentifierId(this.#nextIdentifierId++);
-    return new Place({
+    return new TemporaryPlace({
       id: identifierId,
       declarationId:
         declarationId ?? makeDeclarationId(this.#nextDeclarationId++),

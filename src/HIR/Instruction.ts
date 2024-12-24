@@ -134,9 +134,9 @@ export class ArrayExpressionInstruction extends BaseInstruction {
   ): ArrayExpressionInstruction {
     const newTarget = places.get(this.target.identifier.id) ?? this.target;
     const newElements = this.elements.map((element) =>
-      element.kind === "SpreadElement"
-        ? element
-        : (places.get(element.identifier.id) ?? element),
+      element instanceof Place
+        ? (places.get(element.identifier.id) ?? element)
+        : (element as SpreadElement),
     );
     return new ArrayExpressionInstruction(this.id, newTarget, newElements);
   }
@@ -277,9 +277,9 @@ export class CallExpressionInstruction extends BaseInstruction {
     const newTarget = places.get(this.target.identifier.id) ?? this.target;
     const newCallee = places.get(this.callee.identifier.id) ?? this.callee;
     const newArgs = this.args.map((arg) =>
-      arg.kind === "SpreadElement"
-        ? arg
-        : (places.get(arg.identifier.id) ?? arg),
+      arg instanceof Place
+        ? (places.get(arg.identifier.id) ?? arg)
+        : (arg as SpreadElement),
     );
     return new CallExpressionInstruction(
       this.id,

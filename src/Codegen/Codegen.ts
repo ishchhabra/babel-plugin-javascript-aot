@@ -8,9 +8,13 @@ import {
   Instruction,
   LoopBlock,
   Place,
+  TemporaryPlace,
   Terminal,
   Value,
 } from "../HIR";
+
+import { SpreadElement } from "../HIR/Instruction";
+import { LoadValue, PrimitiveValue } from "../HIR/Value";
 
 export class Codegen {
   readonly #blocks: Map<BlockId, Block>;
@@ -165,10 +169,15 @@ export class Codegen {
       case "CallExpression": {
         const callee = this.#generatePlace(instruction.callee);
         const args = instruction.args.map((arg) => {
-          if (arg.kind === "SpreadElement") {
+          if (arg instanceof Place) {
+            return this.#generatePlace(arg);
+          }
+
+          if ((arg as SpreadElement).kind === "SpreadElement") {
             return t.spreadElement(this.#generatePlace(arg.place));
           }
-          return this.#generatePlace(arg);
+
+          throw new Error("Unsupported argument kind");
         });
         return t.callExpression(callee, args);
       }
@@ -199,10 +208,15 @@ export class Codegen {
       case "ArrayExpression": {
         return t.arrayExpression(
           instruction.elements.map((element) => {
-            if (element.kind === "SpreadElement") {
+            if (element instanceof Place) {
+              return this.#generatePlace(element);
+            }
+
+            if ((element as SpreadElement).kind === "SpreadElement") {
               return t.spreadElement(this.#generatePlace(element.place));
             }
-            return this.#generatePlace(element);
+
+            throw new Error("Unsupported element kind");
           }),
         );
       }
@@ -210,19 +224,23 @@ export class Codegen {
   }
 
   #generatePlace(place: Place): t.Expression {
-    switch (place.kind) {
-      case "Identifier":
-        return t.identifier(place.identifier.name);
+    if (place instanceof TemporaryPlace) {
+      return t.identifier(place.identifier.name);
     }
+
+    throw new Error("Unsupported place kind");
   }
 
   #generateValue(value: Value): t.Expression {
-    switch (value.kind) {
-      case "Primitive":
-        return t.valueToNode(value.value) as t.Expression;
-      case "Load":
-        return t.identifier(value.place.identifier.name);
+    if (value instanceof PrimitiveValue) {
+      return t.valueToNode(value.value) as t.Expression;
     }
+
+    if (value instanceof LoadValue) {
+      return t.identifier(value.place.identifier.name);
+    }
+
+    throw new Error("Unsupported value kind");
   }
 
   #generateTerminal(terminal: Terminal, body: t.Statement[]) {
