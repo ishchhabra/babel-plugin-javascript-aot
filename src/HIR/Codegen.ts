@@ -246,13 +246,15 @@ export class Codegen {
 
   #generateTerminal(terminal: Terminal, body: t.Statement[]) {
     switch (terminal.kind) {
-      case "branch": {
+      case "if": {
         const test = t.identifier(terminal.test.identifier.name);
         const consequent: t.Statement[] = [];
         const alternate: t.Statement[] = [];
 
         this.#generateBlock(terminal.consequent, consequent);
-        this.#generateBlock(terminal.alternate, alternate);
+        if (terminal.alternate) {
+          this.#generateBlock(terminal.alternate, alternate);
+        }
 
         body.push(
           t.ifStatement(

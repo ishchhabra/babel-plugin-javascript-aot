@@ -2,11 +2,11 @@ import { BlockId } from "./Block";
 import { InstructionId } from "./Instruction";
 import { Place } from "./Place";
 
-export type BranchTerminal = {
-  kind: "branch";
+export type IfTerminal = {
+  kind: "if";
   test: Place;
   consequent: BlockId;
-  alternate: BlockId;
+  alternate: BlockId | undefined;
   fallthrough: BlockId;
   id: InstructionId;
 };
@@ -24,4 +24,4 @@ export type ReturnTerminal = {
   value: Place;
 };
 
-export type Terminal = BranchTerminal | JumpTerminal | ReturnTerminal;
+export type Terminal = IfTerminal | JumpTerminal | ReturnTerminal;

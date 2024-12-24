@@ -13,3 +13,4 @@ if (true) {
   }
 }
 const y = x;
+console.log(y);

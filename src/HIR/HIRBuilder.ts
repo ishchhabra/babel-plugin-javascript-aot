@@ -198,58 +198,76 @@ export class HIRBuilder {
     }
   }
 
+  // TODO: Fix predecessor handling for nested if statements
+  /*
+   * There appears to be an issue with buildIfStatement and nested if blocks:
+   *
+   * When a nested if statement is processed, it creates its own fallthrough block.
+   * The outer fallthrough block only has the nested if's fallthrough block as a
+   * predecessor, but loses the connection to the current block (since it was split
+   * into three parts).
+   *
+   * Need to investigate:
+   * 1. Should we create a new fallthrough block for the outer if?
+   * 2. How do we properly maintain predecessor relationships in nested cases?
+   */
   #buildIfStatement(statement: NodePath<t.IfStatement>) {
     const test = statement.get("test");
     const testPlace = this.#buildExpression(test);
 
-    const consequentBlockId = this.#nextBlockId++;
-    const alternateBlockId = this.#nextBlockId++;
-    const fallthroughBlockId = this.#nextBlockId++;
-
-    const currentBlockId = this.#currentBlock.id;
-
-    this.#currentBlock.setTerminal({
-      kind: "branch",
-      id: makeInstructionId(this.#nextInstructionId++),
-      test: testPlace,
-      consequent: consequentBlockId,
-      alternate: alternateBlockId,
-      fallthrough: fallthroughBlockId,
-    });
+    const currentBlock = this.#currentBlock;
 
     // Process consequent
+    const consequent = statement.get("consequent");
     const consequentBlock = BasicBlock.empty(
-      consequentBlockId,
-      this.#currentBlock.id,
+      this.#nextBlockId++,
+      currentBlock.id,
     );
-    consequentBlock.addPredecessor(currentBlockId);
-    this.#blocks.set(consequentBlockId, consequentBlock);
+    consequentBlock.addPredecessor(currentBlock.id);
+    this.#blocks.set(consequentBlock.id, consequentBlock);
+
     this.#currentBlock = consequentBlock;
-    this.#buildStatement(statement.get("consequent"));
+    this.#buildStatement(consequent);
 
     // Process alternate
-    const alternateBlock = BasicBlock.empty(
-      alternateBlockId,
-      this.#currentBlock.id,
-    );
-    alternateBlock.addPredecessor(currentBlockId);
-    this.#blocks.set(alternateBlockId, alternateBlock);
-    if (statement.node.alternate) {
+    const alternate = statement.get("alternate");
+    let alternateBlock: Block | undefined;
+    if (alternate.hasNode()) {
+      alternateBlock = BasicBlock.empty(this.#nextBlockId++, currentBlock.id);
+      alternateBlock.addPredecessor(currentBlock.id);
+      this.#blocks.set(alternateBlock.id, alternateBlock);
+
       this.#currentBlock = alternateBlock;
-      const alternate = statement.get("alternate");
-      if (alternate.hasNode()) {
-        this.#buildStatement(alternate);
-      }
+      this.#buildStatement(alternate);
     }
 
-    // Create fallthrough block
+    // Process fallthrough
     const fallthroughBlock = BasicBlock.empty(
-      fallthroughBlockId,
-      this.#currentBlock.parent,
+      this.#nextBlockId++,
+      currentBlock.id,
     );
-    fallthroughBlock.addPredecessor(consequentBlockId);
-    fallthroughBlock.addPredecessor(alternateBlockId);
-    this.#blocks.set(fallthroughBlockId, fallthroughBlock);
+    fallthroughBlock.addPredecessor(
+      this.#resolveBlockTerminalChain(consequentBlock).id,
+    );
+
+    if (alternateBlock) {
+      fallthroughBlock.addPredecessor(
+        this.#resolveBlockTerminalChain(alternateBlock).id,
+      );
+    } else {
+      fallthroughBlock.addPredecessor(currentBlock.id);
+    }
+    this.#blocks.set(fallthroughBlock.id, fallthroughBlock);
+
+    currentBlock.setTerminal({
+      kind: "if",
+      id: makeInstructionId(this.#nextInstructionId++),
+      test: testPlace,
+      consequent: consequentBlock.id,
+      alternate: alternateBlock?.id,
+      fallthrough: fallthroughBlock.id,
+    });
+
     this.#currentBlock = fallthroughBlock;
   }
 
@@ -392,6 +410,9 @@ export class HIRBuilder {
       case "UpdateExpression":
         expression.assertUpdateExpression();
         return this.#buildUpdateExpression(expression);
+      // case "MemberExpression":
+      //   expression.assertMemberExpression();
+      //   return this.#buildMemberExpression(expression);
       case "NumericLiteral":
       case "StringLiteral":
       case "BooleanLiteral":
@@ -453,12 +474,17 @@ export class HIRBuilder {
   }
 
   #buildCallExpression(expression: NodePath<t.CallExpression>): Place {
-    expression.assertCallExpression();
-    const callee = this.#buildExpression(expression.get("callee"));
-    const args = expression.get("arguments").map((arg) => {
-      if (arg.isSpreadElement()) {
+    const callee = expression.get("callee");
+    const calleePlace = this.#buildExpression(callee);
+
+    const args = expression.get("arguments");
+    const argsPlaces = args.map((arg) => {
+      if (arg.isIdentifier()) {
+        return this.#buildIdentifier(arg);
+      } else if (arg.isSpreadElement()) {
         return this.#buildSpreadElement(arg);
       }
+
       return this.#buildExpression(arg as NodePath<t.Expression>);
     });
 
@@ -467,8 +493,8 @@ export class HIRBuilder {
       new CallExpressionInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,
-        callee,
-        args,
+        calleePlace,
+        argsPlaces,
       ),
     );
 
@@ -584,6 +610,32 @@ export class HIRBuilder {
     return resultPlace;
   }
 
+  // #buildMemberExpression(expression: NodePath<t.MemberExpression>): Place {
+  //   const object = this.#buildExpression(expression.get("object"));
+  //   const property = expression.node.computed
+  //     ? this.#buildExpression(expression.get("property"))
+  //     : this.#buildLiteral({
+  //         node: {
+  //           type: "StringLiteral",
+  //           value: (expression.node.property as t.Identifier).name,
+  //         },
+  //       } as NodePath<t.StringLiteral>);
+
+  //   const resultPlace = this.#createTemporaryPlace();
+
+  //   this.#currentBlock.addInstruction(
+  //     new MemberExpressionInstruction(
+  //       makeInstructionId(this.#nextInstructionId++),
+  //       resultPlace,
+  //       object,
+  //       property,
+  //       expression.node.computed,
+  //     ),
+  //   );
+
+  //   return resultPlace;
+  // }
+
   #buildLiteral(
     expression: NodePath<t.NumericLiteral | t.StringLiteral | t.BooleanLiteral>,
   ): Place {
@@ -672,5 +724,25 @@ export class HIRBuilder {
     }
 
     scope.setData(to, data);
+  }
+
+  #resolveBlockTerminalChain(block: Block): Block {
+    const terminal = block.terminal;
+    if (terminal === null) {
+      return block;
+    }
+
+    switch (terminal.kind) {
+      case "if":
+        return this.#resolveBlockTerminalChain(
+          this.#blocks.get(terminal.fallthrough)!,
+        );
+      case "jump":
+        return this.#resolveBlockTerminalChain(
+          this.#blocks.get(terminal.target)!,
+        );
+      case "return":
+        return block;
+    }
   }
 }

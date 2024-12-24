@@ -240,6 +240,43 @@ export class UpdateExpressionInstruction extends BaseInstruction {
   }
 }
 
+// export class MemberExpressionInstruction extends BaseInstruction {
+//   kind: "MemberExpression";
+//   object: Place;
+//   property: Place;
+//   computed: boolean;
+
+//   constructor(
+//     id: InstructionId,
+//     target: Place,
+//     object: Place,
+//     property: Place,
+//     computed: boolean,
+//   ) {
+//     super(id, target, "const");
+//     this.kind = "MemberExpression";
+//     this.object = object;
+//     this.property = property;
+//     this.computed = computed;
+//   }
+
+//   cloneWithPlaces(
+//     places: Map<IdentifierId, Place>,
+//   ): MemberExpressionInstruction {
+//     const newTarget = places.get(this.target.identifier.id) ?? this.target;
+//     const newObject = places.get(this.object.identifier.id) ?? this.object;
+//     const newProperty =
+//       places.get(this.property.identifier.id) ?? this.property;
+//     return new MemberExpressionInstruction(
+//       this.id,
+//       newTarget,
+//       newObject,
+//       newProperty,
+//       this.computed,
+//     );
+//   }
+// }
+
 export class CallExpressionInstruction extends BaseInstruction {
   kind: "CallExpression";
   callee: Place;

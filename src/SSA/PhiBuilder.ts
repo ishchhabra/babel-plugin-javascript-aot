@@ -1,6 +1,7 @@
 import { Block, BlockId } from "../HIR/Block";
 import { DeclarationId } from "../HIR/Declaration";
 import { Bindings } from "../HIR/HIRBuilder";
+import { StoreLocalInstruction } from "../HIR/Instruction";
 import { Place } from "../HIR/Place";
 import {
   computeDominators,
@@ -66,7 +67,7 @@ export class PhiBuilder {
         }
         phis.add(phi);
 
-        this.#updateBindingsAfterPhi(blockId, declarationId, phi.place);
+        this.#updateBindingsAfterPhi(blockId, declarationId, phi.place, phi);
       }
     }
 
@@ -104,26 +105,44 @@ export class PhiBuilder {
     blockId: BlockId,
     declarationId: DeclarationId,
     phiPlace: Place,
+    phi: Phi,
   ) {
     const declarationBindings = this.#bindings.get(declarationId);
     if (!declarationBindings) return;
 
-    // Update the binding for the merge point block
-    declarationBindings.set(blockId, phiPlace);
+    // Get the block where we want to insert the phi
+    const block = this.#blocks.get(blockId);
+    if (!block) return;
 
-    // Get dominators to properly determine which blocks should use the phi
+    // Create a set of places we're looking to replace
+    const placesToReplace = new Set(Array.from(phi.operands.values()));
+
+    // Find the first load instruction that uses any of our operand places
+    for (let i = 0; i < block.instructions.length; i++) {
+      const inst = block.instructions[i];
+      if (
+        inst instanceof StoreLocalInstruction &&
+        inst.value.kind === "Load" &&
+        Array.from(placesToReplace).some(
+          (place) =>
+            inst.value.kind === "Load" &&
+            place.identifier.id === inst.value.place.identifier.id,
+        )
+      ) {
+        // Replace the load's place with our phi place
+        inst.value.place = phiPlace;
+        break;
+      }
+    }
+
+    // Update bindings as before
+    declarationBindings.set(blockId, phiPlace);
     const doms = computeDominators(this.#blocks, blockId);
 
-    // Update bindings for all blocks dominated by the merge point
     for (const [otherBlockId, _] of this.#blocks) {
       if (otherBlockId === blockId) continue;
-
-      // Check if this block is dominated by the merge point
-      if (doms.has(otherBlockId)) {
-        // Only update if the block doesn't already have its own definition
-        if (!declarationBindings.has(otherBlockId)) {
-          declarationBindings.set(otherBlockId, phiPlace);
-        }
+      if (doms.has(otherBlockId) && !declarationBindings.has(otherBlockId)) {
+        declarationBindings.set(otherBlockId, phiPlace);
       }
     }
   }
