@@ -1,11 +1,11 @@
 const $0 = 2;
 if ($0 > 2) {
-  const $p0 = 2;
+  let $p0 = 2;
+  $p0 = $p0;
   if ($0 > 3) {
-    const $11 = 3;
+    const $12 = 3;
+    $p0 = $12;
   }
-  const $13 = console.log;
-  $13($p0);
+  console.log($p0);
 }
-const $17 = console.log;
-$17($0);
+console.log($0);

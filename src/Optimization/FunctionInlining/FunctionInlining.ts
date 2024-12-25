@@ -57,10 +57,15 @@ export class FunctionInliner {
 
   #isInlineable(instruction: Instruction): boolean {
     if (instruction.kind !== "CallExpression") {
+      console.log(`Not inlineable: ${instruction.kind}`);
       return false;
     }
 
     const callee = instruction.callee.identifier.id;
+    console.log(
+      `Is recursive: ${callee}`,
+      this.#callGraph.isFunctionRecursive(callee),
+    );
     return !this.#callGraph.isFunctionRecursive(callee);
   }
 

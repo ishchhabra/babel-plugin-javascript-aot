@@ -8,6 +8,7 @@ import {
   ArrayExpressionInstruction,
   BinaryExpressionInstruction,
   CallExpressionInstruction,
+  ExpressionStatementInstruction,
   FunctionDeclarationInstruction,
   LiteralInstruction,
   LoadLocalInstruction,
@@ -360,8 +361,16 @@ export class HIRBuilder {
   }
 
   #buildExpressionStatement(statement: NodePath<t.ExpressionStatement>) {
+    const resultPlace = this.#createTemporaryPlace();
     const expression = statement.get("expression");
-    this.#buildExpression(expression);
+    const expressionPlace = this.#buildExpression(expression);
+    this.#currentBlock.addInstruction(
+      new ExpressionStatementInstruction(
+        makeInstructionId(this.#nextInstructionId++),
+        resultPlace,
+        expressionPlace,
+      ),
+    );
   }
 
   #buildUnsupportedStatement(statement: NodePath<t.Statement>) {

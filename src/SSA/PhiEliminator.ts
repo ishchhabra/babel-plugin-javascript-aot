@@ -1,11 +1,13 @@
-import { Bindings } from "../HIR";
+import { Bindings, DeclarationId, Place, TemporaryPlace } from "../HIR";
 import { Block, BlockId } from "../HIR/Block";
 import { resolveBinding } from "../HIR/HIRBuilder";
+import { makeIdentifierId, makeIdentifierName } from "../HIR/Identifier";
 import {
   AssignmentExpressionInstruction,
+  ExpressionStatementInstruction,
+  LoadLocalInstruction,
   StoreLocalInstruction,
 } from "../HIR/Instruction";
-import { LoadValue } from "../HIR/Value";
 import { Phi } from "./Phi";
 
 export function eliminatePhis(
@@ -25,6 +27,8 @@ export class PhiEliminator {
   #blocks: Map<BlockId, Block>;
   #phis: Set<Phi>;
 
+  #nextIdentifierId = 100;
+
   constructor(bindings: Bindings, blocks: Map<BlockId, Block>, phis: Set<Phi>) {
     this.#bindings = bindings;
     this.#blocks = blocks;
@@ -39,24 +43,15 @@ export class PhiEliminator {
         continue;
       }
 
-      const bindingPlace = resolveBinding(
-        this.#bindings,
-        this.#blocks,
-        declarationId,
-        phi.definition,
-      );
-      bindingPlace.identifier.name = phi.place.identifier.name;
+      const declarationPlace = this.#getDeclarationPlace(declarationId, phi);
+      this.#renameDeclaration(declarationPlace, phi);
 
-      const declarationPlace = declarationBindings.get(phi.definition)!;
-      const storeLocal = this.#blocks
-        .get(phi.definition)
-        ?.instructions.find(
-          (instr) =>
-            instr instanceof StoreLocalInstruction &&
-            instr.target === declarationPlace,
-        ) as StoreLocalInstruction | undefined;
-      if (storeLocal) {
-        storeLocal.type = "let";
+      const declarationInstruction = this.#findDeclarationInstruction(
+        declarationPlace,
+        phi,
+      );
+      if (declarationInstruction) {
+        declarationInstruction.type = "let";
       }
 
       const block = this.#blocks.get(phi.definition);
@@ -67,16 +62,53 @@ export class PhiEliminator {
       // For each predecessor, add move instructions at the end of the block
       for (const [predBlockId, predPlace] of phi.operands.entries()) {
         const predBlock = this.#blocks.get(predBlockId);
-        if (!predBlock) continue;
+        if (!predBlock) {
+          continue;
+        }
 
-        // Create a move instruction (store) for the phi operand
-        const value = new LoadValue(predPlace);
-        const instruction = new AssignmentExpressionInstruction(
-          0,
-          phi.place,
-          value,
+        // Create an identifier for the phi target
+        const phiTargetId = makeIdentifierId(this.#nextIdentifierId++);
+        const phiTarget = new TemporaryPlace({
+          id: phiTargetId,
+          name: phi.place.identifier.name, // Use the original phi name
+          declarationId: phi.place.identifier.declarationId,
+        });
+
+        // Load the value from predecessor
+        const loadInstructionPlace = this.#createTemporaryPlace(
+          phi.place.identifier.declarationId,
         );
-        predBlock.instructions.push(instruction); // Add to the end of the predecessor block
+        const loadInstruction = new LoadLocalInstruction(
+          0,
+          loadInstructionPlace,
+          predPlace,
+        );
+
+        // Use AssignmentExpression instead of StoreLocal
+        const assignTarget = this.#createTemporaryPlace(
+          phi.place.identifier.declarationId,
+        );
+        const assignInstruction = new AssignmentExpressionInstruction(
+          0,
+          assignTarget,
+          phiTarget,
+          loadInstructionPlace,
+        );
+
+        const target = this.#createTemporaryPlace(
+          phi.place.identifier.declarationId,
+        );
+        const expressionStatement = new ExpressionStatementInstruction(
+          0,
+          target,
+          assignTarget,
+        );
+
+        predBlock.instructions.push(
+          loadInstruction,
+          assignInstruction,
+          expressionStatement,
+        );
       }
 
       // Finally, remove the phi node after replacing it
@@ -84,11 +116,8 @@ export class PhiEliminator {
         const instruction = block.instructions[i];
         if (instruction instanceof StoreLocalInstruction) {
           // Replace phi usages with the actual assigned value
-          if (
-            instruction.value instanceof LoadValue &&
-            instruction.value.place === phi.place
-          ) {
-            instruction.value.place = phi.operands.get(phi.definition)!;
+          if (instruction.value === phi.place) {
+            instruction.value = phi.operands.get(phi.definition)!;
           }
         }
       }
@@ -97,6 +126,36 @@ export class PhiEliminator {
     }
 
     return this.#blocks;
+  }
+
+  #getDeclarationPlace(declarationId: DeclarationId, phi: Phi): Place {
+    const declarationPlace = resolveBinding(
+      this.#bindings,
+      this.#blocks,
+      declarationId,
+      phi.definition,
+    );
+    return declarationPlace;
+  }
+
+  #renameDeclaration(declarationPlace: Place, phi: Phi) {
+    declarationPlace.identifier.name = phi.place.identifier.name;
+  }
+
+  #findDeclarationInstruction(
+    declarationPlace: Place,
+    phi: Phi,
+  ): StoreLocalInstruction | undefined {
+    const block = this.#blocks.get(phi.definition);
+    if (block === undefined) {
+      return undefined;
+    }
+
+    return block.instructions.find(
+      (instruction): instruction is StoreLocalInstruction =>
+        instruction instanceof StoreLocalInstruction &&
+        instruction.target === declarationPlace,
+    );
   }
 
   #removePhiNodeFromBlock(phi: Phi, block: Block) {
@@ -108,4 +167,14 @@ export class PhiEliminator {
         ),
     );
   }
+
+  #createTemporaryPlace(declarationId: DeclarationId): Place {
+    const identifierId = makeIdentifierId(this.#nextIdentifierId++);
+    return new TemporaryPlace({
+      id: identifierId,
+      name: makeIdentifierName(identifierId),
+      declarationId: declarationId,
+    });
+  }
 }
+//

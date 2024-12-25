@@ -2,7 +2,7 @@ import * as t from "@babel/types";
 import { BlockId } from "./Block";
 import { IdentifierId } from "./Identifier";
 import { Place } from "./Place";
-import { TPrimitiveValue, Value } from "./Value";
+import { TPrimitiveValue } from "./Value";
 
 export type InstructionId = number;
 
@@ -53,12 +53,14 @@ export class ArrayExpressionInstruction extends BaseInstruction {
 
 export class AssignmentExpressionInstruction extends BaseInstruction {
   kind: "AssignmentExpression";
-  value: Value;
+  left: Place;
+  right: Place;
 
-  constructor(id: InstructionId, target: Place, value: Value) {
+  constructor(id: InstructionId, target: Place, left: Place, right: Place) {
     super(id, target, "const");
     this.kind = "AssignmentExpression";
-    this.value = value;
+    this.left = left;
+    this.right = right;
   }
 
   cloneWithPlaces(places: Map<IdentifierId, Place>): Instruction {
@@ -135,11 +137,29 @@ export class CallExpressionInstruction extends BaseInstruction {
   }
 }
 
-export type ExpressionStatementInstruction = {
+export class ExpressionStatementInstruction extends BaseInstruction {
   kind: "ExpressionStatement";
-  id: InstructionId;
   expression: Place;
-};
+
+  constructor(id: InstructionId, target: Place, expression: Place) {
+    super(id, target, "const");
+    this.kind = "ExpressionStatement";
+    this.expression = expression;
+  }
+
+  cloneWithPlaces(
+    places: Map<IdentifierId, Place>,
+  ): ExpressionStatementInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newExpression =
+      places.get(this.expression.identifier.id) ?? this.expression;
+    return new ExpressionStatementInstruction(
+      this.id,
+      newTarget,
+      newExpression,
+    );
+  }
+}
 
 export class FunctionDeclarationInstruction extends BaseInstruction {
   kind: "FunctionDeclaration";
@@ -361,6 +381,7 @@ export type ExpressionInstruction =
   | AssignmentExpressionInstruction;
 
 export type Instruction =
+  | ExpressionStatementInstruction
   | SpreadElementInstruction
   | LiteralInstruction
   | ExpressionInstruction

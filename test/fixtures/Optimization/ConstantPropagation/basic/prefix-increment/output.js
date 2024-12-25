@@ -1,2 +1,2 @@
-const $0 = 2;
+let $0 = 2;
 const $1;

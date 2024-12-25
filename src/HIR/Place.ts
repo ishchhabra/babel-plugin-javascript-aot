@@ -14,7 +14,7 @@ export class TemporaryPlace extends Place {
   }
 }
 
-export class IdentifierPlace extends Place {
+export class NamedPlace extends Place {
   constructor(identifier: Identifier) {
     super(identifier);
   }

@@ -1,9 +1,11 @@
 import * as t from "@babel/types";
 import {
   ArrayExpressionInstruction,
+  AssignmentExpressionInstruction,
   BasicBlock,
   Block,
   BlockId,
+  ExpressionStatementInstruction,
   FunctionDeclarationInstruction,
   IdentifierId,
   Instruction,
@@ -17,8 +19,9 @@ import {
   CallExpressionInstruction,
   LiteralInstruction,
   LoadLocalInstruction,
+  SpreadElementInstruction,
 } from "../HIR/Instruction";
-import { IfTerminal } from "../HIR/Terminal";
+import { IfTerminal, ReturnTerminal } from "../HIR/Terminal";
 
 export class Codegen {
   readonly #blocks: Map<BlockId, Block>;
@@ -70,13 +73,23 @@ export class Codegen {
         this.#generateArrayExpressionInstruction(instruction);
         break;
       }
+      case "AssignmentExpression": {
+        this.#generateAssignmentExpressionInstruction(instruction);
+        break;
+      }
       case "BinaryExpression": {
         this.#generateBinaryExpressionInstruction(instruction);
         break;
       }
       case "CallExpression": {
-        const node = this.#generateCallExpressionInstruction(instruction);
-        statements.push(t.expressionStatement(node));
+        this.#generateCallExpressionInstruction(instruction);
+        break;
+      }
+      case "ExpressionStatement": {
+        const node = this.#generateExpressionStatementInstruction(instruction);
+        if (node !== undefined) {
+          statements.push(node);
+        }
         break;
       }
       case "FunctionDeclaration": {
@@ -92,6 +105,10 @@ export class Codegen {
         this.#generateLoadLocalInstruction(instruction);
         break;
       }
+      case "SpreadElement": {
+        this.#generateSpreadElementInstruction(instruction);
+        break;
+      }
       case "StoreLocal": {
         const node = this.#generateStoreLocalInstruction(instruction);
         statements.push(node);
@@ -102,9 +119,11 @@ export class Codegen {
         break;
       }
       case "UnsupportedNode": {
-        const node = this.#generateUnsupportedNodeInstruction(instruction);
-        statements.push(node);
+        this.#generateUnsupportedNodeInstruction(instruction);
         break;
+      }
+      default: {
+        throw new Error(`Unknown instruction: ${instruction.kind}`);
       }
     }
 
@@ -115,11 +134,36 @@ export class Codegen {
   #generateArrayExpressionInstruction(instruction: ArrayExpressionInstruction) {
     const elements = instruction.elements.map((element) => {
       const node = this.#places.get(element.identifier.id);
-      t.assertExpression(node);
+      if (node === undefined) {
+        throw new Error(`Place not found: ${element.identifier.id}`);
+      }
+
+      if (!t.isExpression(node) && !t.isSpreadElement(node)) {
+        throw new Error(`Invalid element: ${element.identifier.id}`);
+      }
+
       return node;
     });
 
     const node = t.arrayExpression(elements);
+    this.#places.set(instruction.target.identifier.id, node);
+    return node;
+  }
+
+  #generateAssignmentExpressionInstruction(
+    instruction: AssignmentExpressionInstruction,
+  ) {
+    const left = t.identifier(instruction.left.identifier.name);
+
+    const right = this.#places.get(instruction.right.identifier.id);
+    if (right === undefined) {
+      throw new Error(`Place not found: ${instruction.right.identifier.id}`);
+    }
+
+    t.assertLVal(left);
+    t.assertExpression(right);
+
+    const node = t.assignmentExpression("=", left, right);
     this.#places.set(instruction.target.identifier.id, node);
     return node;
   }
@@ -164,14 +208,29 @@ export class Codegen {
     return node;
   }
 
+  #generateExpressionStatementInstruction(
+    instruction: ExpressionStatementInstruction,
+  ) {
+    const expression = this.#places.get(instruction.expression.identifier.id);
+    if (expression === undefined) {
+      throw new Error(
+        `Place not found: ${instruction.expression.identifier.id}`,
+      );
+    }
+
+    if (t.isExpression(expression)) {
+      return t.expressionStatement(expression);
+    }
+
+    return undefined;
+  }
+
   #generateFunctionDeclarationInstruction(
     instruction: FunctionDeclarationInstruction,
   ) {
-    const params = instruction.params.map((param) => {
-      const node = this.#places.get(param.identifier.id);
-      t.assertPattern(node);
-      return node;
-    });
+    const params = instruction.params.map((param) =>
+      t.identifier(param.identifier.name),
+    );
     const bodyStatements = this.#generateBlock(instruction.body);
 
     const node = t.functionDeclaration(
@@ -190,7 +249,26 @@ export class Codegen {
   }
 
   #generateLoadLocalInstruction(instruction: LoadLocalInstruction) {
-    const node = t.identifier(instruction.value.identifier.name);
+    const existingNode = this.#places.get(instruction.value.identifier.id);
+    if (t.isExpression(existingNode)) {
+      this.#places.set(instruction.target.identifier.id, existingNode);
+      return existingNode;
+    }
+
+    const newNode = t.identifier(instruction.value.identifier.name);
+    this.#places.set(instruction.target.identifier.id, newNode);
+    return newNode;
+  }
+
+  #generateSpreadElementInstruction(instruction: SpreadElementInstruction) {
+    const value = this.#places.get(instruction.value.identifier.id);
+    if (value === undefined) {
+      throw new Error(`Place not found: ${instruction.value.identifier.id}`);
+    }
+
+    t.assertExpression(value);
+
+    const node = t.spreadElement(value);
     this.#places.set(instruction.target.identifier.id, node);
     return node;
   }
@@ -198,7 +276,7 @@ export class Codegen {
   #generateStoreLocalInstruction(instruction: StoreLocalInstruction) {
     const value = this.#places.get(instruction.value.identifier.id);
 
-    const node = t.variableDeclaration("const", [
+    const node = t.variableDeclaration(instruction.type, [
       t.variableDeclarator(
         t.identifier(instruction.target.identifier.name),
         value as t.Expression,
@@ -223,19 +301,9 @@ export class Codegen {
   }
 
   #generateUnsupportedNodeInstruction(instruction: UnsupportedNodeInstruction) {
-    if (!t.isStatement(instruction.node)) {
-      const node = t.variableDeclaration("const", [
-        t.variableDeclarator(
-          t.identifier(instruction.target.identifier.name),
-          instruction.node as t.Expression,
-        ),
-      ]);
-      this.#places.set(instruction.target.identifier.id, node);
-      return node;
-    }
-
-    t.assertStatement(instruction.node);
-    return instruction.node;
+    const node = instruction.node;
+    this.#places.set(instruction.target.identifier.id, node);
+    return node;
   }
 
   // #################### Terminals ####################
@@ -247,6 +315,9 @@ export class Codegen {
       case "jump":
         // this.#generateJumpTerminal(terminal);
         break;
+
+      case "return":
+        return this.#generateReturnTerminal(terminal);
     }
 
     throw new Error(`Unknown terminal: ${terminal.kind}`);
@@ -274,5 +345,15 @@ export class Codegen {
 
     const statements = [node, ...this.#generateBlock(terminal.fallthrough)];
     return statements;
+  }
+
+  #generateReturnTerminal(terminal: ReturnTerminal): Array<t.Statement> {
+    const value = this.#places.get(terminal.value.identifier.id);
+    if (value === undefined) {
+      throw new Error(`Place not found: ${terminal.value.identifier.id}`);
+    }
+
+    t.assertExpression(value);
+    return [t.returnStatement(value)];
   }
 }

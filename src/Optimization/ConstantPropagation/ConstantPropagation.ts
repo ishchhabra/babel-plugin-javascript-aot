@@ -36,7 +36,6 @@ class ConstantPropagation {
 
       if (instruction instanceof UnaryExpressionInstruction) {
         const result = this.#evaluateUnaryExpression(instruction);
-        console.log(`result: ${result as any}`);
         if (result !== undefined) {
           this.#constants.set(instruction.target.identifier.id, result);
           block.instructions[i] = new LiteralInstruction(

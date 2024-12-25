@@ -1,9 +1,1 @@
-const $2 = 1;
-const $3 = 2;
-const $4 = 3;
-const $6 = 4;
-const $7 = 5;
-const $8 = 6;
-const $5 = [$6, $7, $8];
-const $1 = [$2, $3, $4, ...$5];
-const $0 = $1;
+const $0 = [1, 2, 3, ...[4, 5, 6]];
