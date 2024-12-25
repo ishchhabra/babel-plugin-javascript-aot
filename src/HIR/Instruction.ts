@@ -2,7 +2,7 @@ import * as t from "@babel/types";
 import { BlockId } from "./Block";
 import { IdentifierId } from "./Identifier";
 import { Place } from "./Place";
-import { Value } from "./Value";
+import { TPrimitiveValue, Value } from "./Value";
 
 export type InstructionId = number;
 
@@ -30,68 +30,24 @@ export abstract class BaseInstruction {
   abstract cloneWithPlaces(places: Map<IdentifierId, Place>): Instruction;
 }
 
-export class FunctionDeclarationInstruction extends BaseInstruction {
-  kind: "FunctionDeclaration";
-  params: Place[];
-  body: BlockId;
+export class ArrayExpressionInstruction extends BaseInstruction {
+  kind: "ArrayExpression";
+  elements: Place[];
 
-  constructor(
-    id: InstructionId,
-    target: Place,
-    params: Place[],
-    body: BlockId,
-  ) {
+  constructor(id: InstructionId, target: Place, elements: Place[]) {
     super(id, target, "const");
-    this.kind = "FunctionDeclaration";
-    this.params = params;
-    this.body = body;
-  }
-
-  getPlaces(): Place[] {
-    return [...super.getPlaces(), ...this.params];
+    this.kind = "ArrayExpression";
+    this.elements = elements;
   }
 
   cloneWithPlaces(
     places: Map<IdentifierId, Place>,
-  ): FunctionDeclarationInstruction {
+  ): ArrayExpressionInstruction {
     const newTarget = places.get(this.target.identifier.id) ?? this.target;
-    const newParams = this.params.map(
-      (param) => places.get(param.identifier.id) ?? param,
+    const newElements = this.elements.map(
+      (element) => places.get(element.identifier.id) ?? element,
     );
-    return new FunctionDeclarationInstruction(
-      this.id,
-      newTarget,
-      newParams,
-      this.body,
-    );
-  }
-}
-
-export class StoreLocalInstruction extends BaseInstruction {
-  kind: "StoreLocal";
-  value: Value;
-  type: "const" | "let";
-
-  constructor(
-    id: InstructionId,
-    target: Place,
-    value: Value,
-    type: "const" | "let",
-  ) {
-    super(id, target, type);
-    this.kind = "StoreLocal";
-    this.value = value;
-    this.type = type;
-  }
-
-  getPlaces(): Place[] {
-    return [...super.getPlaces()];
-  }
-
-  cloneWithPlaces(places: Map<IdentifierId, Place>): StoreLocalInstruction {
-    const newTarget = places.get(this.target.identifier.id) ?? this.target;
-    const newValue = this.value.cloneWithPlaces(places);
-    return new StoreLocalInstruction(this.id, newTarget, newValue, this.type);
+    return new ArrayExpressionInstruction(this.id, newTarget, newElements);
   }
 }
 
@@ -107,75 +63,6 @@ export class AssignmentExpressionInstruction extends BaseInstruction {
 
   cloneWithPlaces(places: Map<IdentifierId, Place>): Instruction {
     throw new Error("Method not implemented.");
-  }
-}
-
-export interface SpreadElement {
-  kind: "SpreadElement";
-  place: Place;
-}
-
-export class ArrayExpressionInstruction extends BaseInstruction {
-  kind: "ArrayExpression";
-  elements: (Place | SpreadElement)[];
-
-  constructor(
-    id: InstructionId,
-    target: Place,
-    elements: (Place | SpreadElement)[],
-  ) {
-    super(id, target, "const");
-    this.kind = "ArrayExpression";
-    this.elements = elements;
-  }
-
-  cloneWithPlaces(
-    places: Map<IdentifierId, Place>,
-  ): ArrayExpressionInstruction {
-    const newTarget = places.get(this.target.identifier.id) ?? this.target;
-    const newElements = this.elements.map((element) =>
-      element instanceof Place
-        ? (places.get(element.identifier.id) ?? element)
-        : (element as SpreadElement),
-    );
-    return new ArrayExpressionInstruction(this.id, newTarget, newElements);
-  }
-}
-
-export class UnaryExpressionInstruction extends BaseInstruction {
-  kind: "UnaryExpression";
-  operator: Exclude<
-    t.UnaryExpression["operator"],
-    "typeof" | "delete" | "throw" | "void"
-  >;
-  value: Place;
-
-  constructor(
-    id: InstructionId,
-    target: Place,
-    operator: Exclude<
-      t.UnaryExpression["operator"],
-      "typeof" | "delete" | "throw" | "void"
-    >,
-    value: Place,
-  ) {
-    super(id, target, "const");
-    this.kind = "UnaryExpression";
-    this.operator = operator;
-    this.value = value;
-  }
-
-  cloneWithPlaces(
-    places: Map<IdentifierId, Place>,
-  ): UnaryExpressionInstruction {
-    const newTarget = places.get(this.target.identifier.id) ?? this.target;
-    const newValue = places.get(this.value.identifier.id) ?? this.value;
-    return new UnaryExpressionInstruction(
-      this.id,
-      newTarget,
-      this.operator,
-      newValue,
-    );
   }
 }
 
@@ -221,6 +108,215 @@ export class BinaryExpressionInstruction extends BaseInstruction {
   }
 }
 
+export class CallExpressionInstruction extends BaseInstruction {
+  kind: "CallExpression";
+  callee: Place;
+  args: Place[];
+
+  constructor(id: InstructionId, target: Place, callee: Place, args: Place[]) {
+    super(id, target, "const");
+    this.kind = "CallExpression";
+    this.callee = callee;
+    this.args = args;
+  }
+
+  cloneWithPlaces(places: Map<IdentifierId, Place>): CallExpressionInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newCallee = places.get(this.callee.identifier.id) ?? this.callee;
+    const newArgs = this.args.map(
+      (arg) => places.get(arg.identifier.id) ?? arg,
+    );
+    return new CallExpressionInstruction(
+      this.id,
+      newTarget,
+      newCallee,
+      newArgs,
+    );
+  }
+}
+
+export type ExpressionStatementInstruction = {
+  kind: "ExpressionStatement";
+  id: InstructionId;
+  expression: Place;
+};
+
+export class FunctionDeclarationInstruction extends BaseInstruction {
+  kind: "FunctionDeclaration";
+  params: Place[];
+  body: BlockId;
+
+  constructor(
+    id: InstructionId,
+    target: Place,
+    params: Place[],
+    body: BlockId,
+  ) {
+    super(id, target, "const");
+    this.kind = "FunctionDeclaration";
+    this.params = params;
+    this.body = body;
+  }
+
+  getPlaces(): Place[] {
+    return [...super.getPlaces(), ...this.params];
+  }
+
+  cloneWithPlaces(
+    places: Map<IdentifierId, Place>,
+  ): FunctionDeclarationInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newParams = this.params.map(
+      (param) => places.get(param.identifier.id) ?? param,
+    );
+    return new FunctionDeclarationInstruction(
+      this.id,
+      newTarget,
+      newParams,
+      this.body,
+    );
+  }
+}
+
+export class LiteralInstruction extends BaseInstruction {
+  kind: "Literal";
+  value: TPrimitiveValue;
+
+  constructor(id: InstructionId, target: Place, value: TPrimitiveValue) {
+    super(id, target, "const");
+    this.kind = "Literal";
+    this.value = value;
+  }
+
+  cloneWithPlaces(): LiteralInstruction {
+    return this;
+  }
+}
+
+export class LoadLocalInstruction extends BaseInstruction {
+  kind: "LoadLocal";
+  value: Place;
+
+  constructor(id: InstructionId, target: Place, value: Place) {
+    super(id, target, "const");
+    this.kind = "LoadLocal";
+    this.value = value;
+  }
+
+  cloneWithPlaces(): LoadLocalInstruction {
+    return this;
+  }
+}
+
+export function makeInstructionId(id: number): InstructionId {
+  return id;
+}
+
+export interface SpreadElement {
+  kind: "SpreadElement";
+  place: Place;
+}
+
+export class SpreadElementInstruction extends BaseInstruction {
+  kind: "SpreadElement";
+  value: Place;
+
+  constructor(id: InstructionId, target: Place, value: Place) {
+    super(id, target, "const");
+    this.kind = "SpreadElement";
+    this.value = value;
+  }
+
+  cloneWithPlaces(places: Map<IdentifierId, Place>): SpreadElementInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newValue = places.get(this.value.identifier.id) ?? this.value;
+    return new SpreadElementInstruction(this.id, newTarget, newValue);
+  }
+}
+
+export class StoreLocalInstruction extends BaseInstruction {
+  kind: "StoreLocal";
+  value: Place;
+  type: "const" | "let";
+
+  constructor(
+    id: InstructionId,
+    target: Place,
+    value: Place,
+    type: "const" | "let",
+  ) {
+    super(id, target, type);
+    this.kind = "StoreLocal";
+    this.value = value;
+    this.type = type;
+  }
+
+  getPlaces(): Place[] {
+    return [...super.getPlaces()];
+  }
+
+  cloneWithPlaces(places: Map<IdentifierId, Place>): StoreLocalInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newValue = places.get(this.value.identifier.id) ?? this.value;
+    return new StoreLocalInstruction(this.id, newTarget, newValue, this.type);
+  }
+}
+
+export class UnaryExpressionInstruction extends BaseInstruction {
+  kind: "UnaryExpression";
+  operator: Exclude<
+    t.UnaryExpression["operator"],
+    "typeof" | "delete" | "throw" | "void"
+  >;
+  value: Place;
+
+  constructor(
+    id: InstructionId,
+    target: Place,
+    operator: Exclude<
+      t.UnaryExpression["operator"],
+      "typeof" | "delete" | "throw" | "void"
+    >,
+    value: Place,
+  ) {
+    super(id, target, "const");
+    this.kind = "UnaryExpression";
+    this.operator = operator;
+    this.value = value;
+  }
+
+  cloneWithPlaces(
+    places: Map<IdentifierId, Place>,
+  ): UnaryExpressionInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newValue = places.get(this.value.identifier.id) ?? this.value;
+    return new UnaryExpressionInstruction(
+      this.id,
+      newTarget,
+      this.operator,
+      newValue,
+    );
+  }
+}
+
+export class UnsupportedNodeInstruction extends BaseInstruction {
+  kind: "UnsupportedNode";
+  node: t.Node;
+
+  constructor(id: InstructionId, target: Place, node: t.Node) {
+    super(id, target, "const");
+    this.kind = "UnsupportedNode";
+    this.node = node;
+  }
+
+  cloneWithPlaces(
+    places: Map<IdentifierId, Place>,
+  ): UnsupportedNodeInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    return new UnsupportedNodeInstruction(this.id, newTarget, this.node);
+  }
+}
+
 export class UpdateExpressionInstruction extends BaseInstruction {
   kind: "UpdateExpression";
   operator: t.UpdateExpression["operator"];
@@ -256,64 +352,6 @@ export class UpdateExpressionInstruction extends BaseInstruction {
   }
 }
 
-export class CallExpressionInstruction extends BaseInstruction {
-  kind: "CallExpression";
-  callee: Place;
-  args: (Place | SpreadElement)[];
-
-  constructor(
-    id: InstructionId,
-    target: Place,
-    callee: Place,
-    args: (Place | SpreadElement)[],
-  ) {
-    super(id, target, "const");
-    this.kind = "CallExpression";
-    this.callee = callee;
-    this.args = args;
-  }
-
-  cloneWithPlaces(places: Map<IdentifierId, Place>): CallExpressionInstruction {
-    const newTarget = places.get(this.target.identifier.id) ?? this.target;
-    const newCallee = places.get(this.callee.identifier.id) ?? this.callee;
-    const newArgs = this.args.map((arg) =>
-      arg instanceof Place
-        ? (places.get(arg.identifier.id) ?? arg)
-        : (arg as SpreadElement),
-    );
-    return new CallExpressionInstruction(
-      this.id,
-      newTarget,
-      newCallee,
-      newArgs,
-    );
-  }
-}
-
-export class UnsupportedNodeInstruction extends BaseInstruction {
-  kind: "UnsupportedNode";
-  node: t.Node;
-
-  constructor(id: InstructionId, target: Place, node: t.Node) {
-    super(id, target, "const");
-    this.kind = "UnsupportedNode";
-    this.node = node;
-  }
-
-  cloneWithPlaces(
-    places: Map<IdentifierId, Place>,
-  ): UnsupportedNodeInstruction {
-    const newTarget = places.get(this.target.identifier.id) ?? this.target;
-    return new UnsupportedNodeInstruction(this.id, newTarget, this.node);
-  }
-}
-
-export type ExpressionStatementInstruction = {
-  kind: "ExpressionStatement";
-  id: InstructionId;
-  expression: Place;
-};
-
 export type ExpressionInstruction =
   | UnaryExpressionInstruction
   | BinaryExpressionInstruction
@@ -323,11 +361,10 @@ export type ExpressionInstruction =
   | AssignmentExpressionInstruction;
 
 export type Instruction =
+  | SpreadElementInstruction
+  | LiteralInstruction
   | ExpressionInstruction
   | StoreLocalInstruction
+  | LoadLocalInstruction
   | UnsupportedNodeInstruction
   | FunctionDeclarationInstruction;
-
-export function makeInstructionId(id: number): InstructionId {
-  return id;
-}

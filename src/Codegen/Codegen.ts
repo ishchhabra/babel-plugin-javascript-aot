@@ -1,284 +1,278 @@
 import * as t from "@babel/types";
 import {
+  ArrayExpressionInstruction,
   BasicBlock,
   Block,
   BlockId,
-  ExpressionInstruction,
-  ForLoopBlock,
+  FunctionDeclarationInstruction,
+  IdentifierId,
   Instruction,
-  LoopBlock,
-  Place,
-  TemporaryPlace,
+  StoreLocalInstruction,
   Terminal,
-  Value,
+  UnaryExpressionInstruction,
+  UnsupportedNodeInstruction,
 } from "../HIR";
-
-import { SpreadElement } from "../HIR/Instruction";
-import { LoadValue, PrimitiveValue } from "../HIR/Value";
+import {
+  BinaryExpressionInstruction,
+  CallExpressionInstruction,
+  LiteralInstruction,
+  LoadLocalInstruction,
+} from "../HIR/Instruction";
+import { IfTerminal } from "../HIR/Terminal";
 
 export class Codegen {
   readonly #blocks: Map<BlockId, Block>;
-  readonly #generatedBlocks: Set<BlockId>;
+
+  readonly #places: Map<IdentifierId, t.Node> = new Map();
 
   constructor(blocks: Map<BlockId, Block>) {
     this.#blocks = blocks;
-    this.#generatedBlocks = new Set();
   }
 
   generate(): t.Program {
-    const body: t.Statement[] = [];
-    this.#generateBlock(0, body);
+    const body = this.#generateBlock(0);
     return t.program(body);
   }
 
-  #generateBlock(blockId: BlockId, body: t.Statement[]) {
-    const block = this.#blocks.get(blockId);
-    if (block === undefined || this.#generatedBlocks.has(blockId)) {
-      return;
-    }
+  #generateBlock(blockId: BlockId): Array<t.Statement> {
+    const statements: Array<t.Statement> = [];
 
-    this.#generatedBlocks.add(blockId);
+    const block = this.#blocks.get(blockId);
+    if (block === undefined) {
+      throw new Error(`Block ${blockId} not found`);
+    }
 
     if (block instanceof BasicBlock) {
-      return this.#generateBasicBlock(block, body);
+      return this.#generateBasicBlock(block);
     }
 
-    if (block instanceof ForLoopBlock) {
-      return this.#generateForLoopBlock(block, body);
-    }
-
-    if (block instanceof LoopBlock) {
-      return this.#generateLoopBlock(block, body);
-    }
+    return statements;
   }
 
-  #generateBasicBlock(block: BasicBlock, body: t.Statement[]) {
-    this.#generatedBlocks.add(block.id);
-
+  #generateBasicBlock(block: BasicBlock): Array<t.Statement> {
+    const statements: Array<t.Statement> = [];
     for (const instruction of block.instructions) {
-      const instructionNode = this.#generateInstruction(instruction);
-      body.push(instructionNode);
+      statements.push(...this.#generateInstruction(instruction));
     }
 
     if (block.terminal !== null) {
-      this.#generateTerminal(block.terminal, body);
-    }
-  }
-
-  #generateForLoopBlock(block: ForLoopBlock, body: t.Statement[]) {
-    const bodyBlock = block.body;
-    const bodyStatements: t.Statement[] = [];
-
-    this.#generateBlock(bodyBlock.id, bodyStatements);
-    const forLoop = t.forStatement(
-      block.init.node,
-      block.test.node,
-      block.update.node,
-      t.blockStatement(bodyStatements),
-    );
-
-    if (bodyBlock.terminal) {
-      this.#generateTerminal(bodyBlock.terminal, bodyStatements);
+      statements.push(...this.#generateTerminal(block.terminal));
     }
 
-    body.push(forLoop);
+    return statements;
   }
 
-  #generateLoopBlock(block: LoopBlock, body: t.Statement[]) {
-    this.#generateBlock(block.header.id, body);
+  #generateInstruction(instruction: Instruction): Array<t.Statement> {
+    const statements: Array<t.Statement> = [];
 
-    const bodyBlock = block.body;
-    const bodyStatements: t.Statement[] = [];
-
-    this.#generateBlock(bodyBlock.id, bodyStatements);
-    const whileLoop = t.whileStatement(
-      t.identifier(block.test.identifier.name),
-      t.blockStatement(bodyStatements),
-    );
-
-    body.push(whileLoop);
-  }
-
-  #generateInstruction(instruction: Instruction): t.Statement {
     switch (instruction.kind) {
-      case "StoreLocal": {
-        const value = this.#generateValue(instruction.value);
-        return t.variableDeclaration(instruction.type, [
-          t.variableDeclarator(
-            t.identifier(instruction.target.identifier.name),
-            value,
-          ),
-        ]);
-      }
-
-      case "AssignmentExpression": {
-        return t.expressionStatement(this.#generateExpression(instruction));
-      }
-
-      case "CallExpression":
-      case "UnaryExpression":
-      case "BinaryExpression":
-      case "UpdateExpression":
       case "ArrayExpression": {
-        return t.variableDeclaration("const", [
-          t.variableDeclarator(
-            t.identifier(instruction.target.identifier.name),
-            this.#generateExpression(instruction),
-          ),
-        ]);
+        this.#generateArrayExpressionInstruction(instruction);
+        break;
       }
-
-      case "FunctionDeclaration": {
-        const params = instruction.params.map((param) =>
-          t.identifier(param.identifier.name),
-        );
-        const functionBody: t.Statement[] = [];
-        this.#generateBlock(instruction.body, functionBody);
-        return t.functionDeclaration(
-          t.identifier(instruction.target.identifier.name),
-          params,
-          t.blockStatement(functionBody),
-        );
-      }
-
-      case "UnsupportedNode": {
-        if (!t.isStatement(instruction.node)) {
-          return t.variableDeclaration("const", [
-            t.variableDeclarator(
-              t.identifier(instruction.target.identifier.name),
-              instruction.node as t.Expression,
-            ),
-          ]);
-        }
-
-        return instruction.node as t.Statement;
-      }
-    }
-  }
-
-  #generateExpression(instruction: ExpressionInstruction): t.Expression {
-    switch (instruction.kind) {
-      case "AssignmentExpression": {
-        return t.assignmentExpression(
-          "=",
-          t.identifier(instruction.target.identifier.name),
-          this.#generateValue(instruction.value),
-        );
-      }
-
-      case "CallExpression": {
-        const callee = this.#generatePlace(instruction.callee);
-        const args = instruction.args.map((arg) => {
-          if (arg instanceof Place) {
-            return this.#generatePlace(arg);
-          }
-
-          if ((arg as SpreadElement).kind === "SpreadElement") {
-            return t.spreadElement(this.#generatePlace(arg.place));
-          }
-
-          throw new Error("Unsupported argument kind");
-        });
-        return t.callExpression(callee, args);
-      }
-
-      case "UnaryExpression": {
-        return t.unaryExpression(
-          instruction.operator,
-          t.identifier(instruction.value.identifier.name),
-        );
-      }
-
       case "BinaryExpression": {
-        return t.binaryExpression(
-          instruction.operator,
-          t.identifier(instruction.left.identifier.name),
-          t.identifier(instruction.right.identifier.name),
-        );
+        this.#generateBinaryExpressionInstruction(instruction);
+        break;
       }
-
-      case "UpdateExpression": {
-        return t.updateExpression(
-          instruction.operator,
-          t.identifier(instruction.value.identifier.name),
-          instruction.prefix,
-        );
+      case "CallExpression": {
+        const node = this.#generateCallExpressionInstruction(instruction);
+        statements.push(t.expressionStatement(node));
+        break;
       }
-
-      case "ArrayExpression": {
-        return t.arrayExpression(
-          instruction.elements.map((element) => {
-            if (element instanceof Place) {
-              return this.#generatePlace(element);
-            }
-
-            if ((element as SpreadElement).kind === "SpreadElement") {
-              return t.spreadElement(this.#generatePlace(element.place));
-            }
-
-            throw new Error("Unsupported element kind");
-          }),
-        );
+      case "FunctionDeclaration": {
+        const node = this.#generateFunctionDeclarationInstruction(instruction);
+        statements.push(node);
+        break;
+      }
+      case "Literal": {
+        this.#generateLiteralInstruction(instruction);
+        break;
+      }
+      case "LoadLocal": {
+        this.#generateLoadLocalInstruction(instruction);
+        break;
+      }
+      case "StoreLocal": {
+        const node = this.#generateStoreLocalInstruction(instruction);
+        statements.push(node);
+        break;
+      }
+      case "UnaryExpression": {
+        this.#generateUnaryExpressionInstruction(instruction);
+        break;
+      }
+      case "UnsupportedNode": {
+        const node = this.#generateUnsupportedNodeInstruction(instruction);
+        statements.push(node);
+        break;
       }
     }
+
+    return statements;
   }
 
-  #generatePlace(place: Place): t.Expression {
-    if (place instanceof TemporaryPlace) {
-      return t.identifier(place.identifier.name);
-    }
+  // #################### Instructions ####################
+  #generateArrayExpressionInstruction(instruction: ArrayExpressionInstruction) {
+    const elements = instruction.elements.map((element) => {
+      const node = this.#places.get(element.identifier.id);
+      t.assertExpression(node);
+      return node;
+    });
 
-    throw new Error("Unsupported place kind");
+    const node = t.arrayExpression(elements);
+    this.#places.set(instruction.target.identifier.id, node);
+    return node;
   }
 
-  #generateValue(value: Value): t.Expression {
-    if (value instanceof PrimitiveValue) {
-      return t.valueToNode(value.value) as t.Expression;
+  #generateBinaryExpressionInstruction(
+    instruction: BinaryExpressionInstruction,
+  ) {
+    const left = this.#places.get(instruction.left.identifier.id);
+    const right = this.#places.get(instruction.right.identifier.id);
+    if (left === undefined || right === undefined) {
+      throw new Error(`Place not found: ${instruction.left.identifier.id}`);
     }
 
-    if (value instanceof LoadValue) {
-      return t.identifier(value.place.identifier.name);
-    }
+    t.assertExpression(left);
+    t.assertExpression(right);
 
-    throw new Error("Unsupported value kind");
+    const node = t.binaryExpression(instruction.operator, left, right);
+    this.#places.set(instruction.target.identifier.id, node);
+    return node;
   }
 
-  #generateTerminal(terminal: Terminal, body: t.Statement[]) {
+  #generateCallExpressionInstruction(instruction: CallExpressionInstruction) {
+    const callee = this.#places.get(instruction.callee.identifier.id);
+    if (callee === undefined) {
+      throw new Error(`Place not found: ${instruction.callee.identifier.id}`);
+    }
+
+    const args = instruction.args.map((arg) => {
+      const argNode = this.#places.get(arg.identifier.id);
+      if (argNode === undefined) {
+        throw new Error(`Place not found: ${arg.identifier.id}`);
+      }
+
+      return argNode;
+    });
+
+    t.assertExpression(callee);
+
+    const node = t.callExpression(callee, args as t.Expression[]);
+    this.#places.set(instruction.target.identifier.id, node);
+
+    return node;
+  }
+
+  #generateFunctionDeclarationInstruction(
+    instruction: FunctionDeclarationInstruction,
+  ) {
+    const params = instruction.params.map((param) => {
+      const node = this.#places.get(param.identifier.id);
+      t.assertPattern(node);
+      return node;
+    });
+    const bodyStatements = this.#generateBlock(instruction.body);
+
+    const node = t.functionDeclaration(
+      t.identifier(instruction.target.identifier.name),
+      params,
+      t.blockStatement(bodyStatements),
+    );
+    this.#places.set(instruction.target.identifier.id, node);
+    return node;
+  }
+
+  #generateLiteralInstruction(instruction: LiteralInstruction) {
+    const node = t.valueToNode(instruction.value);
+    this.#places.set(instruction.target.identifier.id, node);
+    return node;
+  }
+
+  #generateLoadLocalInstruction(instruction: LoadLocalInstruction) {
+    const node = t.identifier(instruction.value.identifier.name);
+    this.#places.set(instruction.target.identifier.id, node);
+    return node;
+  }
+
+  #generateStoreLocalInstruction(instruction: StoreLocalInstruction) {
+    const value = this.#places.get(instruction.value.identifier.id);
+
+    const node = t.variableDeclaration("const", [
+      t.variableDeclarator(
+        t.identifier(instruction.target.identifier.name),
+        value as t.Expression,
+      ),
+    ]);
+    this.#places.set(instruction.target.identifier.id, node);
+
+    return node;
+  }
+
+  #generateUnaryExpressionInstruction(instruction: UnaryExpressionInstruction) {
+    const operand = this.#places.get(instruction.value.identifier.id);
+    if (!operand) {
+      throw new Error(`Place not found: ${instruction.value.identifier.id}`);
+    }
+
+    t.assertExpression(operand);
+
+    const node = t.unaryExpression(instruction.operator, operand);
+    this.#places.set(instruction.target.identifier.id, node);
+    return node;
+  }
+
+  #generateUnsupportedNodeInstruction(instruction: UnsupportedNodeInstruction) {
+    if (!t.isStatement(instruction.node)) {
+      const node = t.variableDeclaration("const", [
+        t.variableDeclarator(
+          t.identifier(instruction.target.identifier.name),
+          instruction.node as t.Expression,
+        ),
+      ]);
+      this.#places.set(instruction.target.identifier.id, node);
+      return node;
+    }
+
+    t.assertStatement(instruction.node);
+    return instruction.node;
+  }
+
+  // #################### Terminals ####################
+  #generateTerminal(terminal: Terminal) {
     switch (terminal.kind) {
-      case "if": {
-        const test = t.identifier(terminal.test.identifier.name);
-        const consequent: t.Statement[] = [];
-        const alternate: t.Statement[] = [];
+      case "if":
+        return this.#generateIfTerminal(terminal);
 
-        this.#generateBlock(terminal.consequent, consequent);
-        if (terminal.alternate) {
-          this.#generateBlock(terminal.alternate, alternate);
-        }
-
-        body.push(
-          t.ifStatement(
-            test,
-            t.blockStatement(consequent),
-            alternate.length > 0 ? t.blockStatement(alternate) : null,
-          ),
-        );
-
-        this.#generateBlock(terminal.fallthrough, body);
+      case "jump":
+        // this.#generateJumpTerminal(terminal);
         break;
-      }
-
-      case "jump": {
-        this.#generateBlock(terminal.target, body);
-        this.#generateBlock(terminal.fallthrough, body);
-        break;
-      }
-
-      case "return": {
-        body.push(
-          t.returnStatement(t.identifier(terminal.value.identifier.name)),
-        );
-        break;
-      }
     }
+
+    throw new Error(`Unknown terminal: ${terminal.kind}`);
+  }
+
+  #generateIfTerminal(terminal: IfTerminal): Array<t.Statement> {
+    const test = this.#places.get(terminal.test.identifier.id);
+    if (test === undefined) {
+      throw new Error(`Place not found: ${terminal.test.identifier.id}`);
+    }
+
+    t.assertExpression(test);
+
+    const consequent = this.#generateBlock(terminal.consequent);
+    const alternate = terminal.alternate
+      ? this.#generateBlock(terminal.alternate)
+      : undefined;
+
+    const node = t.ifStatement(
+      test,
+      t.blockStatement(consequent),
+      alternate ? t.blockStatement(alternate) : null,
+    );
+    this.#places.set(terminal.test.identifier.id, node);
+
+    const statements = [node, ...this.#generateBlock(terminal.fallthrough)];
+    return statements;
   }
 }

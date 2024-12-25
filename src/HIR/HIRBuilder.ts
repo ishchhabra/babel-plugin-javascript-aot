@@ -9,15 +9,16 @@ import {
   BinaryExpressionInstruction,
   CallExpressionInstruction,
   FunctionDeclarationInstruction,
+  LiteralInstruction,
+  LoadLocalInstruction,
   makeInstructionId,
-  SpreadElement,
+  SpreadElementInstruction,
   StoreLocalInstruction,
   UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
   UpdateExpressionInstruction,
 } from "./Instruction";
 import { Place, TemporaryPlace } from "./Place";
-import { LoadValue, PrimitiveValue } from "./Value";
 
 export type Bindings = Map<DeclarationId, Map<BlockId, Place>>;
 
@@ -350,7 +351,7 @@ export class HIRBuilder {
           new StoreLocalInstruction(
             makeInstructionId(this.#nextInstructionId++),
             targetPlace,
-            new LoadValue(valuePlace),
+            valuePlace,
             statement.node.kind === "const" ? "const" : "let",
           ),
         );
@@ -435,7 +436,7 @@ export class HIRBuilder {
         const instruction = new StoreLocalInstruction(
           instructionId,
           targetPlace,
-          new LoadValue(valuePlace),
+          valuePlace,
           "const",
         );
         this.#currentBlock.addInstruction(instruction);
@@ -461,7 +462,14 @@ export class HIRBuilder {
 
   #buildCallExpression(expression: NodePath<t.CallExpression>): Place {
     const callee = expression.get("callee");
-    const calleePlace = this.#buildExpression(callee);
+    const calleePlace = this.#createTemporaryPlace();
+    this.#currentBlock.addInstruction(
+      new LoadLocalInstruction(
+        makeInstructionId(this.#nextInstructionId++),
+        calleePlace,
+        this.#buildExpression(callee),
+      ),
+    );
 
     const args = expression.get("arguments");
     const argsPlaces = args.map((arg) => {
@@ -498,7 +506,17 @@ export class HIRBuilder {
       declarationId,
       this.#currentBlock.id,
     );
-    return place;
+
+    const resultPlace = this.#createTemporaryPlace();
+    this.#currentBlock.addInstruction(
+      new LoadLocalInstruction(
+        makeInstructionId(this.#nextInstructionId++),
+        resultPlace,
+        place,
+      ),
+    );
+
+    return resultPlace;
   }
 
   #buildArrayExpression(expression: NodePath<t.ArrayExpression>): Place {
@@ -524,12 +542,8 @@ export class HIRBuilder {
   }
 
   #buildBinaryExpression(expression: NodePath<t.BinaryExpression>): Place {
-    const leftPlace = this.#buildExpression(
-      expression.get("left") as NodePath<t.Expression>,
-    );
-    const rightPlace = this.#buildExpression(
-      expression.get("right") as NodePath<t.Expression>,
-    );
+    const leftPlace = this.#buildExpression(expression.get("left"));
+    const rightPlace = this.#buildExpression(expression.get("right"));
     const resultPlace = this.#createTemporaryPlace();
 
     this.#currentBlock.addInstruction(
@@ -606,11 +620,10 @@ export class HIRBuilder {
   ): Place {
     const resultPlace = this.#createTemporaryPlace();
     this.#currentBlock.addInstruction(
-      new StoreLocalInstruction(
+      new LiteralInstruction(
         makeInstructionId(this.#nextInstructionId++),
         resultPlace,
-        new PrimitiveValue(expression.node.value),
-        "const",
+        expression.node.value,
       ),
     );
     return resultPlace;
@@ -628,17 +641,22 @@ export class HIRBuilder {
     return resultPlace;
   }
 
-  #buildSpreadElement(expression: NodePath<t.SpreadElement>): SpreadElement {
+  #buildSpreadElement(expression: NodePath<t.SpreadElement>): Place {
     const argument = expression.get("argument");
     if (!argument) {
       throw new Error("Spread element has no argument");
     }
 
+    const resultPlace = this.#createTemporaryPlace();
     const place = this.#buildExpression(argument);
-    return {
-      kind: "SpreadElement",
-      place,
-    };
+    this.#currentBlock.addInstruction(
+      new SpreadElementInstruction(
+        makeInstructionId(this.#nextInstructionId++),
+        resultPlace,
+        place,
+      ),
+    );
+    return resultPlace;
   }
 
   // Utility Methods
