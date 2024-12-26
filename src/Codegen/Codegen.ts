@@ -3,30 +3,27 @@ import {
   ArrayExpressionInstruction,
   AssignmentExpressionInstruction,
   BasicBlock,
+  BinaryExpressionInstruction,
   Block,
   BlockId,
+  CallExpressionInstruction,
   ExpressionStatementInstruction,
+  ForLoopTerminal,
   FunctionDeclarationInstruction,
   IdentifierId,
+  IfTerminal,
   Instruction,
+  JumpTerminal,
+  LiteralInstruction,
+  LoadLocalInstruction,
+  ReturnTerminal,
+  SpreadElementInstruction,
   StoreLocalInstruction,
   Terminal,
   UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
-} from "../HIR";
-import {
-  BinaryExpressionInstruction,
-  CallExpressionInstruction,
-  LiteralInstruction,
-  LoadLocalInstruction,
-  SpreadElementInstruction,
-} from "../HIR/Instruction";
-import {
-  IfTerminal,
-  JumpTerminal,
-  ReturnTerminal,
   WhileLoopTerminal,
-} from "../HIR/Terminal";
+} from "../HIR";
 
 export class Codegen {
   readonly #blocks: Map<BlockId, Block>;
@@ -225,7 +222,9 @@ export class Codegen {
     }
 
     if (t.isExpression(expression)) {
-      return t.expressionStatement(expression);
+      const node = t.expressionStatement(expression);
+      this.#places.set(instruction.target.identifier.id, node);
+      return node;
     }
 
     return undefined;
@@ -313,17 +312,100 @@ export class Codegen {
   }
 
   // #################### Terminals ####################
-  #generateTerminal(terminal: Terminal) {
-    switch (terminal.kind) {
-      case "if":
-        return this.#generateIfTerminal(terminal);
-      case "jump":
-        return this.#generateJumpTerminal(terminal);
-      case "return":
-        return this.#generateReturnTerminal(terminal);
-      case "while":
-        return this.#generateWhileLoopTerminal(terminal);
+  #generateTerminal(terminal: Terminal): Array<t.Statement> {
+    if (terminal instanceof ForLoopTerminal) {
+      return this.#generateForLoopTerminal(terminal);
     }
+
+    if (terminal instanceof IfTerminal) {
+      return this.#generateIfTerminal(terminal);
+    }
+    if (terminal instanceof JumpTerminal) {
+      return this.#generateJumpTerminal(terminal);
+    }
+    if (terminal instanceof ReturnTerminal) {
+      return this.#generateReturnTerminal(terminal);
+    }
+    if (terminal instanceof WhileLoopTerminal) {
+      return this.#generateWhileLoopTerminal(terminal);
+    }
+
+    throw new Error(`Unsupported terminal: ${terminal}`);
+  }
+
+  #generateForLoopTerminal(terminal: ForLoopTerminal): Array<t.Statement> {
+    // TODO: Annotate places that are part of the input code rather than trying to
+    // infer that based on on the expression type and the place where the code
+    // is generated.
+    const init = terminal.init;
+    let initExpression: t.VariableDeclaration | t.Expression | undefined;
+    if (init !== undefined) {
+      this.#generateBlock(init);
+      const initBlock = this.#blocks.get(init);
+      const lastInstruction = initBlock?.instructions.pop();
+      const initNode = this.#places.get(lastInstruction!.target.identifier.id);
+
+      if (
+        !t.isVariableDeclaration(initNode) &&
+        !t.isExpression(initNode) &&
+        !t.isExpressionStatement(initNode)
+      ) {
+        throw new Error(
+          "Expected the last init block statement to be an variable declaration or expression",
+        );
+      }
+      if (t.isExpressionStatement(initNode)) {
+        initExpression = initNode.expression;
+      } else {
+        initExpression = initNode;
+      }
+    }
+
+    const test = terminal.test;
+    let testExpression: t.Expression | undefined;
+    if (test !== undefined) {
+      this.#generateBlock(test);
+      const testBlock = this.#blocks.get(test);
+      const testNode = this.#places.get(
+        testBlock!.instructions.pop()!.target.identifier.id,
+      );
+      if (!t.isExpression(testNode)) {
+        throw new Error(
+          "Expected the last test block statement to be an expression statement",
+        );
+      }
+      testExpression = testNode;
+    }
+
+    const update = terminal.update;
+    let updateExpression: t.Expression | undefined;
+    if (update !== undefined) {
+      this.#generateBlock(update);
+      const updateBlock = this.#blocks.get(update);
+      const updateNode = this.#places.get(
+        updateBlock!.instructions.pop()!.target.identifier.id,
+      );
+      if (!t.isExpression(updateNode) && !t.isExpressionStatement(updateNode)) {
+        throw new Error(
+          "Expected the last update block statement to be an expression statement",
+        );
+      }
+      if (t.isExpressionStatement(updateNode)) {
+        updateExpression = updateNode.expression;
+      } else {
+        updateExpression = updateNode;
+      }
+    }
+
+    const bodyStatements = this.#generateBlock(terminal.body);
+
+    const node = t.forStatement(
+      initExpression,
+      testExpression,
+      updateExpression,
+      t.blockStatement(bodyStatements),
+    );
+    return [node, ...this.#generateBlock(terminal.exit)];
   }
 
   #generateIfTerminal(terminal: IfTerminal): Array<t.Statement> {

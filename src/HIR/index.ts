@@ -14,9 +14,18 @@ export {
   type FunctionDeclarationInstruction,
   type Instruction,
   type LiteralInstruction,
+  type LoadLocalInstruction,
+  type SpreadElementInstruction,
   type UnaryExpressionInstruction,
   type UnsupportedNodeInstruction,
 } from "./Instruction";
 export { NamedPlace as IdentifierPlace, Place, TemporaryPlace } from "./Place";
-export type { Terminal } from "./Terminal";
+export {
+  ForLoopTerminal,
+  IfTerminal,
+  JumpTerminal,
+  ReturnTerminal,
+  WhileLoopTerminal,
+  type Terminal,
+} from "./Terminal";
 export type { Value } from "./Value";

@@ -1,4 +1,4 @@
-import { Bindings } from "../../HIR";
+import { Bindings, ReturnTerminal } from "../../HIR";
 import { BasicBlock, BlockId } from "../../HIR/Block";
 import { resolveBinding } from "../../HIR/HIRBuilder";
 import { IdentifierId, makeIdentifierId } from "../../HIR/Identifier";
@@ -83,10 +83,7 @@ class FunctionInliner {
       }
 
       const functionBody = this.#blocks.get(target.body);
-      if (
-        functionBody === undefined ||
-        functionBody.terminal?.kind !== "return"
-      ) {
+      if (!(functionBody?.terminal instanceof ReturnTerminal)) {
         continue;
       }
 
@@ -119,7 +116,7 @@ class FunctionInliner {
       ...this.#buildLocalVarMap(target),
     ]);
 
-    if (functionBody.terminal?.kind === "return") {
+    if (functionBody.terminal instanceof ReturnTerminal) {
       variableMap.set(functionBody.terminal.value.identifier.id, call.target);
     }
 

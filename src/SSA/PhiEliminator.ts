@@ -1,5 +1,11 @@
-import { Bindings, DeclarationId, Place, TemporaryPlace } from "../HIR";
-import { Block, BlockId } from "../HIR/Block";
+import {
+  Bindings,
+  Block,
+  BlockId,
+  DeclarationId,
+  Place,
+  TemporaryPlace,
+} from "../HIR";
 import { resolveBinding } from "../HIR/HIRBuilder";
 import { makeIdentifierId, makeIdentifierName } from "../HIR/Identifier";
 import {

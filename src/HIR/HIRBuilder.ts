@@ -20,6 +20,13 @@ import {
   UpdateExpressionInstruction,
 } from "./Instruction";
 import { Place } from "./Place";
+import {
+  ForLoopTerminal,
+  IfTerminal,
+  JumpTerminal,
+  ReturnTerminal,
+  WhileLoopTerminal,
+} from "./Terminal";
 
 export type Bindings = Map<DeclarationId, Map<BlockId, Place>>;
 
@@ -158,6 +165,10 @@ export class HIRBuilder {
         statement.assertExpressionStatement();
         this.#buildExpressionStatement(statement);
         break;
+      case "ForStatement":
+        statement.assertForStatement();
+        this.#buildForStatement(statement);
+        break;
       case "FunctionDeclaration":
         statement.assertFunctionDeclaration();
         this.#buildFunctionDeclaration(statement);
@@ -178,7 +189,6 @@ export class HIRBuilder {
         statement.assertWhileStatement();
         this.#buildWhileStatement(statement);
         break;
-      case "ForStatement":
       case "DoWhileStatement":
         throw new Error("Loops are not supported");
       default:
@@ -280,6 +290,91 @@ export class HIRBuilder {
     });
   }
 
+  #buildForStatement(statement: NodePath<t.ForStatement>) {
+    const currentBlock = this.#currentBlock;
+    this.#buildBindings(statement);
+
+    // Process init
+    let initBlock: Block | undefined;
+    const init = statement.get("init");
+    if (init.hasNode()) {
+      initBlock = BasicBlock.empty(this.#nextBlockId++, currentBlock.id);
+      initBlock.addPredecessor(currentBlock.id);
+      this.#blocks.set(initBlock.id, initBlock);
+
+      this.#currentBlock = initBlock;
+      this.#buildExpression(init);
+    }
+
+    // Process test
+    let testBlock: Block | undefined;
+    const test = statement.get("test");
+    if (test.hasNode()) {
+      testBlock = BasicBlock.empty(this.#nextBlockId++, currentBlock.id);
+      if (initBlock) {
+        testBlock.addPredecessor(initBlock.id);
+      }
+      this.#blocks.set(testBlock.id, testBlock);
+
+      this.#currentBlock = testBlock;
+      this.#buildExpression(test);
+    }
+
+    // Process update
+    let updateBlock: Block | undefined;
+    const update = statement.get("update");
+    if (update.hasNode()) {
+      updateBlock = BasicBlock.empty(this.#nextBlockId++, currentBlock.id);
+      this.#blocks.set(updateBlock.id, updateBlock);
+
+      this.#currentBlock = updateBlock;
+      this.#buildExpression(update);
+    }
+
+    // Process body
+    const body = statement.get("body");
+    const bodyBlock = BasicBlock.empty(this.#nextBlockId++, currentBlock.id);
+    this.#blocks.set(bodyBlock.id, bodyBlock);
+
+    this.#currentBlock = bodyBlock;
+    this.#buildStatement(body);
+
+    // Add bodyBlock as predecessor of testBlock
+    if (testBlock) {
+      bodyBlock.addPredecessor(testBlock.id);
+      if (updateBlock) {
+        testBlock.addPredecessor(updateBlock.id);
+      }
+    }
+
+    // Add bodyBlock as predecessor of updateBlock
+    if (updateBlock) {
+      updateBlock.addPredecessor(bodyBlock.id);
+    }
+
+    // Process exit
+    const exitBlock = BasicBlock.empty(this.#nextBlockId++, currentBlock.id);
+    if (testBlock) {
+      exitBlock.addPredecessor(testBlock.id);
+    } else {
+      exitBlock.addPredecessor(currentBlock.id);
+    }
+    this.#blocks.set(exitBlock.id, exitBlock);
+
+    currentBlock.setTerminal(
+      new ForLoopTerminal(
+        makeInstructionId(this.#nextInstructionId++),
+        initBlock?.id,
+        testBlock?.id,
+        updateBlock?.id,
+        bodyBlock.id,
+        exitBlock.id,
+      ),
+    );
+
+    this.#currentBlock = exitBlock;
+  }
+
   #buildIfStatement(statement: NodePath<t.IfStatement>) {
     const test = statement.get("test");
     const testPlace = this.#buildExpression(test);
@@ -328,14 +423,15 @@ export class HIRBuilder {
     }
     this.#blocks.set(fallthroughBlock.id, fallthroughBlock);
 
-    currentBlock.setTerminal({
-      kind: "if",
-      id: makeInstructionId(this.#nextInstructionId++),
-      test: testPlace,
-      consequent: consequentBlock.id,
-      alternate: alternateBlock?.id,
-      fallthrough: fallthroughBlock.id,
-    });
+    currentBlock.setTerminal(
+      new IfTerminal(
+        makeInstructionId(this.#nextInstructionId++),
+        testPlace,
+        consequentBlock.id,
+        alternateBlock?.id,
+        fallthroughBlock.id,
+      ),
+    );
 
     this.#currentBlock = fallthroughBlock;
   }
@@ -344,11 +440,12 @@ export class HIRBuilder {
     const argument = statement.get("argument");
     if (argument.hasNode()) {
       const returnPlace = this.#buildExpression(argument);
-      this.#currentBlock.setTerminal({
-        kind: "return",
-        id: makeInstructionId(this.#nextInstructionId++),
-        value: returnPlace,
-      });
+      this.#currentBlock.setTerminal(
+        new ReturnTerminal(
+          makeInstructionId(this.#nextInstructionId++),
+          returnPlace,
+        ),
+      );
     }
   }
 
@@ -412,13 +509,14 @@ export class HIRBuilder {
     exitBlock.addPredecessor(testBlock.id);
     this.#blocks.set(exitBlock.id, exitBlock);
 
-    currentBlock.setTerminal({
-      kind: "while",
-      id: makeInstructionId(this.#nextInstructionId++),
-      test: testBlock.id,
-      body: bodyBlock.id,
-      exit: exitBlock.id,
-    });
+    currentBlock.setTerminal(
+      new WhileLoopTerminal(
+        makeInstructionId(this.#nextInstructionId++),
+        testBlock.id,
+        bodyBlock.id,
+        exitBlock.id,
+      ),
+    );
 
     this.#currentBlock = exitBlock;
   }
@@ -456,9 +554,9 @@ export class HIRBuilder {
       case "UnaryExpression":
         expression.assertUnaryExpression();
         return this.#buildUnaryExpression(expression);
-      case "UpdateExpression":
-        expression.assertUpdateExpression();
-        return this.#buildUpdateExpression(expression);
+      // case "UpdateExpression":
+      //   expression.assertUpdateExpression();
+      //   return this.#buildUpdateExpression(expression);
       // case "MemberExpression":
       //   expression.assertMemberExpression();
       //   return this.#buildMemberExpression(expression);
@@ -746,22 +844,31 @@ export class HIRBuilder {
       return block;
     }
 
-    switch (terminal.kind) {
-      case "if":
-        return this.#resolveBlockTerminalChain(
-          this.#blocks.get(terminal.fallthrough)!,
-        );
-      case "jump":
-        return this.#resolveBlockTerminalChain(
-          this.#blocks.get(terminal.target)!,
-        );
-      case "return":
-        return block;
-      case "while":
-        return this.#resolveBlockTerminalChain(
-          this.#blocks.get(terminal.exit)!,
-        );
+    if (terminal instanceof ForLoopTerminal) {
+      return this.#resolveBlockTerminalChain(this.#blocks.get(terminal.exit)!);
     }
+
+    if (terminal instanceof IfTerminal) {
+      return this.#resolveBlockTerminalChain(
+        this.#blocks.get(terminal.fallthrough)!,
+      );
+    }
+
+    if (terminal instanceof JumpTerminal) {
+      return this.#resolveBlockTerminalChain(
+        this.#blocks.get(terminal.target)!,
+      );
+    }
+
+    if (terminal instanceof ReturnTerminal) {
+      return block;
+    }
+
+    if (terminal instanceof WhileLoopTerminal) {
+      return this.#resolveBlockTerminalChain(this.#blocks.get(terminal.exit)!);
+    }
+
+    throw new Error(`Unsupported terminal: ${terminal}`);
   }
 }
 
