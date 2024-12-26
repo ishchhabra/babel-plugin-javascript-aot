@@ -405,7 +405,7 @@ export class HIRBuilder {
     this.#buildStatement(body);
 
     // Add bodyBlock as predecessor of testBlock
-    testBlock.addPredecessor(bodyBlock.id);
+    testBlock.addPredecessor(this.#resolveBlockTerminalChain(bodyBlock).id);
 
     // Process exit
     const exitBlock = BasicBlock.empty(this.#nextBlockId++, currentBlock.id);
