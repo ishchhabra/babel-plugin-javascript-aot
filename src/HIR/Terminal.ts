@@ -4,11 +4,11 @@ import { Place } from "./Place";
 
 export type IfTerminal = {
   kind: "if";
+  id: InstructionId;
   test: Place;
   consequent: BlockId;
   alternate: BlockId | undefined;
   fallthrough: BlockId;
-  id: InstructionId;
 };
 
 export type JumpTerminal = {
@@ -24,4 +24,16 @@ export type ReturnTerminal = {
   value: Place;
 };
 
-export type Terminal = IfTerminal | JumpTerminal | ReturnTerminal;
+export interface WhileLoopTerminal {
+  kind: "while";
+  id: InstructionId;
+  test: BlockId;
+  body: BlockId;
+  exit: BlockId;
+}
+
+export type Terminal =
+  | IfTerminal
+  | JumpTerminal
+  | ReturnTerminal
+  | WhileLoopTerminal;

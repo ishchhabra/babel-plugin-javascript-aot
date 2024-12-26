@@ -21,7 +21,12 @@ import {
   LoadLocalInstruction,
   SpreadElementInstruction,
 } from "../HIR/Instruction";
-import { IfTerminal, ReturnTerminal } from "../HIR/Terminal";
+import {
+  IfTerminal,
+  JumpTerminal,
+  ReturnTerminal,
+  WhileLoopTerminal,
+} from "../HIR/Terminal";
 
 export class Codegen {
   readonly #blocks: Map<BlockId, Block>;
@@ -173,6 +178,7 @@ export class Codegen {
   ) {
     const left = this.#places.get(instruction.left.identifier.id);
     const right = this.#places.get(instruction.right.identifier.id);
+
     if (left === undefined || right === undefined) {
       throw new Error(`Place not found: ${instruction.left.identifier.id}`);
     }
@@ -311,16 +317,13 @@ export class Codegen {
     switch (terminal.kind) {
       case "if":
         return this.#generateIfTerminal(terminal);
-
       case "jump":
-        // this.#generateJumpTerminal(terminal);
-        break;
-
+        return this.#generateJumpTerminal(terminal);
       case "return":
         return this.#generateReturnTerminal(terminal);
+      case "while":
+        return this.#generateWhileLoopTerminal(terminal);
     }
-
-    throw new Error(`Unknown terminal: ${terminal.kind}`);
   }
 
   #generateIfTerminal(terminal: IfTerminal): Array<t.Statement> {
@@ -347,6 +350,12 @@ export class Codegen {
     return statements;
   }
 
+  #generateJumpTerminal(terminal: JumpTerminal): Array<t.Statement> {
+    const target = this.#generateBlock(terminal.target);
+    const fallthrough = this.#generateBlock(terminal.fallthrough);
+    return [...target, ...fallthrough];
+  }
+
   #generateReturnTerminal(terminal: ReturnTerminal): Array<t.Statement> {
     const value = this.#places.get(terminal.value.identifier.id);
     if (value === undefined) {
@@ -355,5 +364,30 @@ export class Codegen {
 
     t.assertExpression(value);
     return [t.returnStatement(value)];
+  }
+
+  #generateWhileLoopTerminal(terminal: WhileLoopTerminal): Array<t.Statement> {
+    // TODO: Annotate places that are part of the input code rather than trying to
+    // infer that based on on the expression type and the place where the code
+    // is generated.
+    this.#generateBlock(terminal.test);
+    const testBlock = this.#blocks.get(terminal.test);
+    const testExpression = this.#places.get(
+      testBlock!.instructions.pop()!.target.identifier.id,
+    );
+    if (!t.isExpression(testExpression)) {
+      throw new Error(
+        "Expected the last test block statement to be an expression statement",
+      );
+    }
+
+    const bodyStatements = this.#generateBlock(terminal.body);
+
+    const node = t.whileStatement(
+      testExpression,
+      t.blockStatement(bodyStatements),
+    );
+    const statements = [node, ...this.#generateBlock(terminal.exit)];
+    return statements;
   }
 }

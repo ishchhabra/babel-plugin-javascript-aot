@@ -9,12 +9,10 @@ export type InstructionId = number;
 export abstract class BaseInstruction {
   id: InstructionId;
   target: Place;
-  type: "const" | "let";
 
-  constructor(id: InstructionId, target: Place, type: "const" | "let") {
+  constructor(id: InstructionId, target: Place) {
     this.id = id;
     this.target = target;
-    this.type = type;
   }
 
   getPlaces(): Place[] {
@@ -35,7 +33,7 @@ export class ArrayExpressionInstruction extends BaseInstruction {
   elements: Place[];
 
   constructor(id: InstructionId, target: Place, elements: Place[]) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "ArrayExpression";
     this.elements = elements;
   }
@@ -57,7 +55,7 @@ export class AssignmentExpressionInstruction extends BaseInstruction {
   right: Place;
 
   constructor(id: InstructionId, target: Place, left: Place, right: Place) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "AssignmentExpression";
     this.left = left;
     this.right = right;
@@ -87,7 +85,7 @@ export class BinaryExpressionInstruction extends BaseInstruction {
     left: Place,
     right: Place,
   ) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "BinaryExpression";
     this.operator = operator;
     this.left = left;
@@ -116,7 +114,7 @@ export class CallExpressionInstruction extends BaseInstruction {
   args: Place[];
 
   constructor(id: InstructionId, target: Place, callee: Place, args: Place[]) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "CallExpression";
     this.callee = callee;
     this.args = args;
@@ -142,7 +140,7 @@ export class ExpressionStatementInstruction extends BaseInstruction {
   expression: Place;
 
   constructor(id: InstructionId, target: Place, expression: Place) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "ExpressionStatement";
     this.expression = expression;
   }
@@ -172,7 +170,7 @@ export class FunctionDeclarationInstruction extends BaseInstruction {
     params: Place[],
     body: BlockId,
   ) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "FunctionDeclaration";
     this.params = params;
     this.body = body;
@@ -203,7 +201,7 @@ export class LiteralInstruction extends BaseInstruction {
   value: TPrimitiveValue;
 
   constructor(id: InstructionId, target: Place, value: TPrimitiveValue) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "Literal";
     this.value = value;
   }
@@ -218,13 +216,15 @@ export class LoadLocalInstruction extends BaseInstruction {
   value: Place;
 
   constructor(id: InstructionId, target: Place, value: Place) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "LoadLocal";
     this.value = value;
   }
 
-  cloneWithPlaces(): LoadLocalInstruction {
-    return this;
+  cloneWithPlaces(places: Map<IdentifierId, Place>): LoadLocalInstruction {
+    const newTarget = places.get(this.target.identifier.id) ?? this.target;
+    const newValue = places.get(this.value.identifier.id) ?? this.value;
+    return new LoadLocalInstruction(this.id, newTarget, newValue);
   }
 }
 
@@ -242,7 +242,7 @@ export class SpreadElementInstruction extends BaseInstruction {
   value: Place;
 
   constructor(id: InstructionId, target: Place, value: Place) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "SpreadElement";
     this.value = value;
   }
@@ -265,7 +265,7 @@ export class StoreLocalInstruction extends BaseInstruction {
     value: Place,
     type: "const" | "let",
   ) {
-    super(id, target, type);
+    super(id, target);
     this.kind = "StoreLocal";
     this.value = value;
     this.type = type;
@@ -299,7 +299,7 @@ export class UnaryExpressionInstruction extends BaseInstruction {
     >,
     value: Place,
   ) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "UnaryExpression";
     this.operator = operator;
     this.value = value;
@@ -324,7 +324,7 @@ export class UnsupportedNodeInstruction extends BaseInstruction {
   node: t.Node;
 
   constructor(id: InstructionId, target: Place, node: t.Node) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "UnsupportedNode";
     this.node = node;
   }
@@ -350,7 +350,7 @@ export class UpdateExpressionInstruction extends BaseInstruction {
     prefix: boolean,
     value: Place,
   ) {
-    super(id, target, "const");
+    super(id, target);
     this.kind = "UpdateExpression";
     this.operator = operator;
     this.prefix = prefix;

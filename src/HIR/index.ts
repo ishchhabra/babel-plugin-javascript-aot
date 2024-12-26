@@ -1,4 +1,4 @@
-export { BasicBlock, Block, ForLoopBlock, LoopBlock } from "./Block";
+export { BasicBlock, Block, ForLoopBlock } from "./Block";
 export type { BlockId } from "./Block";
 export type { DeclarationId } from "./Declaration";
 export { HIRBuilder, type Bindings } from "./HIRBuilder";

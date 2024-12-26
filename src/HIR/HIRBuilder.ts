@@ -1,9 +1,9 @@
 import { NodePath, Scope } from "@babel/traverse";
 import * as t from "@babel/types";
 import { getExpressionName, getFunctionName } from "../Babel/utils";
+import { Environment } from "../Environment";
 import { BasicBlock, Block, BlockId } from "./Block";
 import { DeclarationId, makeDeclarationId } from "./Declaration";
-import { makeIdentifierId, makeIdentifierName } from "./Identifier";
 import {
   ArrayExpressionInstruction,
   BinaryExpressionInstruction,
@@ -19,25 +19,26 @@ import {
   UnsupportedNodeInstruction,
   UpdateExpressionInstruction,
 } from "./Instruction";
-import { Place, TemporaryPlace } from "./Place";
+import { Place } from "./Place";
 
 export type Bindings = Map<DeclarationId, Map<BlockId, Place>>;
 
 export class HIRBuilder {
-  #bindings: Bindings = new Map();
-  #blocks: Map<BlockId, Block> = new Map();
   #program: NodePath<t.Program>;
+  #environment: Environment;
+
+  #blocks: Map<BlockId, Block> = new Map();
 
   #currentBlock!: Block;
 
   // ID generators
   #nextBlockId = 0;
   #nextDeclarationId = 0;
-  #nextIdentifierId = 0;
   #nextInstructionId = 0;
 
-  constructor(program: NodePath<t.Program>) {
+  constructor(program: NodePath<t.Program>, environment: Environment) {
     this.#program = program;
+    this.#environment = environment;
 
     const entryBlock = BasicBlock.empty(this.#nextBlockId++, undefined);
     this.#blocks.set(entryBlock.id, entryBlock);
@@ -58,7 +59,7 @@ export class HIRBuilder {
 
     return {
       blocks: this.#blocks,
-      bindings: this.#bindings,
+      bindings: this.#environment.bindings,
     };
   }
 
@@ -83,13 +84,14 @@ export class HIRBuilder {
             bindingPath.scope.setData(functionName, declarationId);
 
             // Create a temporary place for the function and assign it to the declaration id.
-            const place = this.#createTemporaryPlace();
-            let declarationBindings = this.#bindings.get(declarationId);
-            if (!declarationBindings) {
-              declarationBindings = new Map();
-              this.#bindings.set(declarationId, declarationBindings);
-            }
-            declarationBindings.set(this.#currentBlock.id, place);
+            const place = this.#environment.createPlace({
+              declarationId,
+            });
+            this.#environment.setBinding(
+              declarationId,
+              this.#currentBlock.id,
+              place,
+            );
 
             // Rename the function name in the scope to the temporary place.
             bindingPath.scope.rename(functionName, place.identifier.name);
@@ -120,13 +122,14 @@ export class HIRBuilder {
               bindingPath.scope.setData(declaration.id.name, declarationId);
 
               // Create a temporary place for the variable and assign it to the declaration id.
-              const place = this.#createTemporaryPlace();
-              let declarationBindings = this.#bindings.get(declarationId);
-              if (!declarationBindings) {
-                declarationBindings = new Map();
-                this.#bindings.set(declarationId, declarationBindings);
-              }
-              declarationBindings.set(this.#currentBlock.id, place);
+              const place = this.#environment.createPlace({
+                declarationId,
+              });
+              this.#environment.setBinding(
+                declarationId,
+                this.#currentBlock.id,
+                place,
+              );
 
               // Rename the variable name in the scope to the temporary place.
               bindingPath.scope.rename(
@@ -147,48 +150,39 @@ export class HIRBuilder {
   #buildStatement(statement: NodePath<t.Statement>) {
     const statementNode = statement.node;
     switch (statementNode.type) {
-      case "ReturnStatement":
-        statement.assertReturnStatement();
-        this.#buildReturnStatement(statement);
-        break;
       case "BlockStatement":
         statement.assertBlockStatement();
         this.#buildBlockStatement(statement);
-        break;
-      case "IfStatement":
-        statement.assertIfStatement();
-        this.#buildIfStatement(statement);
-        break;
-      case "FunctionDeclaration":
-        statement.assertFunctionDeclaration();
-        this.#buildFunctionDeclaration(statement);
-        break;
-      case "VariableDeclaration":
-        statement.assertVariableDeclaration();
-        this.#buildVariableDeclaration(statement);
         break;
       case "ExpressionStatement":
         statement.assertExpressionStatement();
         this.#buildExpressionStatement(statement);
         break;
+      case "FunctionDeclaration":
+        statement.assertFunctionDeclaration();
+        this.#buildFunctionDeclaration(statement);
+        break;
+      case "IfStatement":
+        statement.assertIfStatement();
+        this.#buildIfStatement(statement);
+        break;
+      case "ReturnStatement":
+        statement.assertReturnStatement();
+        this.#buildReturnStatement(statement);
+        break;
+      case "VariableDeclaration":
+        statement.assertVariableDeclaration();
+        this.#buildVariableDeclaration(statement);
+        break;
+      case "WhileStatement":
+        statement.assertWhileStatement();
+        this.#buildWhileStatement(statement);
+        break;
       case "ForStatement":
       case "DoWhileStatement":
-      case "WhileStatement":
         throw new Error("Loops are not supported");
       default:
         this.#buildUnsupportedStatement(statement);
-    }
-  }
-
-  #buildReturnStatement(statement: NodePath<t.ReturnStatement>) {
-    const argument = statement.get("argument");
-    if (argument.hasNode()) {
-      const returnPlace = this.#buildExpression(argument);
-      this.#currentBlock.setTerminal({
-        kind: "return",
-        id: makeInstructionId(this.#nextInstructionId++),
-        value: returnPlace,
-      });
     }
   }
 
@@ -199,6 +193,91 @@ export class HIRBuilder {
     for (const stmt of body) {
       this.#buildStatement(stmt);
     }
+  }
+
+  #buildExpressionStatement(statement: NodePath<t.ExpressionStatement>) {
+    const resultPlace = this.#environment.createPlace();
+    const expression = statement.get("expression");
+    const expressionPlace = this.#buildExpression(expression);
+    this.#currentBlock.addInstruction(
+      new ExpressionStatementInstruction(
+        makeInstructionId(this.#nextInstructionId++),
+        resultPlace,
+        expressionPlace,
+      ),
+    );
+  }
+
+  #buildFunctionDeclaration(statement: NodePath<t.FunctionDeclaration>) {
+    const bodyBlockId = this.#nextBlockId++;
+    const bodyBlock = BasicBlock.empty(bodyBlockId, this.#currentBlock.id);
+    bodyBlock.addPredecessor(this.#currentBlock.id);
+    this.#blocks.set(bodyBlockId, bodyBlock);
+
+    const functionName = getFunctionName(statement);
+    if (!functionName) {
+      throw new Error("Invalid function declaration");
+    }
+
+    // Get the binding for the function.
+    const declarationId = statement.scope.getData(functionName.node.name);
+    const functionPlace = resolveBinding(
+      this.#environment.bindings,
+      this.#blocks,
+      declarationId,
+      this.#currentBlock.id,
+    );
+    const instruction = new FunctionDeclarationInstruction(
+      makeInstructionId(this.#nextInstructionId++),
+      functionPlace,
+      [], // Parameters filled later
+      bodyBlockId,
+    );
+    this.#currentBlock.addInstruction(instruction);
+
+    this.#buildBindings(statement);
+    const params = this.#buildFunctionParameters(statement);
+    instruction.params = params;
+
+    const previousBlock = this.#currentBlock;
+    this.#currentBlock = bodyBlock;
+
+    this.#buildStatement(statement.get("body"));
+    this.#currentBlock = previousBlock;
+  }
+
+  #buildFunctionParameters(statement: NodePath<t.FunctionDeclaration>) {
+    const params = statement.get("params");
+
+    return params.map((param) => {
+      if (!param.isIdentifier()) {
+        throw new Error("Only identifier parameters are supported");
+      }
+
+      const name = param.node.name;
+
+      // Set the param declaration id in the function scope.
+      const declarationId = makeDeclarationId(this.#nextDeclarationId++);
+      statement.scope.setData(name, declarationId);
+
+      // Create a temporary place for the param and assign it to the declaration id.
+      const paramPlace = this.#environment.createPlace({
+        declarationId,
+      });
+      this.#environment.setBinding(
+        declarationId,
+        this.#currentBlock.id,
+        paramPlace,
+      );
+
+      // Rename the param name in the scope to the temporary place.
+      statement.scope.rename(name, paramPlace.identifier.name);
+
+      // Also set the declaration id for param place.
+      statement.scope.setData(paramPlace.identifier.name, declarationId);
+
+      return paramPlace;
+    });
   }
 
   #buildIfStatement(statement: NodePath<t.IfStatement>) {
@@ -261,75 +340,16 @@ export class HIRBuilder {
     this.#currentBlock = fallthroughBlock;
   }
 
-  #buildFunctionDeclaration(statement: NodePath<t.FunctionDeclaration>) {
-    const bodyBlockId = this.#nextBlockId++;
-    const bodyBlock = BasicBlock.empty(bodyBlockId, this.#currentBlock.id);
-    bodyBlock.addPredecessor(this.#currentBlock.id);
-    this.#blocks.set(bodyBlockId, bodyBlock);
-
-    const functionName = getFunctionName(statement);
-    if (!functionName) {
-      throw new Error("Invalid function declaration");
+  #buildReturnStatement(statement: NodePath<t.ReturnStatement>) {
+    const argument = statement.get("argument");
+    if (argument.hasNode()) {
+      const returnPlace = this.#buildExpression(argument);
+      this.#currentBlock.setTerminal({
+        kind: "return",
+        id: makeInstructionId(this.#nextInstructionId++),
+        value: returnPlace,
+      });
     }
-
-    // Get the binding for the function.
-    const declarationId = statement.scope.getData(functionName.node.name);
-    const functionPlace = resolveBinding(
-      this.#bindings,
-      this.#blocks,
-      declarationId,
-      this.#currentBlock.id,
-    );
-    const instruction = new FunctionDeclarationInstruction(
-      makeInstructionId(this.#nextInstructionId++),
-      functionPlace,
-      [], // Parameters filled later
-      bodyBlockId,
-    );
-    this.#currentBlock.addInstruction(instruction);
-
-    this.#buildBindings(statement);
-    const params = this.#buildFunctionParameters(statement);
-    instruction.params = params;
-
-    const previousBlock = this.#currentBlock;
-    this.#currentBlock = bodyBlock;
-
-    this.#buildStatement(statement.get("body"));
-    this.#currentBlock = previousBlock;
-  }
-
-  #buildFunctionParameters(statement: NodePath<t.FunctionDeclaration>) {
-    const params = statement.get("params");
-
-    return params.map((param) => {
-      if (!param.isIdentifier()) {
-        throw new Error("Only identifier parameters are supported");
-      }
-
-      const name = param.node.name;
-
-      // Set the param declaration id in the function scope.
-      const declarationId = makeDeclarationId(this.#nextDeclarationId++);
-      statement.scope.setData(name, declarationId);
-
-      // Create a temporary place for the param and assign it to the declaration id.
-      const paramPlace = this.#createTemporaryPlace();
-      let declarationBindings = this.#bindings.get(declarationId);
-      if (!declarationBindings) {
-        declarationBindings = new Map();
-        this.#bindings.set(declarationId, declarationBindings);
-      }
-      declarationBindings.set(this.#currentBlock.id, paramPlace);
-
-      // Rename the param name in the scope to the temporary place.
-      statement.scope.rename(name, paramPlace.identifier.name);
-
-      // Also set the declaration id for param place.
-      statement.scope.setData(paramPlace.identifier.name, declarationId);
-
-      return paramPlace;
-    });
   }
 
   #buildVariableDeclaration(statement: NodePath<t.VariableDeclaration>) {
@@ -343,7 +363,7 @@ export class HIRBuilder {
         // Get the binding for the variable.
         const declarationId = statement.scope.getData(name);
         const targetPlace = resolveBinding(
-          this.#bindings,
+          this.#environment.bindings,
           this.#blocks,
           declarationId,
           this.#currentBlock.id,
@@ -360,21 +380,51 @@ export class HIRBuilder {
     }
   }
 
-  #buildExpressionStatement(statement: NodePath<t.ExpressionStatement>) {
-    const resultPlace = this.#createTemporaryPlace();
-    const expression = statement.get("expression");
-    const expressionPlace = this.#buildExpression(expression);
-    this.#currentBlock.addInstruction(
-      new ExpressionStatementInstruction(
-        makeInstructionId(this.#nextInstructionId++),
-        resultPlace,
-        expressionPlace,
-      ),
+  #buildWhileStatement(statement: NodePath<t.WhileStatement>) {
+    const currentBlock = this.#currentBlock;
+
+    // Process test
+    const test = statement.get("test");
+    const testBlock = BasicBlock.empty(
+      this.#nextBlockId++,
+      this.#currentBlock.id,
     );
+    testBlock.addPredecessor(this.#currentBlock.id);
+    this.#blocks.set(testBlock.id, testBlock);
+
+    this.#currentBlock = testBlock;
+    this.#buildExpression(test);
+
+    // Process body
+    const body = statement.get("body");
+    const bodyBlock = BasicBlock.empty(this.#nextBlockId++, currentBlock.id);
+    bodyBlock.addPredecessor(testBlock.id);
+    this.#blocks.set(bodyBlock.id, bodyBlock);
+
+    this.#currentBlock = bodyBlock;
+    this.#buildStatement(body);
+
+    // Add bodyBlock as predecessor of testBlock
+    testBlock.addPredecessor(bodyBlock.id);
+
+    // Process exit
+    const exitBlock = BasicBlock.empty(this.#nextBlockId++, currentBlock.id);
+    exitBlock.addPredecessor(testBlock.id);
+    this.#blocks.set(exitBlock.id, exitBlock);
+
+    currentBlock.setTerminal({
+      kind: "while",
+      id: makeInstructionId(this.#nextInstructionId++),
+      test: testBlock.id,
+      body: bodyBlock.id,
+      exit: exitBlock.id,
+    });
+
+    this.#currentBlock = exitBlock;
   }
 
   #buildUnsupportedStatement(statement: NodePath<t.Statement>) {
-    const resultPlace = this.#createTemporaryPlace();
+    const resultPlace = this.#environment.createPlace();
     this.#currentBlock.addInstruction(
       new UnsupportedNodeInstruction(
         makeInstructionId(this.#nextInstructionId++),
@@ -439,7 +489,9 @@ export class HIRBuilder {
         // Build instruction to store the assignment value.
         const right = expression.get("right");
         const valuePlace = this.#buildExpression(right);
-        const targetPlace = this.#createTemporaryPlace(declarationId);
+        const targetPlace = this.#environment.createPlace({
+          declarationId,
+        });
 
         const instructionId = makeInstructionId(this.#nextInstructionId++);
         const instruction = new StoreLocalInstruction(
@@ -451,12 +503,11 @@ export class HIRBuilder {
         this.#currentBlock.addInstruction(instruction);
 
         // Update the binding for the declaration id.
-        let declarationBindings = this.#bindings.get(declarationId);
-        if (!declarationBindings) {
-          declarationBindings = new Map();
-          this.#bindings.set(declarationId, declarationBindings);
-        }
-        declarationBindings.set(this.#currentBlock.id, targetPlace);
+        this.#environment.setBinding(
+          declarationId,
+          this.#currentBlock.id,
+          targetPlace,
+        );
 
         // Rename the variable in the scope to target place.
         const targetName = targetPlace.identifier.name;
@@ -470,8 +521,17 @@ export class HIRBuilder {
   }
 
   #buildCallExpression(expression: NodePath<t.CallExpression>): Place {
-    const callee = expression.get("callee");
-    const calleePlace = this.#createTemporaryPlace();
+    const callee: NodePath<t.Expression | t.V8IntrinsicIdentifier> =
+      expression.get("callee");
+    callee.assertExpression();
+
+    const calleeName = getExpressionName(callee);
+    const calleeDeclarationId = calleeName
+      ? expression.scope.getData(calleeName)
+      : undefined;
+    const calleePlace = this.#environment.createPlace({
+      declarationId: calleeDeclarationId,
+    });
     this.#currentBlock.addInstruction(
       new LoadLocalInstruction(
         makeInstructionId(this.#nextInstructionId++),
@@ -491,7 +551,7 @@ export class HIRBuilder {
       return this.#buildExpression(arg as NodePath<t.Expression>);
     });
 
-    const resultPlace = this.#createTemporaryPlace();
+    const resultPlace = this.#environment.createPlace();
     this.#currentBlock.addInstruction(
       new CallExpressionInstruction(
         makeInstructionId(this.#nextInstructionId++),
@@ -510,13 +570,13 @@ export class HIRBuilder {
     // Get the binding for the identifier.
     const declarationId = expression.scope.getData(name);
     const place = resolveBinding(
-      this.#bindings,
+      this.#environment.bindings,
       this.#blocks,
       declarationId,
       this.#currentBlock.id,
     );
 
-    const resultPlace = this.#createTemporaryPlace();
+    const resultPlace = this.#environment.createPlace();
     this.#currentBlock.addInstruction(
       new LoadLocalInstruction(
         makeInstructionId(this.#nextInstructionId++),
@@ -530,7 +590,7 @@ export class HIRBuilder {
 
   #buildArrayExpression(expression: NodePath<t.ArrayExpression>): Place {
     expression.assertArrayExpression();
-    const resultPlace = this.#createTemporaryPlace();
+    const resultPlace = this.#environment.createPlace();
     const elements = expression.get("elements");
     const elementsPlaces = elements.map((element) => {
       if (element.isSpreadElement()) {
@@ -553,7 +613,7 @@ export class HIRBuilder {
   #buildBinaryExpression(expression: NodePath<t.BinaryExpression>): Place {
     const leftPlace = this.#buildExpression(expression.get("left"));
     const rightPlace = this.#buildExpression(expression.get("right"));
-    const resultPlace = this.#createTemporaryPlace();
+    const resultPlace = this.#environment.createPlace();
 
     this.#currentBlock.addInstruction(
       new BinaryExpressionInstruction(
@@ -573,7 +633,7 @@ export class HIRBuilder {
     const operandPlace = this.#buildExpression(
       expression.get("argument") as NodePath<t.Expression>,
     );
-    const resultPlace = this.#createTemporaryPlace();
+    const resultPlace = this.#environment.createPlace();
 
     this.#currentBlock.addInstruction(
       new UnaryExpressionInstruction(
@@ -591,7 +651,7 @@ export class HIRBuilder {
     expression.assertUpdateExpression();
     const argument = expression.get("argument");
     const argumentPlace = this.#buildExpression(argument);
-    const resultPlace = this.#createTemporaryPlace();
+    const resultPlace = this.#environment.createPlace();
 
     this.#currentBlock.addInstruction(
       new UpdateExpressionInstruction(
@@ -610,12 +670,11 @@ export class HIRBuilder {
 
     // Update the binding for the variable.
     const declarationId = expression.scope.getData(name);
-    let declarationBindings = this.#bindings.get(declarationId);
-    if (!declarationBindings) {
-      declarationBindings = new Map();
-      this.#bindings.set(declarationId, declarationBindings);
-    }
-    declarationBindings.set(this.#currentBlock.id, resultPlace);
+    this.#environment.setBinding(
+      declarationId,
+      this.#currentBlock.id,
+      resultPlace,
+    );
 
     // Rename the variable in the scope.
     expression.scope.rename(name, resultPlace.identifier.name);
@@ -627,7 +686,7 @@ export class HIRBuilder {
   #buildLiteral(
     expression: NodePath<t.NumericLiteral | t.StringLiteral | t.BooleanLiteral>,
   ): Place {
-    const resultPlace = this.#createTemporaryPlace();
+    const resultPlace = this.#environment.createPlace();
     this.#currentBlock.addInstruction(
       new LiteralInstruction(
         makeInstructionId(this.#nextInstructionId++),
@@ -639,7 +698,7 @@ export class HIRBuilder {
   }
 
   #buildUnsupportedExpression(expression: NodePath): Place {
-    const resultPlace = this.#createTemporaryPlace();
+    const resultPlace = this.#environment.createPlace();
     this.#currentBlock.addInstruction(
       new UnsupportedNodeInstruction(
         makeInstructionId(this.#nextInstructionId++),
@@ -656,7 +715,7 @@ export class HIRBuilder {
       throw new Error("Spread element has no argument");
     }
 
-    const resultPlace = this.#createTemporaryPlace();
+    const resultPlace = this.#environment.createPlace();
     const place = this.#buildExpression(argument);
     this.#currentBlock.addInstruction(
       new SpreadElementInstruction(
@@ -666,17 +725,6 @@ export class HIRBuilder {
       ),
     );
     return resultPlace;
-  }
-
-  // Utility Methods
-  #createTemporaryPlace(declarationId?: DeclarationId): Place {
-    const identifierId = makeIdentifierId(this.#nextIdentifierId++);
-    return new TemporaryPlace({
-      id: identifierId,
-      declarationId:
-        declarationId ?? makeDeclarationId(this.#nextDeclarationId++),
-      name: makeIdentifierName(identifierId),
-    });
   }
 
   #copyDeclaration(scope: Scope, from: string, to: string) {
@@ -709,6 +757,10 @@ export class HIRBuilder {
         );
       case "return":
         return block;
+      case "while":
+        return this.#resolveBlockTerminalChain(
+          this.#blocks.get(terminal.exit)!,
+        );
     }
   }
 }

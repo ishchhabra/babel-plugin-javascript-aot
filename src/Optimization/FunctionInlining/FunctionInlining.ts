@@ -1,4 +1,6 @@
+import { Bindings } from "../../HIR";
 import { BasicBlock, BlockId } from "../../HIR/Block";
+import { resolveBinding } from "../../HIR/HIRBuilder";
 import { IdentifierId, makeIdentifierId } from "../../HIR/Identifier";
 import {
   CallExpressionInstruction,
@@ -6,165 +8,207 @@ import {
   Instruction,
 } from "../../HIR/Instruction";
 import { Place, TemporaryPlace } from "../../HIR/Place";
+import { OptimizationReporter } from "../OptimizationPipeline/OptimizationReporter";
 import { CallGraph } from "./CallGraph";
 
-export function functionInlining(blocks: Map<BlockId, BasicBlock>): void {
-  new FunctionInliner(blocks).optimize();
+export function functionInlining(
+  bindings: Bindings,
+  blocks: Map<BlockId, BasicBlock>,
+  reporter?: OptimizationReporter,
+): void {
+  new FunctionInliner(bindings, blocks, reporter).optimize();
 }
 
-export class FunctionInliner {
+class FunctionInliner {
+  #bindings: Bindings;
   #blocks: Map<BlockId, BasicBlock>;
-  #nextIdentifierId = 0;
+  #reporter?: OptimizationReporter;
+  #nextInlinedId = 1000;
   #callGraph: CallGraph;
 
-  constructor(blocks: Map<BlockId, BasicBlock>) {
+  constructor(
+    bindings: Bindings,
+    blocks: Map<BlockId, BasicBlock>,
+    reporter?: OptimizationReporter,
+  ) {
+    this.#bindings = bindings;
     this.#blocks = blocks;
-    this.#callGraph = CallGraph.fromBlocks(blocks);
+    this.#reporter = reporter;
+    this.#callGraph = new CallGraph(bindings, blocks);
   }
 
   public optimize(): void {
-    this.#inlineEligibleFunctions();
+    this.#inlineFunctions();
   }
 
-  #inlineEligibleFunctions(): void {
+  /**
+   * Inlines all eligible functions.
+   */
+  #inlineFunctions(): void {
     for (const block of [...this.#blocks.values()].reverse()) {
       this.#inlineFunctionsInBlock(block);
     }
   }
 
+  /**
+   * Inlines all eligible functions in the given block.
+   */
   #inlineFunctionsInBlock(block: BasicBlock): void {
     for (const [index, instruction] of block.instructions.entries()) {
-      if (!this.#isInlineable(instruction)) {
+      if (!(instruction instanceof CallExpressionInstruction)) {
         continue;
       }
 
-      const targetFunction = this.#callGraph
-        .getFunctionDeclarations()
-        .get((instruction as CallExpressionInstruction).callee.identifier.id);
-
-      if (!targetFunction) {
+      if (!this.#canInlineFunction(instruction, block.id)) {
         continue;
       }
 
-      const inlinedCode = this.#inlineFunction(
-        instruction as CallExpressionInstruction,
-        targetFunction,
+      let functionDeclPlace: Place;
+      try {
+        functionDeclPlace = resolveBinding(
+          this.#bindings,
+          this.#blocks,
+          instruction.callee.identifier.declarationId,
+          block.id,
+        );
+      } catch (e) {
+        continue;
+      }
+
+      const target = this.#callGraph.getFunctionDeclaration(
+        functionDeclPlace.identifier.id,
       );
+      if (target === undefined) {
+        continue;
+      }
 
-      block.instructions.splice(index, 1, ...inlinedCode);
+      const functionBody = this.#blocks.get(target.body);
+      if (
+        functionBody === undefined ||
+        functionBody.terminal?.kind !== "return"
+      ) {
+        continue;
+      }
+
+      const instructions = this.#inlineFunctionCall(instruction, target);
+      block.instructions.splice(index, 1, ...instructions);
     }
   }
 
-  #isInlineable(instruction: Instruction): boolean {
-    if (instruction.kind !== "CallExpression") {
-      console.log(`Not inlineable: ${instruction.kind}`);
-      return false;
-    }
-
-    const callee = instruction.callee.identifier.id;
-    console.log(
-      `Is recursive: ${callee}`,
-      this.#callGraph.isFunctionRecursive(callee),
-    );
-    return !this.#callGraph.isFunctionRecursive(callee);
-  }
-
-  #generateUniquePlace(originalPlace: Place): Place {
-    const id = this.#nextIdentifierId++;
-    return new TemporaryPlace({
-      id: makeIdentifierId(id),
-      name: `$inline${id}`,
-      declarationId: originalPlace.identifier.declarationId,
-    });
-  }
-
-  #inlineFunction(
+  /**
+   * Inlines the given function call instruction with the given target function.
+   *
+   * @param call - The function call instruction to inline.
+   *
+   * @param target - The target function to inline.
+   * @returns The new instructions to replace the call instruction with.
+   */
+  #inlineFunctionCall(
     call: CallExpressionInstruction,
-    targetFunction: FunctionDeclarationInstruction,
-  ): Instruction[] {
-    const functionBody = this.#blocks.get(targetFunction.body);
-    if (!functionBody) {
-      return [call];
+    target: FunctionDeclarationInstruction,
+  ): Array<Instruction> {
+    const functionBody = this.#blocks.get(target.body);
+    if (functionBody === undefined) {
+      throw new Error(
+        `Function body not found for function declaration: ${target.target.identifier.id}`,
+      );
     }
 
-    const { paramMap, localVarMap } = this.#buildVariableMaps(
-      call,
-      targetFunction,
+    const variableMap = new Map([
+      ...this.#buildParamMap(call, target),
+      ...this.#buildLocalVarMap(target),
+    ]);
+
+    if (functionBody.terminal?.kind === "return") {
+      variableMap.set(functionBody.terminal.value.identifier.id, call.target);
+    }
+
+    const transformedInstructions = functionBody.instructions.map(
+      (instruction) => this.#remapVariables(instruction, variableMap),
     );
 
-    return this.#transformInstructions(
-      functionBody,
-      paramMap,
-      localVarMap,
-      call,
-    );
+    return transformedInstructions;
   }
 
-  #buildVariableMaps(
+  #buildParamMap(
     call: CallExpressionInstruction,
-    targetFunction: FunctionDeclarationInstruction,
-  ) {
+    target: FunctionDeclarationInstruction,
+  ): Map<IdentifierId, Place> {
     const paramMap = new Map<IdentifierId, Place>();
-    const localVarMap = new Map<IdentifierId, Place>();
 
-    targetFunction.params.forEach((param, index) => {
+    target.params.forEach((param, index) => {
       const arg = call.args[index];
       if (arg && arg instanceof Place) {
         paramMap.set(param.identifier.id, arg);
       }
     });
 
-    return { paramMap, localVarMap };
+    return paramMap;
   }
 
-  #transformInstructions(
-    functionBody: BasicBlock,
-    paramMap: Map<IdentifierId, Place>,
-    localVarMap: Map<IdentifierId, Place>,
-    call: CallExpressionInstruction,
-  ): Instruction[] {
-    const transformed: Instruction[] = [];
-
-    for (const instruction of functionBody.instructions) {
-      if (instruction.kind === "FunctionDeclaration") {
-        continue;
-      }
-
-      const newPlace = this.#generateUniquePlace(instruction.target);
-      localVarMap.set(instruction.target.identifier.id, newPlace);
-
-      transformed.push(
-        this.#remapVariables(instruction, paramMap, localVarMap),
+  #buildLocalVarMap(
+    target: FunctionDeclarationInstruction,
+  ): Map<IdentifierId, Place> {
+    const functionBody = this.#blocks.get(target.body);
+    if (functionBody === undefined) {
+      throw new Error(
+        `Function body not found for function declaration: ${target.target.identifier.id}`,
       );
     }
 
-    return this.#mapReturnValue(transformed, call);
+    const localVarMap = new Map<IdentifierId, Place>();
+
+    for (const instruction of functionBody.instructions) {
+      const newPlace = this.#createInlinedPlace(instruction.target);
+      localVarMap.set(instruction.target.identifier.id, newPlace);
+    }
+
+    return localVarMap;
   }
 
   #remapVariables(
     instruction: Instruction,
-    paramMap: Map<IdentifierId, Place>,
-    localVarMap: Map<IdentifierId, Place>,
+    variableMap: Map<IdentifierId, Place>,
   ): Instruction {
-    return instruction.cloneWithPlaces(new Map([...paramMap, ...localVarMap]));
+    return instruction.cloneWithPlaces(variableMap);
   }
 
-  #mapReturnValue(
-    instructions: Instruction[],
+  /**
+   * Creates a new temporary place for an inlined variable
+   */
+  #createInlinedPlace(originalPlace: Place): Place {
+    const id = this.#nextInlinedId++;
+    return new TemporaryPlace({
+      id: makeIdentifierId(id),
+      name: `$inlined${id}`,
+      declarationId: originalPlace.identifier.declarationId,
+    });
+  }
+
+  /**
+   * Checks if the given function call instruction can be inlined.
+   */
+  #canInlineFunction(
     call: CallExpressionInstruction,
-  ): Instruction[] {
-    const lastInstruction = instructions[instructions.length - 1];
-    if (!lastInstruction) {
-      return instructions;
+    blockId: BlockId,
+  ): boolean {
+    const block = this.#blocks.get(blockId);
+    if (block === undefined) {
+      return false;
     }
 
-    const finalMapping = new Map<IdentifierId, Place>([
-      [lastInstruction.target.identifier.id, call.target],
-    ]);
-
-    instructions[instructions.length - 1] =
-      lastInstruction.cloneWithPlaces(finalMapping);
-
-    return instructions;
+    try {
+      const functionDeclPlace = resolveBinding(
+        this.#bindings,
+        this.#blocks,
+        call.callee.identifier.declarationId,
+        blockId,
+      );
+      return !this.#callGraph.isFunctionRecursive(
+        functionDeclPlace.identifier.id,
+      );
+    } catch (e) {
+      return false;
+    }
   }
 }

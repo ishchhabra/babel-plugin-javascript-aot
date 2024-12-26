@@ -1,5 +1,5 @@
 import type * as BabelCore from "@babel/core";
-import { OptimizationOptions } from "../Optimization/OptimizationOptions";
+import { OptimizationOptions } from "../Optimization/OptimizationPipeline/OptimizationOptions";
 import { compileProgram } from "./Program";
 
 export default function BabelPlugin(): BabelCore.PluginObj {

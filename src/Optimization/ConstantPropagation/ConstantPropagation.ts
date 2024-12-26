@@ -5,17 +5,26 @@ import {
   UnaryExpressionInstruction,
 } from "../../HIR/Instruction";
 import { TPrimitiveValue } from "../../HIR/Value";
+import { OptimizationReporter } from "../OptimizationPipeline/OptimizationReporter";
 
-export function constantPropagation(blocks: Map<BlockId, BasicBlock>) {
-  new ConstantPropagation(blocks).optimize();
+export function constantPropagation(
+  blocks: Map<BlockId, BasicBlock>,
+  reporter?: OptimizationReporter,
+) {
+  new ConstantPropagation(blocks, reporter).optimize();
 }
 
 class ConstantPropagation {
   #blocks: Map<BlockId, BasicBlock>;
   #constants: Map<IdentifierId, TPrimitiveValue> = new Map();
+  #reporter?: OptimizationReporter;
 
-  constructor(blocks: Map<BlockId, BasicBlock>) {
+  constructor(
+    blocks: Map<BlockId, BasicBlock>,
+    reporter?: OptimizationReporter,
+  ) {
     this.#blocks = blocks;
+    this.#reporter = reporter;
   }
 
   public optimize(): void {
@@ -43,6 +52,7 @@ class ConstantPropagation {
             instruction.target,
             result,
           );
+          this.#reporter?.recordConstantPropagation();
           continue;
         }
       }
@@ -56,6 +66,7 @@ class ConstantPropagation {
             instruction.target,
             result,
           );
+          this.#reporter?.recordConstantPropagation();
           continue;
         }
       }

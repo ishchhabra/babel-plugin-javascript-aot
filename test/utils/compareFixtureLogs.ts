@@ -47,7 +47,7 @@ async function executeFile(
   });
 
   const script = new vm.Script(code);
-  script.runInContext(context, { timeout: 2000 });
+  script.runInContext(context, { timeout: 200 });
 
   return { logs: [...logs] };
 }
