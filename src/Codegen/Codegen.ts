@@ -121,7 +121,10 @@ export class Codegen {
         break;
       }
       case "UnsupportedNode": {
-        this.#generateUnsupportedNodeInstruction(instruction);
+        const node = this.#generateUnsupportedNodeInstruction(instruction);
+        if (t.isStatement(node)) {
+          statements.push(node);
+        }
         break;
       }
       default: {
