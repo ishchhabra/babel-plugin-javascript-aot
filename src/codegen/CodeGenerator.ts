@@ -85,15 +85,6 @@ export class CodeGenerator {
 
     this.generatedBlocks.add(blockId);
 
-    const backEdges = this.backEdges.get(blockId)!;
-    if (backEdges.size > 1) {
-      throw new Error(`Block ${blockId} has multiple back edges`);
-    }
-
-    if (backEdges.size > 0) {
-      return this.#generateBackEdge(blockId);
-    }
-
     const block = this.blocks.get(blockId);
     if (block === undefined) {
       throw new Error(`Block ${blockId} not found`);
@@ -115,6 +106,15 @@ export class CodeGenerator {
       statements.push(...this.#generateInstruction(instruction));
     }
 
+    const backEdges = this.backEdges.get(blockId)!;
+    if (backEdges.size > 1) {
+      throw new Error(`Block ${blockId} has multiple back edges`);
+    }
+
+    if (backEdges.size > 0) {
+      return this.#generateBackEdge(blockId);
+    }
+
     const terminal = block.terminal;
     if (terminal !== undefined) {
       statements.push(...this.#generateTerminal(terminal));
@@ -125,8 +125,6 @@ export class CodeGenerator {
   }
 
   #generateBackEdge(blockId: BlockId): Array<t.Statement> {
-    this.#generateBasicBlock(blockId);
-
     const terminal = this.blocks.get(blockId)!.terminal!;
     if (!(terminal instanceof BranchTerminal)) {
       throw new Error(

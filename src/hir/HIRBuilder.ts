@@ -474,7 +474,7 @@ export class HIRBuilder {
     testBlockTerminus.terminal = new BranchTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
       testPlace,
-      bodyBlockTerminus.id,
+      bodyBlock.id,
       exitBlock.id,
       exitBlock.id
     );

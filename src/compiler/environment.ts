@@ -12,6 +12,8 @@ export class Environment {
   nextInstructionId = 0;
   nextPlaceId = 0;
 
+  // Using getters and setters with private properties to simulate Dart's
+  // `late` keyword.
   private _dominators: Map<BlockId, Set<BlockId>> | undefined;
   private _immediateDominators: Map<BlockId, BlockId | undefined> | undefined;
   private _dominanceFrontier: Map<BlockId, Set<BlockId>> | undefined;

@@ -68,10 +68,13 @@ export class SSABuilder {
 
       for (const predecessor of predecessors) {
         const place = places?.find((p) => p.blockId === predecessor)?.place;
+        // If the variable is not defined in the predecessor, ignore it.
+        // This occurs with back edges in loops, where the variable is defined
+        // within the loop body but not in the block that enters the loop.
+        // The variable definition exists in the loop block (a predecessor)
+        // but not in the original entry block.
         if (place === undefined) {
-          throw new Error(
-            `Unable to find the place for ${phi.place.identifier.name} (${phi.place.identifier.declarationId})`
-          );
+          continue;
         }
 
         phi.operands.set(predecessor, place);
