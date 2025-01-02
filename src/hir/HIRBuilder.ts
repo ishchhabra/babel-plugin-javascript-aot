@@ -1,4 +1,4 @@
-import { NodePath } from "@babel/core";
+import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { getFunctionName } from "../babel-utils";
 import { Environment } from "../compiler";
@@ -524,6 +524,9 @@ export class HIRBuilder {
       case "Identifier":
         expressionPath.assertIdentifier();
         return this.#buildIdentifier(expressionPath);
+      case "UpdateExpression":
+        expressionPath.assertUpdateExpression();
+        return this.#buildUpdateExpression(expressionPath);
       case "BooleanLiteral":
       case "NumericLiteral":
       case "StringLiteral":
@@ -639,6 +642,64 @@ export class HIRBuilder {
     return place;
   }
 
+  #buildUpdateExpression(expressionPath: NodePath<t.UpdateExpression>): Place {
+    const argumentPath = expressionPath.get("argument");
+    if (!argumentPath.isIdentifier()) {
+      throw new Error(`Unsupported argument type: ${argumentPath.type}`);
+    }
+
+    const declarationId = this.#getDeclarationId(
+      argumentPath.node.name,
+      expressionPath
+    );
+    if (declarationId === undefined) {
+      throw new Error(
+        `Variable accessed before declaration: ${argumentPath.node.name}`
+      );
+    }
+
+    const originalPlace = this.#getLatestDeclarationPlace(declarationId);
+    if (originalPlace === undefined) {
+      throw new Error(
+        `Unable to find the place for ${argumentPath.node.name} (${declarationId})`
+      );
+    }
+
+    const lvalIdentifier = createIdentifier(this.environment, declarationId);
+    const lvalPlace = createPlace(lvalIdentifier, this.environment);
+
+    const rightLiteral = t.numericLiteral(1);
+    const isIncrement = expressionPath.node.operator === "++";
+    const binaryExpression = t.binaryExpression(
+      isIncrement ? "+" : "-",
+      argumentPath.node,
+      rightLiteral
+    );
+    const binaryExpressionPath = this.#createSyntheticBinaryPath(
+      expressionPath,
+      binaryExpression
+    );
+
+    const valuePlace = this.#buildBinaryExpression(binaryExpressionPath);
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    this.#registerDeclarationPlace(declarationId, lvalPlace);
+
+    this.currentBlock.instructions.push(
+      new StoreLocalInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath,
+        lvalPlace,
+        valuePlace,
+        "const"
+      )
+    );
+    return expressionPath.node.prefix ? valuePlace : originalPlace;
+  }
+
   #buildLiteral(expressionPath: NodePath<t.Literal>) {
     if (
       !t.isNumericLiteral(expressionPath.node) &&
@@ -712,5 +773,25 @@ export class HIRBuilder {
   #getLatestDeclarationPlace(declarationId: DeclarationId): Place | undefined {
     const places = this.environment.declToPlaces.get(declarationId);
     return places?.at(-1)?.place;
+  }
+  /**
+   * Creates a synthetic NodePath for a BinaryExpression by wrapping it in an ExpressionStatement.
+   * This allows us to use Babel's path traversal APIs on dynamically created expressions.
+   */
+  #createSyntheticBinaryPath(
+    parentPath: NodePath<t.Node>,
+    binExpr: t.BinaryExpression
+  ): NodePath<t.BinaryExpression> {
+    const containerNode = t.expressionStatement(binExpr);
+
+    const newPath = NodePath.get({
+      hub: parentPath.hub,
+      parentPath,
+      parent: parentPath.node,
+      container: containerNode,
+      key: "expression",
+    });
+
+    return newPath as NodePath<t.BinaryExpression>;
   }
 }
