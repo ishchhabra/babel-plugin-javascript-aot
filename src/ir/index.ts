@@ -16,6 +16,7 @@ export {
   LoadLocalInstruction,
   StatementInstruction,
   StoreLocalInstruction,
+  UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
   makeInstructionId,
 } from "./Instruction";

@@ -20,6 +20,7 @@ import {
   ReturnTerminal,
   StatementInstruction,
   StoreLocalInstruction,
+  UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
 } from "../ir";
 import { FunctionDeclarationInstruction } from "../ir/Instruction";
@@ -237,7 +238,7 @@ export class HIRBuilder {
     const expressionInstruction = this.currentBlock.instructions.at(-1);
     if (
       expressionInstruction instanceof StatementInstruction &&
-      expressionInstruction.place === expressionPlace
+      expressionInstruction.argumentPlace === expressionPlace
     ) {
       return;
     }
@@ -527,6 +528,9 @@ export class HIRBuilder {
       case "UpdateExpression":
         expressionPath.assertUpdateExpression();
         return this.#buildUpdateExpression(expressionPath);
+      case "UnaryExpression":
+        expressionPath.assertUnaryExpression();
+        return this.#buildUnaryExpression(expressionPath);
       case "BooleanLiteral":
       case "NumericLiteral":
       case "StringLiteral":
@@ -698,6 +702,29 @@ export class HIRBuilder {
       )
     );
     return expressionPath.node.prefix ? valuePlace : originalPlace;
+  }
+
+  #buildUnaryExpression(expressionPath: NodePath<t.UnaryExpression>): Place {
+    const argumentPath = expressionPath.get("argument");
+    const argumentPlace = this.#buildExpression(argumentPath);
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    const instructionId = makeInstructionId(
+      this.environment.nextInstructionId++
+    );
+    this.currentBlock.instructions.push(
+      new UnaryExpressionInstruction(
+        instructionId,
+        place,
+        expressionPath,
+        expressionPath.node.operator,
+        argumentPlace
+      )
+    );
+
+    return place;
   }
 
   #buildLiteral(expressionPath: NodePath<t.Literal>) {

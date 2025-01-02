@@ -24,7 +24,7 @@ export function makeInstructionId(id: number): InstructionId {
 export abstract class BaseInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined
   ) {}
 
@@ -46,17 +46,17 @@ export abstract class StatementInstruction extends BaseInstruction {}
 export class ArrayExpressionInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly elements: Place[]
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new ArrayExpressionInstruction(
       this.id,
-      this.place,
+      this.argumentPlace,
       this.nodePath,
       this.elements.map(
         (element) => values.get(element.identifier.id) ?? element
@@ -68,19 +68,19 @@ export class ArrayExpressionInstruction extends ExpressionInstruction {
 export class BinaryExpressionInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly operator: t.BinaryExpression["operator"],
     public readonly left: Place,
     public readonly right: Place
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new BinaryExpressionInstruction(
       this.id,
-      this.place,
+      this.argumentPlace,
       this.nodePath,
       this.operator,
       values.get(this.left.identifier.id) ?? this.left,
@@ -92,19 +92,19 @@ export class BinaryExpressionInstruction extends ExpressionInstruction {
 export class CallExpressionInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly callee: Place,
     // Using args instead of arguments since arguments is a reserved word
     public readonly args: Place[]
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new CallExpressionInstruction(
       this.id,
-      this.place,
+      this.argumentPlace,
       this.nodePath,
       values.get(this.callee.identifier.id) ?? this.callee,
       this.args.map((arg) => values.get(arg.identifier.id) ?? arg)
@@ -115,18 +115,18 @@ export class CallExpressionInstruction extends ExpressionInstruction {
 export class CopyInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly lval: Place,
     public readonly value: Place
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new CopyInstruction(
       this.id,
-      this.place,
+      this.argumentPlace,
       this.nodePath,
       values.get(this.lval.identifier.id) ?? this.lval,
       values.get(this.value.identifier.id) ?? this.value
@@ -137,17 +137,17 @@ export class CopyInstruction extends ExpressionInstruction {
 export class ExpressionStatementInstruction extends StatementInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly expression: Place
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new ExpressionStatementInstruction(
       this.id,
-      this.place,
+      this.argumentPlace,
       this.nodePath,
       values.get(this.expression.identifier.id) ?? this.expression
     );
@@ -157,18 +157,18 @@ export class ExpressionStatementInstruction extends StatementInstruction {
 export class FunctionDeclarationInstruction extends StatementInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly params: Place[],
     public readonly body: BlockId
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new FunctionDeclarationInstruction(
       this.id,
-      this.place,
+      this.argumentPlace,
       this.nodePath,
       this.params.map((param) => values.get(param.identifier.id) ?? param),
       this.body
@@ -188,11 +188,11 @@ export type TPrimitiveValue =
 export class LiteralInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly value: TPrimitiveValue
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(): BaseInstruction {
@@ -204,17 +204,17 @@ export class LiteralInstruction extends ExpressionInstruction {
 export class LoadLocalInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly target: Place
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new LoadLocalInstruction(
       this.id,
-      this.place,
+      this.argumentPlace,
       this.nodePath,
       values.get(this.target.identifier.id) ?? this.target
     );
@@ -224,17 +224,17 @@ export class LoadLocalInstruction extends ExpressionInstruction {
 export class SpreadElementInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly argument: Place
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new SpreadElementInstruction(
       this.id,
-      this.place,
+      this.argumentPlace,
       this.nodePath,
       values.get(this.argument.identifier.id) ?? this.argument
     );
@@ -244,19 +244,19 @@ export class SpreadElementInstruction extends ExpressionInstruction {
 export class StoreLocalInstruction extends StatementInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly lval: Place,
     public readonly value: Place,
     public readonly type: "let" | "const" | "var"
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new StoreLocalInstruction(
       this.id,
-      this.place,
+      this.argumentPlace,
       this.nodePath,
       this.lval,
       values.get(this.value.identifier.id) ?? this.value,
@@ -268,18 +268,18 @@ export class StoreLocalInstruction extends StatementInstruction {
 export class UnaryExpressionInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly operator: t.UnaryExpression["operator"],
     public readonly argument: Place
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new UnaryExpressionInstruction(
       this.id,
-      this.place,
+      this.argumentPlace,
       this.nodePath,
       this.operator,
       values.get(this.argument.identifier.id) ?? this.argument
@@ -290,11 +290,11 @@ export class UnaryExpressionInstruction extends ExpressionInstruction {
 export class UnsupportedNodeInstruction extends BaseInstruction {
   constructor(
     public readonly id: InstructionId,
-    public readonly place: Place,
+    public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly node: t.Node
   ) {
-    super(id, place, nodePath);
+    super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(): BaseInstruction {
