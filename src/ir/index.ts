@@ -12,6 +12,7 @@ export {
   BinaryExpressionInstruction,
   ExpressionInstruction,
   ExpressionStatementInstruction,
+  FunctionDeclarationInstruction,
   LiteralInstruction,
   LoadLocalInstruction,
   StatementInstruction,

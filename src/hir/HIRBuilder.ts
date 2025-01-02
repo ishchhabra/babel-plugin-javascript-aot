@@ -12,6 +12,7 @@ import {
   createPlace,
   DeclarationId,
   ExpressionStatementInstruction,
+  FunctionDeclarationInstruction,
   JumpTerminal,
   LiteralInstruction,
   LoadLocalInstruction,
@@ -23,7 +24,6 @@ import {
   UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
 } from "../ir";
-import { FunctionDeclarationInstruction } from "../ir/Instruction";
 
 interface HIR {
   blocks: Map<BlockId, BasicBlock>;
