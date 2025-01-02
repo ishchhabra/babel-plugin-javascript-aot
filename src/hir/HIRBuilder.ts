@@ -8,6 +8,7 @@ import {
   BinaryExpressionInstruction,
   BlockId,
   BranchTerminal,
+  CallExpressionInstruction,
   createBlock,
   createIdentifier,
   createPlace,
@@ -528,6 +529,9 @@ export class HIRBuilder {
       case "BinaryExpression":
         expressionPath.assertBinaryExpression();
         return this.#buildBinaryExpression(expressionPath);
+      case "CallExpression":
+        expressionPath.assertCallExpression();
+        return this.#buildCallExpression(expressionPath);
       case "Identifier":
         expressionPath.assertIdentifier();
         return this.#buildIdentifier(expressionPath);
@@ -654,6 +658,45 @@ export class HIRBuilder {
         expressionPath.node.operator,
         leftPlace,
         rightPlace
+      )
+    );
+
+    return place;
+  }
+
+  #buildCallExpression(expressionPath: NodePath<t.CallExpression>): Place {
+    const calleePath = expressionPath.get("callee");
+    if (!calleePath.isExpression()) {
+      throw new Error(`Unsupported callee type: ${calleePath.type}`);
+    }
+
+    const calleePlace = this.#buildExpression(calleePath);
+
+    const argumentsPath = expressionPath.get("arguments");
+    const argumentPlaces = argumentsPath.map(
+      (argumentPath: NodePath<t.CallExpression["arguments"][number]>) => {
+        if (argumentPath.isSpreadElement()) {
+          return this.#buildSpreadElement(argumentPath);
+        }
+
+        argumentPath.assertExpression();
+        return this.#buildExpression(argumentPath);
+      }
+    );
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    const instructionId = makeInstructionId(
+      this.environment.nextInstructionId++
+    );
+    this.currentBlock.instructions.push(
+      new CallExpressionInstruction(
+        instructionId,
+        place,
+        expressionPath,
+        calleePlace,
+        argumentPlaces
       )
     );
 

@@ -7,26 +7,25 @@ import {
   BinaryExpressionInstruction,
   BlockId,
   BranchTerminal,
+  CallExpressionInstruction,
+  CopyInstruction,
   ExpressionInstruction,
   ExpressionStatementInstruction,
+  FunctionDeclarationInstruction,
   HoleInstruction,
   JumpTerminal,
   LiteralInstruction,
   LoadLocalInstruction,
   makeBlockId,
+  MiscellaneousInstruction,
   PlaceId,
   ReturnTerminal,
+  SpreadElementInstruction,
   StatementInstruction,
   StoreLocalInstruction,
+  UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
 } from "../ir";
-import {
-  CopyInstruction,
-  FunctionDeclarationInstruction,
-  MiscellaneousInstruction,
-  SpreadElementInstruction,
-  UnaryExpressionInstruction,
-} from "../ir/Instruction";
 
 /**
  * Generates the code from the IR.
@@ -225,6 +224,8 @@ export class CodeGenerator {
       return this.#generateArrayExpression(instruction);
     } else if (instruction instanceof BinaryExpressionInstruction) {
       return this.#generateBinaryExpression(instruction);
+    } else if (instruction instanceof CallExpressionInstruction) {
+      return this.#generateCallExpression(instruction);
     } else if (instruction instanceof CopyInstruction) {
       return this.#generateCopyInstruction(instruction);
     } else if (instruction instanceof LiteralInstruction) {
@@ -279,6 +280,31 @@ export class CodeGenerator {
     t.assertExpression(right);
 
     const node = t.binaryExpression(instruction.operator, left, right);
+    this.places.set(instruction.argumentPlace.id, node);
+    return node;
+  }
+
+  #generateCallExpression(
+    instruction: CallExpressionInstruction
+  ): t.Expression {
+    const callee = this.places.get(instruction.callee.id);
+    if (callee === undefined) {
+      throw new Error(`Place ${instruction.callee.id} not found`);
+    }
+
+    t.assertExpression(callee);
+
+    const args = instruction.args.map((argument) => {
+      const node = this.places.get(argument.id);
+      if (node === undefined) {
+        throw new Error(`Place ${argument.id} not found`);
+      }
+
+      t.assertExpression(node);
+      return node;
+    });
+
+    const node = t.callExpression(callee, args);
     this.places.set(instruction.argumentPlace.id, node);
     return node;
   }
