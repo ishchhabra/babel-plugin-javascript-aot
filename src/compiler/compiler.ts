@@ -8,6 +8,7 @@ import { SSAEliminator } from "../ssa/SSAEliminator";
 import { Environment } from "./environment";
 
 export class Compiler {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO: Remove this.
   compileProgram(program: NodePath<Program>, options: PluginOptions) {
     const environment = new Environment();
     const { blocks } = new HIRBuilder(program, environment).build();
