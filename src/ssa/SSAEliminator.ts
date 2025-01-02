@@ -23,6 +23,11 @@ export class SSAEliminator {
 
   public eliminate() {
     for (const phi of this.phis) {
+      // Ignore phis with only one operand since they are redundant.
+      if (phi.operands.size <= 1) {
+        continue;
+      }
+
       this.#insertPhiDeclaration(phi);
       // NOTE: We need to replace phi usages before inserting copies, otherwise
       // the copies will be rewritten as well, making it `phi = phi`.
