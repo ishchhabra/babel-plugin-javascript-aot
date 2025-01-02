@@ -25,7 +25,7 @@ export abstract class BaseInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly argumentPlace: Place,
-    public readonly nodePath: NodePath<t.Node> | undefined
+    public readonly nodePath: NodePath<t.Node | null> | undefined
   ) {}
 
   /**
@@ -173,6 +173,21 @@ export class FunctionDeclarationInstruction extends StatementInstruction {
       this.params.map((param) => values.get(param.identifier.id) ?? param),
       this.body
     );
+  }
+}
+
+export class HoleInstruction extends ExpressionInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly argumentPlace: Place,
+    public readonly nodePath: NodePath<null>
+  ) {
+    super(id, argumentPlace, nodePath);
+  }
+
+  rewriteInstruction(): BaseInstruction {
+    // Hole can not be rewritten.
+    return this;
   }
 }
 

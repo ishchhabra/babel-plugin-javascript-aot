@@ -1,5 +1,6 @@
 import * as t from "@babel/types";
 import {
+  ArrayExpressionInstruction,
   BaseInstruction,
   BaseTerminal,
   BasicBlock,
@@ -8,6 +9,7 @@ import {
   BranchTerminal,
   ExpressionInstruction,
   ExpressionStatementInstruction,
+  HoleInstruction,
   JumpTerminal,
   LiteralInstruction,
   LoadLocalInstruction,
@@ -28,7 +30,7 @@ import {
  * Generates the code from the IR.
  */
 export class CodeGenerator {
-  private readonly places: Map<PlaceId, t.Node> = new Map();
+  private readonly places: Map<PlaceId, t.Node | null> = new Map();
   private readonly blockToStatements: Map<BlockId, Array<t.Statement>> =
     new Map();
   private readonly generatedBlocks: Set<BlockId> = new Set();
@@ -214,11 +216,15 @@ export class CodeGenerator {
    *
    * Methods for generating code from different types of expressions
    ******************************************************************************/
-  #generateExpression(instruction: ExpressionInstruction): t.Expression {
-    if (instruction instanceof BinaryExpressionInstruction) {
+  #generateExpression(instruction: ExpressionInstruction): t.Expression | null {
+    if (instruction instanceof ArrayExpressionInstruction) {
+      return this.#generateArrayExpression(instruction);
+    } else if (instruction instanceof BinaryExpressionInstruction) {
       return this.#generateBinaryExpression(instruction);
     } else if (instruction instanceof CopyInstruction) {
       return this.#generateCopyInstruction(instruction);
+    } else if (instruction instanceof HoleInstruction) {
+      return this.#generateHole(instruction);
     } else if (instruction instanceof LiteralInstruction) {
       return this.#generateLiteralExpression(instruction);
     } else if (instruction instanceof LoadLocalInstruction) {
@@ -230,6 +236,28 @@ export class CodeGenerator {
     throw new Error(
       `Unsupported expression type: ${instruction.constructor.name}`
     );
+  }
+
+  #generateArrayExpression(
+    instruction: ArrayExpressionInstruction
+  ): t.Expression {
+    const elements = instruction.elements.map((element) => {
+      const node = this.places.get(element.id);
+      if (node === undefined) {
+        throw new Error(`Place ${element.id} not found`);
+      }
+
+      if (node === null) {
+        return null;
+      }
+
+      t.assertExpression(node);
+      return node;
+    });
+
+    const node = t.arrayExpression(elements);
+    this.places.set(instruction.argumentPlace.id, node);
+    return node;
   }
 
   #generateBinaryExpression(
@@ -263,6 +291,12 @@ export class CodeGenerator {
     t.assertExpression(value);
 
     const node = t.assignmentExpression("=", lval, value);
+    this.places.set(instruction.argumentPlace.id, node);
+    return node;
+  }
+
+  #generateHole(instruction: HoleInstruction): null {
+    const node = null;
     this.places.set(instruction.argumentPlace.id, node);
     return node;
   }

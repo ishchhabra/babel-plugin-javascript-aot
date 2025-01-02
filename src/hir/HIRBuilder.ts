@@ -3,6 +3,7 @@ import * as t from "@babel/types";
 import { getFunctionName } from "../babel-utils";
 import { Environment } from "../compiler";
 import {
+  ArrayExpressionInstruction,
   BasicBlock,
   BinaryExpressionInstruction,
   BlockId,
@@ -24,6 +25,7 @@ import {
   UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
 } from "../ir";
+import { HoleInstruction } from "../ir/Instruction";
 
 interface HIR {
   blocks: Map<BlockId, BasicBlock>;
@@ -516,6 +518,9 @@ export class HIRBuilder {
    ******************************************************************************/
   #buildExpression(expressionPath: NodePath<t.Expression>): Place {
     switch (expressionPath.type) {
+      case "ArrayExpression":
+        expressionPath.assertArrayExpression();
+        return this.#buildArrayExpression(expressionPath);
       case "AssignmentExpression":
         expressionPath.assertAssignmentExpression();
         return this.#buildAssignmentExpression(expressionPath);
@@ -539,6 +544,41 @@ export class HIRBuilder {
       default:
         return this.#buildUnsupportedExpression(expressionPath);
     }
+  }
+
+  #buildArrayExpression(expressionPath: NodePath<t.ArrayExpression>): Place {
+    const elementsPath = expressionPath.get("elements");
+    const elementPlaces = elementsPath.map(
+      (elementPath: NodePath<t.ArrayExpression["elements"][number]>) => {
+        if (elementPath.node === null) {
+          return this.#buildHole(elementPath as NodePath<null>);
+        }
+
+        if (elementPath.isSpreadElement()) {
+          throw new Error("Spread element in array expression not supported");
+        }
+
+        elementPath.assertExpression();
+        return this.#buildExpression(elementPath);
+      }
+    );
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    const instructionId = makeInstructionId(
+      this.environment.nextInstructionId++
+    );
+    this.currentBlock.instructions.push(
+      new ArrayExpressionInstruction(
+        instructionId,
+        place,
+        expressionPath,
+        elementPlaces
+      )
+    );
+
+    return place;
   }
 
   #buildAssignmentExpression(
@@ -755,6 +795,43 @@ export class HIRBuilder {
   }
 
   #buildUnsupportedExpression(expressionPath: NodePath<t.Expression>) {
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    this.currentBlock.instructions.push(
+      new UnsupportedNodeInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath,
+        expressionPath.node
+      )
+    );
+
+    return place;
+  }
+
+  /******************************************************************************
+   * Misc Node Building
+   *
+   * Methods for building HIR from miscellaneous node types like holes and spread
+   ******************************************************************************/
+
+  #buildHole(expressionPath: NodePath<null>): Place {
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    this.currentBlock.instructions.push(
+      new HoleInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath
+      )
+    );
+
+    return place;
+  }
+
+  #buildSpreadElement(expressionPath: NodePath<t.SpreadElement>): Place {
     const identifier = createIdentifier(this.environment);
     const place = createPlace(identifier, this.environment);
 

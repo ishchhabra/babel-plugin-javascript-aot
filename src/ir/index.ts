@@ -8,11 +8,13 @@ export {
   makeIdentifierName,
 } from "./Identifier";
 export {
+  ArrayExpressionInstruction,
   BaseInstruction,
   BinaryExpressionInstruction,
   ExpressionInstruction,
   ExpressionStatementInstruction,
   FunctionDeclarationInstruction,
+  HoleInstruction,
   LiteralInstruction,
   LoadLocalInstruction,
   StatementInstruction,
