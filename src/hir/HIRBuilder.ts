@@ -14,18 +14,19 @@ import {
   DeclarationId,
   ExpressionStatementInstruction,
   FunctionDeclarationInstruction,
+  HoleInstruction,
   JumpTerminal,
   LiteralInstruction,
   LoadLocalInstruction,
   makeInstructionId,
   Place,
   ReturnTerminal,
+  SpreadElementInstruction,
   StatementInstruction,
   StoreLocalInstruction,
   UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
 } from "../ir";
-import { HoleInstruction } from "../ir/Instruction";
 
 interface HIR {
   blocks: Map<BlockId, BasicBlock>;
@@ -555,7 +556,7 @@ export class HIRBuilder {
         }
 
         if (elementPath.isSpreadElement()) {
-          throw new Error("Spread element in array expression not supported");
+          return this.#buildSpreadElement(elementPath);
         }
 
         elementPath.assertExpression();
@@ -832,15 +833,18 @@ export class HIRBuilder {
   }
 
   #buildSpreadElement(expressionPath: NodePath<t.SpreadElement>): Place {
+    const argumentPath = expressionPath.get("argument");
+    const argumentPlace = this.#buildExpression(argumentPath);
+
     const identifier = createIdentifier(this.environment);
     const place = createPlace(identifier, this.environment);
 
     this.currentBlock.instructions.push(
-      new UnsupportedNodeInstruction(
+      new SpreadElementInstruction(
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         expressionPath,
-        expressionPath.node
+        argumentPlace
       )
     );
 

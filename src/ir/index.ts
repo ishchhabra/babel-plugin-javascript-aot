@@ -17,6 +17,7 @@ export {
   HoleInstruction,
   LiteralInstruction,
   LoadLocalInstruction,
+  SpreadElementInstruction,
   StatementInstruction,
   StoreLocalInstruction,
   UnaryExpressionInstruction,

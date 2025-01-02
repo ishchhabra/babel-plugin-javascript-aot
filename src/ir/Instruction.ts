@@ -43,6 +43,8 @@ export abstract class ExpressionInstruction extends BaseInstruction {}
 
 export abstract class StatementInstruction extends BaseInstruction {}
 
+export abstract class MiscellaneousInstruction extends BaseInstruction {}
+
 export class ArrayExpressionInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,
@@ -176,7 +178,7 @@ export class FunctionDeclarationInstruction extends StatementInstruction {
   }
 }
 
-export class HoleInstruction extends ExpressionInstruction {
+export class HoleInstruction extends MiscellaneousInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly argumentPlace: Place,
@@ -236,7 +238,7 @@ export class LoadLocalInstruction extends ExpressionInstruction {
   }
 }
 
-export class SpreadElementInstruction extends ExpressionInstruction {
+export class SpreadElementInstruction extends MiscellaneousInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly argumentPlace: Place,

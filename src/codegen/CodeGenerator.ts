@@ -23,6 +23,8 @@ import {
 import {
   CopyInstruction,
   FunctionDeclarationInstruction,
+  MiscellaneousInstruction,
+  SpreadElementInstruction,
   UnaryExpressionInstruction,
 } from "../ir/Instruction";
 
@@ -58,6 +60,8 @@ export class CodeGenerator {
       this.#generateExpression(instruction);
     } else if (instruction instanceof StatementInstruction) {
       statements.push(this.#generateStatement(instruction));
+    } else if (instruction instanceof MiscellaneousInstruction) {
+      this.#generateMiscellaneousNode(instruction);
     } else if (instruction instanceof UnsupportedNodeInstruction) {
       const node = this.#generateUnsupportedNodeInstruction(instruction);
       if (t.isStatement(node)) {
@@ -223,8 +227,6 @@ export class CodeGenerator {
       return this.#generateBinaryExpression(instruction);
     } else if (instruction instanceof CopyInstruction) {
       return this.#generateCopyInstruction(instruction);
-    } else if (instruction instanceof HoleInstruction) {
-      return this.#generateHole(instruction);
     } else if (instruction instanceof LiteralInstruction) {
       return this.#generateLiteralExpression(instruction);
     } else if (instruction instanceof LoadLocalInstruction) {
@@ -249,6 +251,10 @@ export class CodeGenerator {
 
       if (node === null) {
         return null;
+      }
+
+      if (t.isSpreadElement(node)) {
+        return node;
       }
 
       t.assertExpression(node);
@@ -291,12 +297,6 @@ export class CodeGenerator {
     t.assertExpression(value);
 
     const node = t.assignmentExpression("=", lval, value);
-    this.places.set(instruction.argumentPlace.id, node);
-    return node;
-  }
-
-  #generateHole(instruction: HoleInstruction): null {
-    const node = null;
     this.places.set(instruction.argumentPlace.id, node);
     return node;
   }
@@ -407,6 +407,46 @@ export class CodeGenerator {
     const node = t.variableDeclaration(instruction.type, [
       t.variableDeclarator(lval, value),
     ]);
+    this.places.set(instruction.argumentPlace.id, node);
+    return node;
+  }
+
+  /******************************************************************************
+   * Misc Node Generation
+   *
+   * Methods for generating code from miscellaneous node types like holes and spread
+   ******************************************************************************/
+
+  #generateMiscellaneousNode(
+    instruction: MiscellaneousInstruction
+  ): t.SpreadElement | null {
+    if (instruction instanceof HoleInstruction) {
+      return this.#generateHole(instruction);
+    } else if (instruction instanceof SpreadElementInstruction) {
+      return this.#generateSpreadElement(instruction);
+    }
+
+    throw new Error(
+      `Unsupported miscellaneous node type: ${instruction.constructor.name}`
+    );
+  }
+
+  #generateHole(instruction: HoleInstruction): null {
+    const node = null;
+    this.places.set(instruction.argumentPlace.id, node);
+    return node;
+  }
+
+  #generateSpreadElement(
+    instruction: SpreadElementInstruction
+  ): t.SpreadElement {
+    const argument = this.places.get(instruction.argument.id);
+    if (argument === undefined) {
+      throw new Error(`Place ${instruction.argument.id} not found`);
+    }
+
+    t.assertExpression(argument);
+    const node = t.spreadElement(argument);
     this.places.set(instruction.argumentPlace.id, node);
     return node;
   }
