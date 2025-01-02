@@ -249,11 +249,7 @@ export class CodeGenerator {
         throw new Error(`Place ${element.id} not found`);
       }
 
-      if (node === null) {
-        return null;
-      }
-
-      if (t.isSpreadElement(node)) {
+      if (node === null || t.isSpreadElement(node)) {
         return node;
       }
 
