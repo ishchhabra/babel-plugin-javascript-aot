@@ -404,7 +404,9 @@ export class CodeGenerator {
     const node = t.functionDeclaration(
       idNode,
       paramNodes,
-      t.blockStatement(body)
+      t.blockStatement(body),
+      instruction.generator,
+      instruction.async
     );
     this.places.set(instruction.argumentPlace.id, node);
     return node;

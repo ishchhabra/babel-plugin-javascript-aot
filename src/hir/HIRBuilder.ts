@@ -329,7 +329,9 @@ export class HIRBuilder {
       functionPlace,
       statementPath,
       paramPlaces,
-      bodyBlock.id
+      bodyBlock.id,
+      statementPath.node.generator,
+      statementPath.node.async
     );
     this.currentBlock.instructions.push(instruction);
   }

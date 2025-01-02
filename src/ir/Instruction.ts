@@ -162,7 +162,9 @@ export class FunctionDeclarationInstruction extends StatementInstruction {
     public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly params: Place[],
-    public readonly body: BlockId
+    public readonly body: BlockId,
+    public readonly generator: boolean,
+    public readonly async: boolean
   ) {
     super(id, argumentPlace, nodePath);
   }
@@ -173,7 +175,9 @@ export class FunctionDeclarationInstruction extends StatementInstruction {
       this.argumentPlace,
       this.nodePath,
       this.params.map((param) => values.get(param.identifier.id) ?? param),
-      this.body
+      this.body,
+      this.generator,
+      this.async
     );
   }
 }
