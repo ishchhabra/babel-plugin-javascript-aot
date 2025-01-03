@@ -15,8 +15,10 @@ import {
   HoleInstruction,
   JumpTerminal,
   LiteralInstruction,
+  LoadGlobalInstruction,
   LoadLocalInstruction,
   makeBlockId,
+  MemberExpressionInstruction,
   MiscellaneousInstruction,
   PlaceId,
   ReturnTerminal,
@@ -230,8 +232,12 @@ export class CodeGenerator {
       return this.#generateCopyInstruction(instruction);
     } else if (instruction instanceof LiteralInstruction) {
       return this.#generateLiteralExpression(instruction);
+    } else if (instruction instanceof LoadGlobalInstruction) {
+      return this.#generateLoadGlobalInstruction(instruction);
     } else if (instruction instanceof LoadLocalInstruction) {
       return this.#generateLoadLocalInstruction(instruction);
+    } else if (instruction instanceof MemberExpressionInstruction) {
+      return this.#generateMemberExpression(instruction);
     } else if (instruction instanceof UnaryExpressionInstruction) {
       return this.#generateUnaryExpression(instruction);
     }
@@ -329,10 +335,45 @@ export class CodeGenerator {
     return node;
   }
 
+  #generateLoadGlobalInstruction(
+    instruction: LoadGlobalInstruction
+  ): t.Expression {
+    const node = t.identifier(instruction.name);
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
   #generateLoadLocalInstruction(
     instruction: LoadLocalInstruction
   ): t.Expression {
     const node = t.identifier(instruction.value.identifier.name);
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
+  #generateMemberExpression(
+    instruction: MemberExpressionInstruction
+  ): t.Expression {
+    const object = this.places.get(instruction.object.id);
+    if (object === undefined) {
+      throw new Error(`Place ${instruction.object.id} not found`);
+    }
+
+    const property = this.places.get(instruction.property.id);
+    if (property === undefined) {
+      throw new Error(`Place ${instruction.property.id} not found`);
+    }
+
+    t.assertExpression(object);
+
+    assertNonNull(property);
+    if (!t.isIdentifier(property) && !t.isPrivateName(property)) {
+      throw new Error(
+        `Unsupported property type: ${property.constructor.name}`
+      );
+    }
+
+    const node = t.memberExpression(object, property);
     this.places.set(instruction.place.id, node);
     return node;
   }
@@ -475,3 +516,11 @@ export class CodeGenerator {
     return node;
   }
 }
+
+/******************************************************************************
+ * Utils
+ *
+ * Utility methods used by the code generator
+ ******************************************************************************/
+
+function assertNonNull<T>(value: T | undefined | null): asserts value is T {}

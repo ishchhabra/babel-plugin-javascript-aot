@@ -18,8 +18,10 @@ import {
   HoleInstruction,
   JumpTerminal,
   LiteralInstruction,
+  LoadGlobalInstruction,
   LoadLocalInstruction,
   makeInstructionId,
+  MemberExpressionInstruction,
   Place,
   ReturnTerminal,
   SpreadElementInstruction,
@@ -537,6 +539,9 @@ export class HIRBuilder {
       case "Identifier":
         expressionPath.assertIdentifier();
         return this.#buildIdentifier(expressionPath);
+      case "MemberExpression":
+        expressionPath.assertMemberExpression();
+        return this.#buildMemberExpression(expressionPath);
       case "UpdateExpression":
         expressionPath.assertUpdateExpression();
         return this.#buildUpdateExpression(expressionPath);
@@ -710,7 +715,19 @@ export class HIRBuilder {
 
     const declarationId = this.#getDeclarationId(name, expressionPath);
     if (declarationId === undefined) {
-      throw new Error(`Variable accessed before declaration: ${name}`);
+      const identifier = createIdentifier(this.environment);
+      const place = createPlace(identifier, this.environment);
+
+      this.currentBlock.instructions.push(
+        new LoadGlobalInstruction(
+          makeInstructionId(this.environment.nextInstructionId++),
+          place,
+          expressionPath,
+          name
+        )
+      );
+
+      return place;
     }
 
     const valuePlace = this.#getLatestDeclarationPlace(declarationId);
@@ -727,6 +744,33 @@ export class HIRBuilder {
     const place = createPlace(identifier, this.environment);
     this.currentBlock.instructions.push(
       new LoadLocalInstruction(instructionId, place, expressionPath, valuePlace)
+    );
+
+    return place;
+  }
+
+  #buildMemberExpression(expressionPath: NodePath<t.MemberExpression>): Place {
+    const objectPath = expressionPath.get("object");
+    const objectPlace = this.#buildExpression(objectPath);
+
+    const propertyPath = expressionPath.get("property");
+    if (!propertyPath.isIdentifier()) {
+      throw new Error(`Unsupported property type: ${propertyPath.type}`);
+    }
+
+    const propertyPlace = this.#buildExpression(propertyPath);
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    this.currentBlock.instructions.push(
+      new MemberExpressionInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath,
+        objectPlace,
+        propertyPlace,
+        expressionPath.node.computed
+      )
     );
 
     return place;

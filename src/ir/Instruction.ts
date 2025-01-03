@@ -222,6 +222,22 @@ export class LiteralInstruction extends ExpressionInstruction {
   }
 }
 
+export class LoadGlobalInstruction extends ExpressionInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly name: string
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(): BaseInstruction {
+    // LoadGlobal can not be rewritten.
+    return this;
+  }
+}
+
 export class LoadLocalInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,
@@ -244,6 +260,30 @@ export class LoadLocalInstruction extends ExpressionInstruction {
       this.place,
       this.nodePath,
       rewrittenTarget
+    );
+  }
+}
+
+export class MemberExpressionInstruction extends ExpressionInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly object: Place,
+    public readonly property: Place,
+    public readonly computed: boolean
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+    return new MemberExpressionInstruction(
+      this.id,
+      this.place,
+      this.nodePath,
+      values.get(this.object.identifier.id) ?? this.object,
+      values.get(this.property.identifier.id) ?? this.property,
+      this.computed
     );
   }
 }
