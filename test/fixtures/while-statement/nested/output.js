@@ -7,9 +7,9 @@ while (phi_25 > 0) {
   phi_26 = $7;
   while (phi_26 > 0) {
     const $13 = phi_26 - 1;
-    phi_26 = $13;
+    phi_26 = phi_26 - 1;
   }
   const $18 = phi_25 - 1;
-  phi_25 = $18;
+  phi_25 = phi_25 - 1;
 }
 const $1 = phi_25;

@@ -227,17 +227,23 @@ export class LoadLocalInstruction extends ExpressionInstruction {
     public readonly id: InstructionId,
     public readonly argumentPlace: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
-    public readonly target: Place
+    public readonly value: Place
   ) {
     super(id, argumentPlace, nodePath);
   }
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+    const rewrittenTarget = values.get(this.value.identifier.id) ?? this.value;
+
+    if (rewrittenTarget === this.value) {
+      return this;
+    }
+
     return new LoadLocalInstruction(
       this.id,
       this.argumentPlace,
       this.nodePath,
-      values.get(this.target.identifier.id) ?? this.target
+      rewrittenTarget
     );
   }
 }

@@ -11,6 +11,10 @@ import {
 import { CopyInstruction, LoadLocalInstruction } from "../ir/Instruction";
 import { Phi } from "./Phi";
 
+interface SSAEliminationResult {
+  blocks: Map<BlockId, BasicBlock>;
+}
+
 /**
  * Eliminates the phis from the HIR by inserting copy instructions.
  */
@@ -21,7 +25,7 @@ export class SSAEliminator {
     private readonly phis: Set<Phi>
   ) {}
 
-  public eliminate() {
+  public eliminate(): SSAEliminationResult {
     for (const phi of this.phis) {
       // Ignore phis with only one operand since they are redundant.
       if (phi.operands.size <= 1) {
@@ -35,7 +39,7 @@ export class SSAEliminator {
       this.#insertPhiCopies(phi);
     }
 
-    return this.blocks;
+    return { blocks: this.blocks };
   }
 
   #insertPhiDeclaration(phi: Phi) {

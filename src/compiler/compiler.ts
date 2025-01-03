@@ -3,6 +3,7 @@ import { Program } from "@babel/types";
 import { CFGBuilder } from "../cfg";
 import { CodeGenerator } from "../codegen/CodeGenerator";
 import { HIRBuilder } from "../hir";
+import { LateOptimizer } from "../late-optimizer/LateOptimizer";
 import { SSABuilder } from "../ssa/SSABuilder";
 import { SSAEliminator } from "../ssa/SSAEliminator";
 import { Environment } from "./environment";
@@ -18,8 +19,16 @@ export class Compiler {
     ).build();
 
     const { phis } = new SSABuilder(predecessors, environment).build();
-    new SSAEliminator(environment, blocks, phis).eliminate();
-    const generator = new CodeGenerator(blocks, backEdges);
+    const ssaEliminatorResult = new SSAEliminator(
+      environment,
+      blocks,
+      phis
+    ).eliminate();
+    const lateOptimizerResult = new LateOptimizer(
+      environment,
+      ssaEliminatorResult.blocks
+    ).optimize();
+    const generator = new CodeGenerator(lateOptimizerResult.blocks, backEdges);
     const code = generator.generate();
 
     return code;

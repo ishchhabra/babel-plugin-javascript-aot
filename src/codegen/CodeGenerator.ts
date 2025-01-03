@@ -332,7 +332,7 @@ export class CodeGenerator {
   #generateLoadLocalInstruction(
     instruction: LoadLocalInstruction
   ): t.Expression {
-    const node = t.identifier(instruction.target.identifier.name);
+    const node = t.identifier(instruction.value.identifier.name);
     this.places.set(instruction.argumentPlace.id, node);
     return node;
   }
