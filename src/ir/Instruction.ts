@@ -37,6 +37,16 @@ export abstract class BaseInstruction {
   abstract rewriteInstruction(
     values: Map<IdentifierId, Place>
   ): BaseInstruction;
+
+  /**
+   * Return a set of place IDs that this instruction *reads* (uses).
+   */
+  abstract getReadPlaces(): Place[];
+
+  /** Whether this instruction is pure. */
+  public get isPure(): boolean {
+    return false;
+  }
 }
 
 export abstract class ExpressionInstruction extends BaseInstruction {}
@@ -65,6 +75,14 @@ export class ArrayExpressionInstruction extends ExpressionInstruction {
       )
     );
   }
+
+  getReadPlaces(): Place[] {
+    return this.elements;
+  }
+
+  public get isPure(): boolean {
+    return true;
+  }
 }
 
 export class BinaryExpressionInstruction extends ExpressionInstruction {
@@ -89,6 +107,14 @@ export class BinaryExpressionInstruction extends ExpressionInstruction {
       values.get(this.right.identifier.id) ?? this.right
     );
   }
+
+  getReadPlaces(): Place[] {
+    return [this.left, this.right];
+  }
+
+  public get isPure(): boolean {
+    return true;
+  }
 }
 
 export class CallExpressionInstruction extends ExpressionInstruction {
@@ -112,6 +138,14 @@ export class CallExpressionInstruction extends ExpressionInstruction {
       this.args.map((arg) => values.get(arg.identifier.id) ?? arg)
     );
   }
+
+  getReadPlaces(): Place[] {
+    return [this.callee, ...this.args];
+  }
+
+  public get isPure(): boolean {
+    return false;
+  }
 }
 
 export class CopyInstruction extends ExpressionInstruction {
@@ -134,6 +168,14 @@ export class CopyInstruction extends ExpressionInstruction {
       values.get(this.value.identifier.id) ?? this.value
     );
   }
+
+  getReadPlaces(): Place[] {
+    return [this.lval, this.value];
+  }
+
+  public get isPure(): boolean {
+    return true;
+  }
 }
 
 export class ExpressionStatementInstruction extends StatementInstruction {
@@ -153,6 +195,14 @@ export class ExpressionStatementInstruction extends StatementInstruction {
       this.nodePath,
       values.get(this.expression.identifier.id) ?? this.expression
     );
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.expression];
+  }
+
+  public get isPure(): boolean {
+    return false;
   }
 }
 
@@ -180,6 +230,14 @@ export class FunctionDeclarationInstruction extends StatementInstruction {
       this.async
     );
   }
+
+  getReadPlaces(): Place[] {
+    return this.params;
+  }
+
+  public get isPure(): boolean {
+    return false;
+  }
 }
 
 export class HoleInstruction extends MiscellaneousInstruction {
@@ -194,6 +252,14 @@ export class HoleInstruction extends MiscellaneousInstruction {
   rewriteInstruction(): BaseInstruction {
     // Hole can not be rewritten.
     return this;
+  }
+
+  getReadPlaces(): Place[] {
+    return [];
+  }
+
+  public get isPure(): boolean {
+    return true;
   }
 }
 
@@ -220,6 +286,14 @@ export class LiteralInstruction extends ExpressionInstruction {
     // Literals can not be rewritten.
     return this;
   }
+
+  getReadPlaces(): Place[] {
+    return [];
+  }
+
+  public get isPure(): boolean {
+    return true;
+  }
 }
 
 export class LoadGlobalInstruction extends ExpressionInstruction {
@@ -235,6 +309,14 @@ export class LoadGlobalInstruction extends ExpressionInstruction {
   rewriteInstruction(): BaseInstruction {
     // LoadGlobal can not be rewritten.
     return this;
+  }
+
+  getReadPlaces(): Place[] {
+    return [];
+  }
+
+  public get isPure(): boolean {
+    return false;
   }
 }
 
@@ -262,6 +344,14 @@ export class LoadLocalInstruction extends ExpressionInstruction {
       rewrittenTarget
     );
   }
+
+  getReadPlaces(): Place[] {
+    return [this.value];
+  }
+
+  public get isPure(): boolean {
+    return true;
+  }
 }
 
 export class MemberExpressionInstruction extends ExpressionInstruction {
@@ -286,6 +376,14 @@ export class MemberExpressionInstruction extends ExpressionInstruction {
       this.computed
     );
   }
+
+  getReadPlaces(): Place[] {
+    return [this.object, this.property];
+  }
+
+  public get isPure(): boolean {
+    return false;
+  }
 }
 
 export class SpreadElementInstruction extends MiscellaneousInstruction {
@@ -305,6 +403,14 @@ export class SpreadElementInstruction extends MiscellaneousInstruction {
       this.nodePath,
       values.get(this.argument.identifier.id) ?? this.argument
     );
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.argument];
+  }
+
+  public get isPure(): boolean {
+    return true;
   }
 }
 
@@ -330,6 +436,14 @@ export class StoreLocalInstruction extends StatementInstruction {
       this.type
     );
   }
+
+  getReadPlaces(): Place[] {
+    return [this.value];
+  }
+
+  public get isPure(): boolean {
+    return true;
+  }
 }
 
 export class UnaryExpressionInstruction extends ExpressionInstruction {
@@ -352,6 +466,14 @@ export class UnaryExpressionInstruction extends ExpressionInstruction {
       values.get(this.argument.identifier.id) ?? this.argument
     );
   }
+
+  getReadPlaces(): Place[] {
+    return [this.argument];
+  }
+
+  public get isPure(): boolean {
+    return ["throw", "delete"].includes(this.operator);
+  }
 }
 
 export class UnsupportedNodeInstruction extends BaseInstruction {
@@ -367,5 +489,13 @@ export class UnsupportedNodeInstruction extends BaseInstruction {
   rewriteInstruction(): BaseInstruction {
     // Unsupported nodes can not be rewritten.
     return this;
+  }
+
+  getReadPlaces(): Place[] {
+    throw new Error("Unable to get read places for unsupported node");
+  }
+
+  public get isPure(): boolean {
+    return false;
   }
 }

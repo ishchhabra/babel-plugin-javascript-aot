@@ -8,7 +8,8 @@ export interface OptimizationResult {
 export abstract class BaseOptimizationPass {
   constructor(
     protected readonly environment: Environment,
-    protected blocks: Map<BlockId, BasicBlock>
+    protected blocks: Map<BlockId, BasicBlock>,
+    protected postOrder: Array<BlockId>
   ) {}
 
   public run() {

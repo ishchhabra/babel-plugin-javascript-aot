@@ -3,7 +3,10 @@ import BabelPlugin from "../src/babel-plugin";
 
 pluginTester({
   plugin: BabelPlugin,
-  pluginOptions: {},
+  pluginOptions: {
+    enableLoadStoreForwardingPass: false,
+    enableLateDeadCodeEliminationPass: false,
+  },
   pluginName: "javascript-aot",
   fixtures: "./fixtures",
 });

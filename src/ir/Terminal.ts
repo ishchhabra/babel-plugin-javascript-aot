@@ -2,8 +2,10 @@ import { BlockId } from "./Block";
 import { InstructionId } from "./Instruction";
 import { Place } from "./Place";
 
-export class BaseTerminal {
+export abstract class BaseTerminal {
   constructor(public readonly id: InstructionId) {}
+
+  abstract getReadPlaces(): Place[];
 }
 
 export class BranchTerminal extends BaseTerminal {
@@ -22,16 +24,28 @@ export class BranchTerminal extends BaseTerminal {
   ) {
     super(id);
   }
+
+  getReadPlaces(): Place[] {
+    return [this.test];
+  }
 }
 
 export class JumpTerminal extends BaseTerminal {
   constructor(id: InstructionId, public readonly target: BlockId) {
     super(id);
   }
+
+  getReadPlaces(): Place[] {
+    return [];
+  }
 }
 
 export class ReturnTerminal extends BaseTerminal {
   constructor(id: InstructionId, public readonly value: Place) {
     super(id);
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.value];
   }
 }

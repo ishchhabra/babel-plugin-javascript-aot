@@ -9,6 +9,8 @@ import {
 
 interface CFG {
   predecessors: Map<BlockId, Set<BlockId>>;
+  successors: Map<BlockId, Set<BlockId>>;
+  postOrder: BlockId[];
   backEdges: Map<BlockId, Set<BlockId>>;
 }
 
@@ -20,6 +22,7 @@ export class CFGBuilder {
 
   public build(): CFG {
     const predecessors = this.getPredecessors();
+    const successors = this.getSuccessors(predecessors);
     this.environment.dominators = getDominators(predecessors, makeBlockId(0));
     this.environment.immediateDominators = getImmediateDominators(
       this.environment.dominators
@@ -29,7 +32,8 @@ export class CFGBuilder {
       this.environment.immediateDominators
     );
     const backEdges = this.getBackEdges(predecessors);
-    return { predecessors, backEdges };
+    const postOrder = this.getPostOrder(successors);
+    return { predecessors, successors, postOrder, backEdges };
   }
 
   private getPredecessors(): Map<BlockId, Set<BlockId>> {
@@ -73,6 +77,26 @@ export class CFGBuilder {
     return predecessors;
   }
 
+  private getSuccessors(
+    predecessors: Map<BlockId, Set<BlockId>>
+  ): Map<BlockId, Set<BlockId>> {
+    const successors = new Map<BlockId, Set<BlockId>>();
+
+    // Initialize empty successor sets.
+    for (const blockId of this.blocks.keys()) {
+      successors.set(blockId, new Set());
+    }
+
+    // Reverse the predecessor relationship.
+    for (const [blockId, preds] of predecessors.entries()) {
+      for (const pred of preds) {
+        successors.get(pred)?.add(blockId);
+      }
+    }
+
+    return successors;
+  }
+
   private getBackEdges(
     predecessors: Map<BlockId, Set<BlockId>>
   ): Map<BlockId, Set<BlockId>> {
@@ -97,5 +121,28 @@ export class CFGBuilder {
     }
 
     return backEdges;
+  }
+
+  private getPostOrder(successors: Map<BlockId, Set<BlockId>>): BlockId[] {
+    const postOrder: BlockId[] = [];
+    const visited = new Set<BlockId>();
+
+    const dfs = (blockId: BlockId) => {
+      if (visited.has(blockId)) {
+        return;
+      }
+
+      visited.add(blockId);
+      const blockSuccessors = successors.get(blockId) ?? [];
+      for (const successor of blockSuccessors) {
+        dfs(successor);
+      }
+      postOrder.push(blockId);
+    };
+
+    for (const blockId of this.blocks.keys()) {
+      dfs(blockId);
+    }
+    return postOrder;
   }
 }

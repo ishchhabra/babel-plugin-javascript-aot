@@ -1,19 +1,24 @@
-import { NodePath, PluginOptions } from "@babel/core";
+import { PluginOptions as BabelPluginOptions, NodePath } from "@babel/core";
 import { Program } from "@babel/types";
 import { CFGBuilder } from "../cfg";
 import { CodeGenerator } from "../codegen/CodeGenerator";
 import { HIRBuilder } from "../hir";
 import { LateOptimizer } from "../late-optimizer/LateOptimizer";
+import { PluginOptionsSchema } from "../schemas/plugin-options";
 import { SSABuilder } from "../ssa/SSABuilder";
 import { SSAEliminator } from "../ssa/SSAEliminator";
 import { Environment } from "./environment";
 
 export class Compiler {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO: Remove this.
-  compileProgram(program: NodePath<Program>, options: PluginOptions) {
+  compileProgram(
+    program: NodePath<Program>,
+    pluginOptions: BabelPluginOptions
+  ) {
+    const options = PluginOptionsSchema.parse(pluginOptions);
+
     const environment = new Environment();
     const { blocks } = new HIRBuilder(program, environment).build();
-    const { predecessors, backEdges } = new CFGBuilder(
+    const { predecessors, backEdges, postOrder } = new CFGBuilder(
       environment,
       blocks
     ).build();
@@ -25,8 +30,10 @@ export class Compiler {
       phis
     ).eliminate();
     const lateOptimizerResult = new LateOptimizer(
+      options,
       environment,
-      ssaEliminatorResult.blocks
+      ssaEliminatorResult.blocks,
+      postOrder
     ).optimize();
     const generator = new CodeGenerator(lateOptimizerResult.blocks, backEdges);
     const code = generator.generate();

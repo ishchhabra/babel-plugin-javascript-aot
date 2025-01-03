@@ -6,8 +6,8 @@ import {
   LoadLocalInstruction,
   Place,
   StoreLocalInstruction,
-} from "../ir";
-import { BaseOptimizationPass, OptimizationResult } from "./OptimizationPass";
+} from "../../ir";
+import { BaseOptimizationPass, OptimizationResult } from "../OptimizationPass";
 
 /**
  * A pass that forwards the source of a "Store → (expression instructions) → Copy"
