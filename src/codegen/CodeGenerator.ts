@@ -75,7 +75,7 @@ export class CodeGenerator {
     instruction: UnsupportedNodeInstruction
   ): t.Node {
     const node = instruction.node;
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -259,7 +259,7 @@ export class CodeGenerator {
     });
 
     const node = t.arrayExpression(elements);
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -280,7 +280,7 @@ export class CodeGenerator {
     t.assertExpression(right);
 
     const node = t.binaryExpression(instruction.operator, left, right);
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -305,7 +305,7 @@ export class CodeGenerator {
     });
 
     const node = t.callExpression(callee, args);
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -319,13 +319,13 @@ export class CodeGenerator {
     t.assertExpression(value);
 
     const node = t.assignmentExpression("=", lval, value);
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
   #generateLiteralExpression(instruction: LiteralInstruction): t.Expression {
     const node = t.valueToNode(instruction.value);
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -333,7 +333,7 @@ export class CodeGenerator {
     instruction: LoadLocalInstruction
   ): t.Expression {
     const node = t.identifier(instruction.value.identifier.name);
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -347,7 +347,7 @@ export class CodeGenerator {
 
     t.assertExpression(argument);
     const node = t.unaryExpression(instruction.operator, argument);
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -380,7 +380,7 @@ export class CodeGenerator {
 
     t.assertExpression(expression);
     const node = t.expressionStatement(expression);
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -397,8 +397,8 @@ export class CodeGenerator {
 
     // Since this is the first time we're using the function name, it does not
     // exist in the places map. We need to create a new identifier for it.
-    const idNode = t.identifier(instruction.argumentPlace.identifier.name);
-    this.places.set(instruction.argumentPlace.id, idNode);
+    const idNode = t.identifier(instruction.place.identifier.name);
+    this.places.set(instruction.place.id, idNode);
 
     const body = this.#generateBlock(instruction.body);
     const node = t.functionDeclaration(
@@ -408,7 +408,7 @@ export class CodeGenerator {
       instruction.generator,
       instruction.async
     );
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -431,7 +431,7 @@ export class CodeGenerator {
     const node = t.variableDeclaration(instruction.type, [
       t.variableDeclarator(lval, value),
     ]);
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -457,7 +457,7 @@ export class CodeGenerator {
 
   #generateHole(instruction: HoleInstruction): null {
     const node = null;
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 
@@ -471,7 +471,7 @@ export class CodeGenerator {
 
     t.assertExpression(argument);
     const node = t.spreadElement(argument);
-    this.places.set(instruction.argumentPlace.id, node);
+    this.places.set(instruction.place.id, node);
     return node;
   }
 }

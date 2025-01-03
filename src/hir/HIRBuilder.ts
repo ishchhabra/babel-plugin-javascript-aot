@@ -242,7 +242,7 @@ export class HIRBuilder {
     const expressionInstruction = this.currentBlock.instructions.at(-1);
     if (
       expressionInstruction instanceof StatementInstruction &&
-      expressionInstruction.argumentPlace === expressionPlace
+      expressionInstruction.place === expressionPlace
     ) {
       return;
     }

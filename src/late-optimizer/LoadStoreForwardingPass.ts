@@ -84,7 +84,7 @@ export class LoadStoreForwardingPass extends BaseOptimizationPass {
         const tempId = instr1.lval.identifier.id;
         const loadFromId = instr2.value.identifier.id;
 
-        const tmpLoadId = instr2.argumentPlace.identifier.id;
+        const tmpLoadId = instr2.place.identifier.id;
         const store3SourceId = instr3.value.identifier.id;
 
         if (loadFromId === tempId && store3SourceId === tmpLoadId) {
