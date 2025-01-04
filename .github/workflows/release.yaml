@@ -53,7 +53,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add package.json
-          git commit -m "Create Release: ${{ steps.next_version.outputs.tag }}"
+          git commit -m "Create Release: ${{ steps.next_version.outputs.tag }}" --no-verify
           git tag ${{ steps.next_version.outputs.tag }}
           git push origin ${{ steps.next_version.outputs.tag }}
 
