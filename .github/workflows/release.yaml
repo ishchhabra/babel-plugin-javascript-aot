@@ -1,9 +1,14 @@
+name: Create Release
+
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
 
 jobs:
   release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +37,7 @@ jobs:
       - name: Get next version number
         id: next_version
         run: |
-          LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n 1 || echo "v0.0.0")
+          LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n 1 | grep . || echo "v0.0.0")
           LAST_NUM=$(echo $LATEST_TAG | grep -o '[0-9]*$')
           NEXT_NUM=$((LAST_NUM + 1))
           echo "tag=$(echo $LATEST_TAG | sed "s/[0-9]*$/$NEXT_NUM/")" >> $GITHUB_OUTPUT
