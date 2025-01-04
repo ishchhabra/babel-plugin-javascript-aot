@@ -1,7 +1,7 @@
 {
   "name": "babel-plugin-javascript-aot",
   "description": "",
-  "main": "dist/index.js",
+  "main": "dist/babel-plugin.js",
   "type": "module",
   "scripts": {
     "build": "tsc",
