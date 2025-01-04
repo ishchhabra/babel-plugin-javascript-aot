@@ -389,7 +389,6 @@ export class HIRBuilder {
       );
     }
 
-    this.currentBlock = currentBlock;
     const instruction = new FunctionDeclarationInstruction(
       makeInstructionId(this.environment.nextInstructionId++),
       functionPlace,
@@ -399,7 +398,15 @@ export class HIRBuilder {
       statementPath.node.generator,
       statementPath.node.async
     );
-    this.currentBlock.instructions.push(instruction);
+    currentBlock.instructions.push(instruction);
+
+    // Set the terminal for the current block.
+    currentBlock.terminal = new JumpTerminal(
+      makeInstructionId(this.environment.nextInstructionId++),
+      bodyBlock.id
+    );
+
+    this.currentBlock = currentBlock;
   }
 
   #buildIfStatement(statementPath: NodePath<t.IfStatement>) {
@@ -476,12 +483,16 @@ export class HIRBuilder {
       const id = declaration.get("id");
       const lvalPlace = this.#buildLVal(id, true);
 
-      const init = declaration.get("init");
+      const init: NodePath<t.Expression | null | undefined> =
+        declaration.get("init");
+      let valuePlace: Place;
       if (!init.hasNode()) {
-        continue;
+        init.replaceWith(t.identifier("undefined"));
+        init.assertIdentifier({ name: "undefined" });
+        valuePlace = this.#buildIdentifier(init);
+      } else {
+        valuePlace = this.#buildExpression(init);
       }
-
-      const valuePlace = this.#buildExpression(init);
 
       const identifier = createIdentifier(this.environment);
       const place = createPlace(identifier, this.environment);
@@ -918,7 +929,7 @@ export class HIRBuilder {
     return place;
   }
 
-  #buildLiteral(expressionPath: NodePath<t.Literal>) {
+  #buildLiteral(expressionPath: NodePath<t.Literal>): Place {
     if (
       !t.isNumericLiteral(expressionPath.node) &&
       !t.isStringLiteral(expressionPath.node) &&
