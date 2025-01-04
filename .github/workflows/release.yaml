@@ -1,0 +1,62 @@
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Force add dist directory
+        run: git add --force dist
+
+      - name: Get next version number
+        id: next_version
+        run: |
+          LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n 1 || echo "v0.0.0")
+          LAST_NUM=$(echo $LATEST_TAG | grep -o '[0-9]*$')
+          NEXT_NUM=$((LAST_NUM + 1))
+          echo "tag=$(echo $LATEST_TAG | sed "s/[0-9]*$/$NEXT_NUM/")" >> $GITHUB_OUTPUT
+
+      - name: Update package.json version
+        run: |
+          VERSION="${{ steps.next_version.outputs.tag }}"
+          VERSION_NO_V="${VERSION#v}"
+          pnpm version $VERSION_NO_V --no-git-tag-version
+
+      - name: Create and push tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add package.json
+          git commit -m "Create Release: ${{ steps.next_version.outputs.tag }}"
+          git tag ${{ steps.next_version.outputs.tag }}
+          git push origin ${{ steps.next_version.outputs.tag }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.next_version.outputs.tag }}
+          name: Release ${{ steps.next_version.outputs.tag }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
