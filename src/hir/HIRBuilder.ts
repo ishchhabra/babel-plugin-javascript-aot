@@ -118,28 +118,10 @@ export class HIRBuilder {
               return;
             }
 
-            for (const declaration of path.node.declarations) {
-              if (!t.isIdentifier(declaration.id)) {
-                return;
-              }
-
-              const identifier = createIdentifier(this.environment);
-              this.#registerDeclarationName(
-                declaration.id.name,
-                identifier.declarationId,
-                bindingsPath
-              );
-
-              // Rename the variable name in the scope to the temporary place.
-              bindingsPath.scope.rename(declaration.id.name, identifier.name);
-              this.#registerDeclarationName(
-                identifier.name,
-                identifier.declarationId,
-                bindingsPath
-              );
-
-              const place = createPlace(identifier, this.environment);
-              this.#registerDeclarationPlace(identifier.declarationId, place);
+            const declarationPaths = path.get("declarations");
+            for (const declarationPath of declarationPaths) {
+              const id = declarationPath.get("id");
+              this.#buildLValBindings(id, bindingsPath);
             }
 
             break;
@@ -152,28 +134,106 @@ export class HIRBuilder {
     if (bindingsPath.isFunctionDeclaration()) {
       const paramPaths = bindingsPath.get("params");
       for (const paramPath of paramPaths) {
-        if (!paramPath.isIdentifier()) {
-          throw new Error(`Unsupported parameter type: ${paramPath.type}`);
-        }
-
-        const identifier = createIdentifier(this.environment);
-        this.#registerDeclarationName(
-          paramPath.node.name,
-          identifier.declarationId,
-          bindingsPath
-        );
-
-        // Rename the variable name in the scope to the temporary place.
-        bindingsPath.scope.rename(paramPath.node.name, identifier.name);
-        this.#registerDeclarationName(
-          identifier.name,
-          identifier.declarationId,
-          bindingsPath
-        );
-
-        const place = createPlace(identifier, this.environment);
-        this.#registerDeclarationPlace(identifier.declarationId, place);
+        this.#buildParameterBindings(paramPath, bindingsPath);
       }
+    }
+  }
+
+  #buildLValBindings(nodePath: NodePath<t.LVal>, bindingsPath: NodePath) {
+    switch (nodePath.type) {
+      case "Identifier":
+        nodePath.assertIdentifier();
+        this.#buildIdentifierBindings(nodePath, bindingsPath);
+        break;
+      case "ArrayPattern":
+        nodePath.assertArrayPattern();
+        this.#buildArrayPatternBindings(nodePath, bindingsPath);
+        break;
+      case "ObjectPattern":
+        nodePath.assertObjectPattern();
+        this.#buildObjectPatternBindings(nodePath, bindingsPath);
+        break;
+      case "RestElement":
+        nodePath.assertRestElement();
+        this.#buildRestElementBindings(nodePath, bindingsPath);
+        break;
+      default:
+        throw new Error(`Unsupported LVal type: ${nodePath.type}`);
+    }
+  }
+
+  #buildIdentifierBindings(
+    nodePath: NodePath<t.Identifier>,
+    bindingsPath: NodePath
+  ) {
+    const identifier = createIdentifier(this.environment);
+    this.#registerDeclarationName(
+      nodePath.node.name,
+      identifier.declarationId,
+      bindingsPath
+    );
+
+    // Rename the variable name in the scope to the temporary place.
+    bindingsPath.scope.rename(nodePath.node.name, identifier.name);
+    this.#registerDeclarationName(
+      identifier.name,
+      identifier.declarationId,
+      bindingsPath
+    );
+
+    const place = createPlace(identifier, this.environment);
+    this.#registerDeclarationPlace(identifier.declarationId, place);
+  }
+
+  #buildArrayPatternBindings(
+    nodePath: NodePath<t.ArrayPattern>,
+    bindingsPath: NodePath
+  ) {
+    const elementsPath: NodePath<t.ArrayPattern["elements"][number]>[] =
+      nodePath.get("elements");
+    for (const elementPath of elementsPath) {
+      elementPath.assertLVal();
+      this.#buildLValBindings(elementPath, bindingsPath);
+    }
+  }
+
+  #buildObjectPatternBindings(
+    nodePath: NodePath<t.ObjectPattern>,
+    bindingsPath: NodePath
+  ) {
+    const propertiesPath = nodePath.get("properties");
+    for (const propertyPath of propertiesPath) {
+      if (!propertyPath.isLVal()) {
+        throw new Error(`Unsupported property type: ${propertyPath.type}`);
+      }
+
+      this.#buildLValBindings(propertyPath, bindingsPath);
+    }
+  }
+
+  #buildRestElementBindings(
+    nodePath: NodePath<t.RestElement>,
+    bindingsPath: NodePath
+  ) {
+    const elementPath = nodePath.get("argument");
+    this.#buildLValBindings(elementPath, bindingsPath);
+  }
+
+  #buildParameterBindings(
+    nodePath: NodePath<t.Identifier | t.RestElement | t.Pattern>,
+    bindingsPath: NodePath
+  ) {
+    switch (nodePath.type) {
+      case "Identifier":
+        nodePath.assertIdentifier();
+        this.#buildIdentifierBindings(nodePath, bindingsPath);
+        break;
+      case "RestElement":
+        nodePath.assertRestElement();
+        this.#buildRestElementBindings(nodePath, bindingsPath);
+        break;
+      default:
+        throw new Error(`Unsupported parameter type: ${nodePath.type}`);
     }
   }
 
