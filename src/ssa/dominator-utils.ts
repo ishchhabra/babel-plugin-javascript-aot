@@ -1,4 +1,4 @@
-import isEqual from "lodash/isEqual";
+import { isEqual } from "lodash-es";
 import { BlockId } from "../ir";
 
 /** Computes the set of dominators for each block in the CFG.

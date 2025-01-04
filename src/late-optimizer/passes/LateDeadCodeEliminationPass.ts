@@ -43,10 +43,9 @@ export class LateDeadCodeEliminationPass extends BaseOptimizationPass {
         if (blockChanged) {
           changed = true;
         }
-      } catch (error) {
-        console.error(
-          `Error eliminating dead code in block ${blockId}:`,
-          error
+      } catch {
+        console.warn(
+          `Skipping dead code elimination for block ${blockId} due to error`
         );
       }
     }

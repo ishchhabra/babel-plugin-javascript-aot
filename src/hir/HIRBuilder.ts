@@ -63,9 +63,12 @@ export class HIRBuilder {
     return { blocks: this.blocks };
   }
 
-  /**
-   * Builds the bindings for the given node path.
-   */
+  /******************************************************************************
+   * Bindings Building
+   *
+   * Methods for building bindings from different types of declarations
+   ******************************************************************************/
+
   #buildBindings(bindingsPath: NodePath) {
     bindingsPath.traverse({
       Declaration: (path: NodePath<t.Declaration>) => {
