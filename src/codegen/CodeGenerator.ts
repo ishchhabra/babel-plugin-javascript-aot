@@ -1,6 +1,7 @@
 import * as t from "@babel/types";
 import {
   ArrayExpressionInstruction,
+  ArrayPatternInstruction,
   BaseInstruction,
   BaseTerminal,
   BasicBlock,
@@ -20,6 +21,8 @@ import {
   makeBlockId,
   MemberExpressionInstruction,
   MiscellaneousInstruction,
+  PatternInstruction,
+  Place,
   PlaceId,
   ReturnTerminal,
   SpreadElementInstruction,
@@ -61,6 +64,8 @@ export class CodeGenerator {
       this.#generateExpression(instruction);
     } else if (instruction instanceof StatementInstruction) {
       statements.push(this.#generateStatement(instruction));
+    } else if (instruction instanceof PatternInstruction) {
+      this.#generatePattern(instruction);
     } else if (instruction instanceof MiscellaneousInstruction) {
       this.#generateMiscellaneousNode(instruction);
     } else if (instruction instanceof UnsupportedNodeInstruction) {
@@ -366,7 +371,7 @@ export class CodeGenerator {
 
     t.assertExpression(object);
 
-    assertNonNull(property);
+    this.#assertNonNull(property);
     if (!t.isIdentifier(property) && !t.isPrivateName(property)) {
       throw new Error(
         `Unsupported property type: ${property.constructor.name}`
@@ -458,7 +463,7 @@ export class CodeGenerator {
   ): t.Statement {
     // Since this is the first time we're using lval, it does not exist in the
     // places map. We need to create a new identifier for it.
-    const lval = t.identifier(instruction.lval.identifier.name);
+    const lval = this.#lookupPlace(instruction.lval, true);
     this.places.set(instruction.lval.id, lval);
 
     const value = this.places.get(instruction.value.id);
@@ -472,6 +477,38 @@ export class CodeGenerator {
     const node = t.variableDeclaration(instruction.type, [
       t.variableDeclarator(lval, value),
     ]);
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
+  /******************************************************************************
+   * Pattern Generation
+   *
+   * Methods for generating code from different types of patterns
+   ******************************************************************************/
+
+  #generatePattern(instruction: PatternInstruction): t.Pattern {
+    if (instruction instanceof ArrayPatternInstruction) {
+      return this.#generateArrayPattern(instruction);
+    }
+
+    throw new Error(
+      `Unsupported pattern type: ${instruction.constructor.name}`
+    );
+  }
+
+  #generateArrayPattern(instruction: ArrayPatternInstruction): t.ArrayPattern {
+    const elements = instruction.elements.map((element) => {
+      const node = this.places.get(element.id);
+      if (node === undefined) {
+        throw new Error(`Place ${element.id} not found`);
+      }
+
+      t.assertLVal(node);
+      return node;
+    });
+
+    const node = t.arrayPattern(elements);
     this.places.set(instruction.place.id, node);
     return node;
   }
@@ -515,12 +552,28 @@ export class CodeGenerator {
     this.places.set(instruction.place.id, node);
     return node;
   }
+
+  /******************************************************************************
+   * Utils
+   *
+   * Utility methods used by the code generator
+   ******************************************************************************/
+
+  #lookupPlace(
+    place: Place,
+    isVariableDeclaratorId: boolean = false
+  ): t.Node | null {
+    const node = this.places.get(place.id);
+    if (node === undefined) {
+      if (isVariableDeclaratorId) {
+        return t.identifier(place.identifier.name);
+      }
+
+      throw new Error(`Place ${place.id} not found`);
+    }
+
+    return node;
+  }
+
+  #assertNonNull<T>(value: T | undefined | null): asserts value is T {}
 }
-
-/******************************************************************************
- * Utils
- *
- * Utility methods used by the code generator
- ******************************************************************************/
-
-function assertNonNull<T>(value: T | undefined | null): asserts value is T {}

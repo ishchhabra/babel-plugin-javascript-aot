@@ -4,6 +4,7 @@ import { getFunctionName } from "../babel-utils";
 import { Environment } from "../compiler";
 import {
   ArrayExpressionInstruction,
+  ArrayPatternInstruction,
   BasicBlock,
   BinaryExpressionInstruction,
   BlockId,
@@ -473,23 +474,7 @@ export class HIRBuilder {
     const declarations = statementPath.get("declarations");
     for (const declaration of declarations) {
       const id = declaration.get("id");
-      if (!id.isIdentifier()) {
-        continue;
-      }
-
-      const declarationId = this.#getDeclarationId(id.node.name, statementPath);
-      if (declarationId === undefined) {
-        throw new Error(
-          `Variable accessed before declaration: ${id.node.name}`
-        );
-      }
-
-      const lvalPlace = this.#getLatestDeclarationPlace(declarationId);
-      if (lvalPlace === undefined) {
-        throw new Error(
-          `Unable to find the place for ${id.node.name} (${declarationId})`
-        );
-      }
+      const lvalPlace = this.#buildLVal(id, true);
 
       const init = declaration.get("init");
       if (!init.hasNode()) {
@@ -498,7 +483,7 @@ export class HIRBuilder {
 
       const valuePlace = this.#buildExpression(init);
 
-      const identifier = createIdentifier(this.environment, declarationId);
+      const identifier = createIdentifier(this.environment);
       const place = createPlace(identifier, this.environment);
 
       const instructionId = makeInstructionId(
@@ -773,7 +758,14 @@ export class HIRBuilder {
     return place;
   }
 
-  #buildIdentifier(expressionPath: NodePath<t.Identifier>): Place {
+  /**
+   * Builds a place for an identifier. If the identifier is not a variable declarator,
+   * a load instruction is created to load the identifier from the scope.
+   */
+  #buildIdentifier(
+    expressionPath: NodePath<t.Identifier>,
+    isVariableDeclaratorId: boolean = false
+  ): Place {
     const name = expressionPath.node.name;
 
     const declarationId = this.#getDeclarationId(name, expressionPath);
@@ -798,6 +790,12 @@ export class HIRBuilder {
       throw new Error(
         `Unable to find the place for ${name} (${declarationId})`
       );
+    }
+
+    // If we're building a variable declarator id, we don't need to (and can't)
+    // load the value, because up until now, the value has not been declared yet.
+    if (isVariableDeclaratorId) {
+      return valuePlace;
     }
 
     const instructionId = makeInstructionId(
@@ -964,6 +962,121 @@ export class HIRBuilder {
   }
 
   /******************************************************************************
+   * Pattern Building
+   *
+   * Methods for building HIR from pattern nodes like array and object patterns
+   ******************************************************************************/
+
+  #buildPattern(patternPath: NodePath<t.LVal>): Place {
+    switch (patternPath.type) {
+      case "Identifier":
+        patternPath.assertIdentifier();
+        return this.#buildIdentifier(patternPath, true);
+      case "ArrayPattern":
+        patternPath.assertArrayPattern();
+        return this.#buildArrayPattern(patternPath);
+      case "ObjectPattern":
+        patternPath.assertObjectPattern();
+        return this.#buildObjectPattern(patternPath);
+      default:
+        return this.#buildUnsupportedPattern(patternPath);
+    }
+  }
+
+  #buildArrayPattern(patternPath: NodePath<t.ArrayPattern>): Place {
+    const elementPaths = patternPath.get("elements");
+    const elementPlaces = elementPaths.map((elementPath) => {
+      if (elementPath.node == null) {
+        assertNullPath(elementPath);
+        return this.#buildHole(elementPath);
+      } else if (elementPath.isPattern()) {
+        return this.#buildPattern(elementPath);
+      } else if (elementPath.isLVal()) {
+        return this.#buildLVal(elementPath);
+      }
+
+      throw new Error(`Unsupported element type: ${elementPath.type}`);
+    });
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    this.currentBlock.instructions.push(
+      new ArrayPatternInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        patternPath,
+        elementPlaces
+      )
+    );
+
+    return place;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  #buildObjectPattern(patternPath: NodePath<t.ObjectPattern>): Place {
+    throw new Error("Not implemented");
+  }
+
+  #buildUnsupportedPattern(patternPath: NodePath<t.LVal>): Place {
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    this.currentBlock.instructions.push(
+      new UnsupportedNodeInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        patternPath,
+        patternPath.node
+      )
+    );
+
+    return place;
+  }
+
+  /******************************************************************************
+   * LVal Building
+   *
+   * Methods for building HIR from LVal nodes like identifiers, array patterns,
+   * object patterns, and rest elements. LVal nodes represent the left side of
+   * assignments and declarations.
+   ******************************************************************************/
+  #buildLVal(
+    lvalPath: NodePath<t.LVal>,
+    isVariableDeclaratorId: boolean = false
+  ): Place {
+    switch (lvalPath.type) {
+      case "Identifier":
+        lvalPath.assertIdentifier();
+        return this.#buildIdentifier(lvalPath, isVariableDeclaratorId);
+      case "ArrayPattern":
+        lvalPath.assertArrayPattern();
+        return this.#buildArrayPattern(lvalPath);
+      case "ObjectPattern":
+        lvalPath.assertObjectPattern();
+        return this.#buildObjectPattern(lvalPath);
+      default:
+        return this.#buildUnsupportedLVal(lvalPath);
+    }
+  }
+
+  #buildUnsupportedLVal(lvalPath: NodePath<t.LVal>): Place {
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    this.currentBlock.instructions.push(
+      new UnsupportedNodeInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        lvalPath,
+        lvalPath.node
+      )
+    );
+
+    return place;
+  }
+
+  /******************************************************************************
    * Misc Node Building
    *
    * Methods for building HIR from miscellaneous node types like holes and spread
@@ -1055,3 +1168,7 @@ export class HIRBuilder {
     return newPath as NodePath<t.BinaryExpression>;
   }
 }
+
+function assertNullPath<T extends t.Node>(
+  path: NodePath<T | null>
+): asserts path is NodePath<null> {}

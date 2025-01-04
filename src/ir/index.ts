@@ -9,6 +9,7 @@ export {
 } from "./Identifier";
 export {
   ArrayExpressionInstruction,
+  ArrayPatternInstruction,
   BaseInstruction,
   BinaryExpressionInstruction,
   CallExpressionInstruction,
@@ -22,6 +23,7 @@ export {
   LoadLocalInstruction,
   MemberExpressionInstruction,
   MiscellaneousInstruction,
+  PatternInstruction,
   SpreadElementInstruction,
   StatementInstruction,
   StoreLocalInstruction,

@@ -53,6 +53,8 @@ export abstract class ExpressionInstruction extends BaseInstruction {}
 
 export abstract class StatementInstruction extends BaseInstruction {}
 
+export abstract class PatternInstruction extends BaseInstruction {}
+
 export abstract class MiscellaneousInstruction extends BaseInstruction {}
 
 export class ArrayExpressionInstruction extends ExpressionInstruction {
@@ -67,6 +69,36 @@ export class ArrayExpressionInstruction extends ExpressionInstruction {
 
   rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
     return new ArrayExpressionInstruction(
+      this.id,
+      this.place,
+      this.nodePath,
+      this.elements.map(
+        (element) => values.get(element.identifier.id) ?? element
+      )
+    );
+  }
+
+  getReadPlaces(): Place[] {
+    return this.elements;
+  }
+
+  public get isPure(): boolean {
+    return true;
+  }
+}
+
+export class ArrayPatternInstruction extends PatternInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly elements: Place[]
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+    return new ArrayPatternInstruction(
       this.id,
       this.place,
       this.nodePath,
