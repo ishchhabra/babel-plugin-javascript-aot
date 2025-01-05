@@ -5,7 +5,7 @@
       "babel-plugin-javascript-aot",
       {
         "enableLoadStoreForwardingPass": true,
-        "enableLateDeadCodeEliminationPass": true,
+        "enableLateDeadCodeEliminationPass": false,
         "debug": true
       }
     ]
