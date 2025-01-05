@@ -119,7 +119,7 @@ export class SSAEliminator {
   #replacePhiUsages(phi: Phi) {
     const values = new Map(
       Array.from(phi.operands.values()).map((place) => [
-        place.identifier.id,
+        place.identifier,
         phi.place,
       ])
     );

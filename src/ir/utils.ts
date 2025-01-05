@@ -5,7 +5,6 @@ import {
   Identifier,
   makeDeclarationId,
   makeIdentifierId,
-  makeIdentifierName,
 } from "./Identifier";
 import { makePlaceId, Place } from "./Place";
 
@@ -21,10 +20,11 @@ export function createIdentifier(
   environment: Environment,
   declarationId?: DeclarationId
 ): Identifier {
-  const identfierId = makeIdentifierId(environment.nextIdentifierId++);
-  const identifierName = makeIdentifierName(identfierId);
   declarationId ??= makeDeclarationId(environment.nextDeclarationId++);
-  return new Identifier(identfierId, identifierName, declarationId);
+
+  const identfierId = makeIdentifierId(environment.nextIdentifierId++);
+  const version = environment.declToPlaces.get(declarationId)?.length ?? 0;
+  return new Identifier(identfierId, `${version}`, declarationId);
 }
 
 export function createBlock(environment: Environment): BasicBlock {

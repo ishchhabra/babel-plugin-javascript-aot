@@ -2,7 +2,7 @@ import {
   BaseInstruction,
   BasicBlock,
   CopyInstruction,
-  IdentifierId,
+  Identifier,
   LoadLocalInstruction,
   Place,
   StoreLocalInstruction,
@@ -127,8 +127,8 @@ function rewriteStoreSource(
   storeInstr: CopyInstruction,
   newValue: Place
 ): CopyInstruction {
-  const oldValueId = storeInstr.value.identifier.id;
-  const rewriteMap = new Map<IdentifierId, Place>([[oldValueId, newValue]]);
+  const oldValueId = storeInstr.value.identifier;
+  const rewriteMap = new Map<Identifier, Place>([[oldValueId, newValue]]);
 
   const updated = storeInstr.rewriteInstruction(rewriteMap);
   // 'updated' will be a new CopyInstruction instance;

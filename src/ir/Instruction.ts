@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { BlockId } from "./Block";
-import { IdentifierId } from "./Identifier";
+import { Identifier } from "./Identifier";
 import { Place } from "./Place";
 
 /**
@@ -34,9 +34,7 @@ export abstract class BaseInstruction {
    * @param values - A map of old values to new values.
    * @returns The rewritten instruction.
    */
-  abstract rewriteInstruction(
-    values: Map<IdentifierId, Place>
-  ): BaseInstruction;
+  abstract rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction;
 
   /**
    * Return a set of place IDs that this instruction *reads* (uses).
@@ -69,14 +67,12 @@ export class ArrayExpressionInstruction extends ExpressionInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new ArrayExpressionInstruction(
       this.id,
       this.place,
       this.nodePath,
-      this.elements.map(
-        (element) => values.get(element.identifier.id) ?? element
-      )
+      this.elements.map((element) => values.get(element.identifier) ?? element)
     );
   }
 
@@ -99,14 +95,12 @@ export class ArrayPatternInstruction extends PatternInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new ArrayPatternInstruction(
       this.id,
       this.place,
       this.nodePath,
-      this.elements.map(
-        (element) => values.get(element.identifier.id) ?? element
-      )
+      this.elements.map((element) => values.get(element.identifier) ?? element)
     );
   }
 
@@ -131,14 +125,14 @@ export class BinaryExpressionInstruction extends ExpressionInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new BinaryExpressionInstruction(
       this.id,
       this.place,
       this.nodePath,
       this.operator,
-      values.get(this.left.identifier.id) ?? this.left,
-      values.get(this.right.identifier.id) ?? this.right
+      values.get(this.left.identifier) ?? this.left,
+      values.get(this.right.identifier) ?? this.right
     );
   }
 
@@ -163,13 +157,13 @@ export class CallExpressionInstruction extends ExpressionInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new CallExpressionInstruction(
       this.id,
       this.place,
       this.nodePath,
-      values.get(this.callee.identifier.id) ?? this.callee,
-      this.args.map((arg) => values.get(arg.identifier.id) ?? arg)
+      values.get(this.callee.identifier) ?? this.callee,
+      this.args.map((arg) => values.get(arg.identifier) ?? arg)
     );
   }
 
@@ -193,13 +187,13 @@ export class CopyInstruction extends ExpressionInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new CopyInstruction(
       this.id,
       this.place,
       this.nodePath,
-      values.get(this.lval.identifier.id) ?? this.lval,
-      values.get(this.value.identifier.id) ?? this.value
+      values.get(this.lval.identifier) ?? this.lval,
+      values.get(this.value.identifier) ?? this.value
     );
   }
 
@@ -222,12 +216,12 @@ export class ExpressionStatementInstruction extends StatementInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new ExpressionStatementInstruction(
       this.id,
       this.place,
       this.nodePath,
-      values.get(this.expression.identifier.id) ?? this.expression
+      values.get(this.expression.identifier) ?? this.expression
     );
   }
 
@@ -253,12 +247,12 @@ export class FunctionDeclarationInstruction extends StatementInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new FunctionDeclarationInstruction(
       this.id,
       this.place,
       this.nodePath,
-      this.params.map((param) => values.get(param.identifier.id) ?? param),
+      this.params.map((param) => values.get(param.identifier) ?? param),
       this.body,
       this.generator,
       this.async
@@ -309,14 +303,14 @@ export class JSXElementInstruction extends JSXInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new JSXElementInstruction(
       this.id,
       this.place,
       this.nodePath,
-      values.get(this.openingElement.identifier.id) ?? this.openingElement,
-      values.get(this.closingElement.identifier.id) ?? this.closingElement,
-      this.children.map((child) => values.get(child.identifier.id) ?? child)
+      values.get(this.openingElement.identifier) ?? this.openingElement,
+      values.get(this.closingElement.identifier) ?? this.closingElement,
+      this.children.map((child) => values.get(child.identifier) ?? child)
     );
   }
 
@@ -337,14 +331,14 @@ export class JSXFragmentInstruction extends JSXInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new JSXFragmentInstruction(
       this.id,
       this.place,
       this.nodePath,
       this.openingFragment,
       this.closingFragment,
-      this.children.map((child) => values.get(child.identifier.id) ?? child)
+      this.children.map((child) => values.get(child.identifier) ?? child)
     );
   }
 
@@ -440,8 +434,8 @@ export class LoadLocalInstruction extends ExpressionInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
-    const rewrittenTarget = values.get(this.value.identifier.id) ?? this.value;
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+    const rewrittenTarget = values.get(this.value.identifier) ?? this.value;
 
     if (rewrittenTarget === this.value) {
       return this;
@@ -476,13 +470,13 @@ export class MemberExpressionInstruction extends ExpressionInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new MemberExpressionInstruction(
       this.id,
       this.place,
       this.nodePath,
-      values.get(this.object.identifier.id) ?? this.object,
-      values.get(this.property.identifier.id) ?? this.property,
+      values.get(this.object.identifier) ?? this.object,
+      values.get(this.property.identifier) ?? this.property,
       this.computed
     );
   }
@@ -506,12 +500,12 @@ export class SpreadElementInstruction extends MiscellaneousInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new SpreadElementInstruction(
       this.id,
       this.place,
       this.nodePath,
-      values.get(this.argument.identifier.id) ?? this.argument
+      values.get(this.argument.identifier) ?? this.argument
     );
   }
 
@@ -536,13 +530,13 @@ export class StoreLocalInstruction extends StatementInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new StoreLocalInstruction(
       this.id,
       this.place,
       this.nodePath,
       this.lval,
-      values.get(this.value.identifier.id) ?? this.value,
+      values.get(this.value.identifier) ?? this.value,
       this.type
     );
   }
@@ -567,13 +561,13 @@ export class UnaryExpressionInstruction extends ExpressionInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
     return new UnaryExpressionInstruction(
       this.id,
       this.place,
       this.nodePath,
       this.operator,
-      values.get(this.argument.identifier.id) ?? this.argument
+      values.get(this.argument.identifier) ?? this.argument
     );
   }
 
@@ -596,8 +590,19 @@ export class UnsupportedNodeInstruction extends BaseInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(): BaseInstruction {
-    // Unsupported nodes can not be rewritten.
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+    for (const [identifier, place] of values) {
+      // The only other place we're renaming is in the binding phase of the
+      // HIR Builder. So, when we rename here, we need to use the declaration
+      // name of the identifier that we're renaming.
+
+      // Since by definition, there can only be one phi node for a variable
+      // in a block, it is safe to do this.
+      const oldName = `$${identifier.declarationId}_0`;
+      const newName = place.identifier.name;
+      this.nodePath?.scope.rename(oldName, newName);
+    }
+
     return this;
   }
 

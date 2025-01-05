@@ -9,8 +9,11 @@ export function makeIdentifierId(id: number): IdentifierId {
   return id as IdentifierId;
 }
 
-export function makeIdentifierName(id: IdentifierId): string {
-  return `$${id}`;
+export function makeIdentifierName(
+  declarationId: DeclarationId,
+  version: number
+): string {
+  return `$${declarationId}_${version}`;
 }
 
 /**
@@ -27,7 +30,11 @@ export function makeDeclarationId(id: number): DeclarationId {
 export class Identifier {
   constructor(
     public readonly id: IdentifierId,
-    public readonly name: string,
+    public readonly version: string,
     public readonly declarationId: DeclarationId
   ) {}
+
+  public get name(): string {
+    return `$${this.declarationId}_${this.version}`;
+  }
 }
