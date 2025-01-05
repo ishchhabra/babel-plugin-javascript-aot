@@ -1,1 +1,1 @@
-const $0 = undefined;
+const $0_0 = undefined;
