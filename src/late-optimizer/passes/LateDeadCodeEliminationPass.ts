@@ -65,11 +65,6 @@ export class LateDeadCodeEliminationPass extends BaseOptimizationPass {
     //    Because each instruction implements getReadPlaces(), we just call it.
     for (const instr of instrs) {
       for (const place of instr.getReadPlaces()) {
-        if (place.identifier.id === 12) {
-          console.log(
-            `instr.constructor.name: ${instr.constructor.name} is reading ${place.identifier.name}`
-          );
-        }
         usedPlaceIds.add(place.identifier.id);
       }
     }
@@ -87,11 +82,6 @@ export class LateDeadCodeEliminationPass extends BaseOptimizationPass {
       if (this.shouldKeepInstruction(instr, usedPlaceIds)) {
         newInstrs.push(instr);
       } else {
-        console.log(
-          "Removing instruction",
-          instr.place.identifier.name,
-          instr.constructor.name
-        );
         // Instruction is considered dead, removing it.
         changed = true;
       }
