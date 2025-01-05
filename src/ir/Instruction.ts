@@ -55,6 +55,8 @@ export abstract class StatementInstruction extends BaseInstruction {}
 
 export abstract class PatternInstruction extends BaseInstruction {}
 
+export abstract class JSXInstruction extends BaseInstruction {}
+
 export abstract class MiscellaneousInstruction extends BaseInstruction {}
 
 export class ArrayExpressionInstruction extends ExpressionInstruction {
@@ -292,6 +294,82 @@ export class HoleInstruction extends MiscellaneousInstruction {
 
   public get isPure(): boolean {
     return true;
+  }
+}
+
+export class JSXElementInstruction extends JSXInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly openingElement: Place,
+    public readonly closingElement: Place,
+    public readonly children: Place[]
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+    return new JSXElementInstruction(
+      this.id,
+      this.place,
+      this.nodePath,
+      values.get(this.openingElement.identifier.id) ?? this.openingElement,
+      values.get(this.closingElement.identifier.id) ?? this.closingElement,
+      this.children.map((child) => values.get(child.identifier.id) ?? child)
+    );
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.openingElement, this.closingElement, ...this.children];
+  }
+}
+
+export class JSXFragmentInstruction extends JSXInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly openingFragment: Place,
+    public readonly closingFragment: Place,
+    public readonly children: Place[]
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(values: Map<IdentifierId, Place>): BaseInstruction {
+    return new JSXFragmentInstruction(
+      this.id,
+      this.place,
+      this.nodePath,
+      this.openingFragment,
+      this.closingFragment,
+      this.children.map((child) => values.get(child.identifier.id) ?? child)
+    );
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.openingFragment, this.closingFragment, ...this.children];
+  }
+}
+
+export class JSXTextInstruction extends JSXInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly value: string
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(): BaseInstruction {
+    // JSXText can not be rewritten.
+    return this;
+  }
+
+  getReadPlaces(): Place[] {
+    return [];
   }
 }
 

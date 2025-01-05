@@ -31,6 +31,11 @@ import {
   UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
 } from "../ir";
+import {
+  JSXElementInstruction,
+  JSXFragmentInstruction,
+  JSXTextInstruction,
+} from "../ir/Instruction";
 
 interface HIR {
   blocks: Map<BlockId, BasicBlock>;
@@ -598,6 +603,12 @@ export class HIRBuilder {
       case "Identifier":
         expressionPath.assertIdentifier();
         return this.#buildIdentifier(expressionPath);
+      case "JSXElement":
+        expressionPath.assertJSXElement();
+        return this.#buildJSXElement(expressionPath);
+      case "JSXFragment":
+        expressionPath.assertJSXFragment();
+        return this.#buildJSXFragment(expressionPath);
       case "MemberExpression":
         expressionPath.assertMemberExpression();
         return this.#buildMemberExpression(expressionPath);
@@ -1081,6 +1092,155 @@ export class HIRBuilder {
         place,
         lvalPath,
         lvalPath.node
+      )
+    );
+
+    return place;
+  }
+
+  /******************************************************************************
+   * JSX Building
+   *
+   * Methods for building HIR from JSX nodes like elements, attributes, and text
+   ******************************************************************************/
+
+  #buildJSX(
+    nodePath: NodePath<
+      | t.JSXText
+      | t.JSXExpressionContainer
+      | t.JSXSpreadChild
+      | t.JSXElement
+      | t.JSXFragment
+    >
+  ): Place {
+    switch (nodePath.type) {
+      case "JSXElement":
+        nodePath.assertJSXElement();
+        return this.#buildJSXElement(nodePath);
+      case "JSXFragment":
+        nodePath.assertJSXFragment();
+        return this.#buildJSXFragment(nodePath);
+      case "JSXText":
+        nodePath.assertJSXText();
+        return this.#buildJSXText(nodePath);
+      default:
+        return this.#buildUnsupportedJSX(nodePath);
+    }
+  }
+
+  #buildJSXElement(expressionPath: NodePath<t.JSXElement>): Place {
+    const openingElementPath = expressionPath.get("openingElement");
+    const openingElementPlace =
+      this.#buildJSXOpeningElement(openingElementPath);
+
+    const closingElementPath = expressionPath.get("closingElement");
+    const closingElementPlace =
+      this.#buildJSXClosingElement(closingElementPath);
+
+    const childrenPath = expressionPath.get("children");
+    const childrenPlaces = childrenPath.map((childPath) =>
+      this.#buildJSX(childPath)
+    );
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    this.currentBlock.instructions.push(
+      new JSXElementInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath,
+        openingElementPlace,
+        closingElementPlace,
+        childrenPlaces
+      )
+    );
+
+    return place;
+  }
+  #buildJSXClosingElement(
+    expressionPath: NodePath<t.JSXClosingElement | null | undefined>
+  ): Place {
+    return this.#buildUnsupportedExpression(
+      expressionPath as unknown as NodePath<t.Expression>
+    );
+  }
+
+  #buildJSXClosingFragment(
+    expressionPath: NodePath<t.JSXClosingFragment>
+  ): Place {
+    return this.#buildUnsupportedExpression(
+      expressionPath as unknown as NodePath<t.Expression>
+    );
+  }
+
+  #buildJSXFragment(expressionPath: NodePath<t.JSXFragment>): Place {
+    const openingFragmentPath = expressionPath.get("openingFragment");
+    const openingFragmentPlace =
+      this.#buildJSXOpeningFragment(openingFragmentPath);
+
+    const closingFragmentPath = expressionPath.get("closingFragment");
+    const closingFragmentPlace =
+      this.#buildJSXClosingFragment(closingFragmentPath);
+
+    const childrenPath = expressionPath.get("children");
+    const childrenPlaces = childrenPath.map((childPath) =>
+      this.#buildJSX(childPath)
+    );
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    this.currentBlock.instructions.push(
+      new JSXFragmentInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath,
+        openingFragmentPlace,
+        closingFragmentPlace,
+        childrenPlaces
+      )
+    );
+
+    return place;
+  }
+
+  #buildJSXOpeningElement(
+    expressionPath: NodePath<t.JSXOpeningElement>
+  ): Place {
+    return this.#buildUnsupportedJSX(expressionPath);
+  }
+
+  #buildJSXOpeningFragment(
+    expressionPath: NodePath<t.JSXOpeningFragment>
+  ): Place {
+    return this.#buildUnsupportedJSX(expressionPath);
+  }
+
+  #buildJSXText(expressionPath: NodePath<t.JSXText>): Place {
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    this.currentBlock.instructions.push(
+      new JSXTextInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath,
+        expressionPath.node.value
+      )
+    );
+
+    return place;
+  }
+
+  #buildUnsupportedJSX(expressionPath: NodePath<t.JSX>): Place {
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    this.currentBlock.instructions.push(
+      new UnsupportedNodeInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath,
+        expressionPath.node
       )
     );
 

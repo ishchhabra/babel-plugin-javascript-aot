@@ -1,4 +1,5 @@
 import * as t from "@babel/types";
+import { assertJSXChild } from "../babel-utils";
 import {
   ArrayExpressionInstruction,
   ArrayPatternInstruction,
@@ -31,6 +32,12 @@ import {
   UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
 } from "../ir";
+import {
+  JSXElementInstruction,
+  JSXFragmentInstruction,
+  JSXInstruction,
+  JSXTextInstruction,
+} from "../ir/Instruction";
 
 /**
  * Generates the code from the IR.
@@ -66,6 +73,8 @@ export class CodeGenerator {
       statements.push(this.#generateStatement(instruction));
     } else if (instruction instanceof PatternInstruction) {
       this.#generatePattern(instruction);
+    } else if (instruction instanceof JSXInstruction) {
+      this.#generateJSX(instruction);
     } else if (instruction instanceof MiscellaneousInstruction) {
       this.#generateMiscellaneousNode(instruction);
     } else if (instruction instanceof UnsupportedNodeInstruction) {
@@ -509,6 +518,96 @@ export class CodeGenerator {
     });
 
     const node = t.arrayPattern(elements);
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
+  /******************************************************************************
+   * JSX Generation
+   *
+   * Methods for generating code from different types of JSX nodes
+   ******************************************************************************/
+
+  #generateJSX(instruction: JSXInstruction): t.JSX {
+    if (instruction instanceof JSXElementInstruction) {
+      return this.#generateJSXElement(instruction);
+    } else if (instruction instanceof JSXFragmentInstruction) {
+      return this.#generateJSXFragment(instruction);
+    } else if (instruction instanceof JSXTextInstruction) {
+      return this.#generateJSXText(instruction);
+    }
+
+    throw new Error(
+      `Unsupported JSX node type: ${instruction.constructor.name}`
+    );
+  }
+
+  #generateJSXElement(instruction: JSXElementInstruction): t.JSXElement {
+    const openingElement = this.places.get(instruction.openingElement.id);
+    if (openingElement === undefined) {
+      throw new Error(`Place ${instruction.openingElement.id} not found`);
+    }
+
+    t.assertJSXOpeningElement(openingElement);
+
+    const closingElement = this.places.get(instruction.closingElement.id);
+    if (closingElement === undefined) {
+      throw new Error(`Place ${instruction.closingElement.id} not found`);
+    }
+
+    if (closingElement !== null && !t.isJSXClosingElement(closingElement)) {
+      throw new Error(
+        `Unsupported JSX closing element type: ${closingElement.constructor.name}`
+      );
+    }
+
+    const children = instruction.children.map((child) => {
+      const node = this.places.get(child.id);
+      if (node === undefined) {
+        throw new Error(`Place ${child.id} not found`);
+      }
+
+      assertJSXChild(node);
+      return node;
+    });
+
+    const node = t.jsxElement(openingElement, closingElement, children);
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
+  #generateJSXFragment(instruction: JSXFragmentInstruction): t.JSXFragment {
+    const openingFragment = this.places.get(instruction.openingFragment.id);
+    if (openingFragment === undefined) {
+      throw new Error(`Place ${instruction.openingFragment.id} not found`);
+    }
+
+    t.assertJSXOpeningFragment(openingFragment);
+
+    const closingFragment = this.places.get(instruction.closingFragment.id);
+    if (closingFragment === undefined) {
+      throw new Error(`Place ${instruction.closingFragment.id} not found`);
+    }
+
+    t.assertJSXClosingFragment(closingFragment);
+
+    const children = instruction.children.map((child) => {
+      const node = this.places.get(child.id);
+      if (node === undefined) {
+        throw new Error(`Place ${child.id} not found`);
+      }
+
+      assertJSXChild(node);
+      return node;
+    });
+
+    const node = t.jsxFragment(openingFragment, closingFragment, children);
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
+  #generateJSXText(instruction: JSXTextInstruction): t.JSXText {
+    const node = t.jsxText(instruction.value);
     this.places.set(instruction.place.id, node);
     return node;
   }

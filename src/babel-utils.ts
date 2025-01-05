@@ -21,3 +21,12 @@ export function getFunctionName(
 
   return null;
 }
+
+export function assertJSXChild(
+  node: t.Node | null
+): asserts node is
+  | t.JSXText
+  | t.JSXExpressionContainer
+  | t.JSXSpreadChild
+  | t.JSXElement
+  | t.JSXFragment {}
