@@ -258,6 +258,10 @@ export class HIRBuilder {
         statementPath.assertExpressionStatement();
         this.#buildExpressionStatement(statementPath);
         break;
+      case "ForStatement":
+        statementPath.assertForStatement();
+        this.#buildForStatement(statementPath);
+        break;
       case "FunctionDeclaration":
         statementPath.assertFunctionDeclaration();
         this.#buildFunctionDeclaration(statementPath);
@@ -304,6 +308,25 @@ export class HIRBuilder {
     );
   }
 
+  #buildExpressionAsStatement(expressionPath: NodePath<t.Expression>) {
+    const expressionPlace = this.#buildExpression(expressionPath);
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+
+    const instructionId = makeInstructionId(
+      this.environment.nextInstructionId++
+    );
+    this.currentBlock.instructions.push(
+      new ExpressionStatementInstruction(
+        instructionId,
+        place,
+        expressionPath,
+        expressionPlace
+      )
+    );
+  }
+
   #buildExpressionStatement(statementPath: NodePath<t.ExpressionStatement>) {
     const expressionPath = statementPath.get("expression");
     const expressionPlace = this.#buildExpression(expressionPath);
@@ -331,6 +354,95 @@ export class HIRBuilder {
         expressionPlace
       )
     );
+  }
+
+  #buildForStatement(statementPath: NodePath<t.ForStatement>) {
+    const currentBlock = this.currentBlock;
+
+    // Build the init block.
+    const initPath: NodePath<t.ForStatement["init"]> =
+      statementPath.get("init");
+    const initBlock = createBlock(this.environment);
+    this.blocks.set(initBlock.id, initBlock);
+
+    this.currentBlock = initBlock;
+    if (initPath.hasNode()) {
+      // If the init is an expression, wrap it with an expression statement.
+      if (initPath.isExpression()) {
+        initPath.replaceWith(t.expressionStatement(initPath.node));
+      }
+
+      initPath.assertStatement();
+      this.#buildBindings(statementPath);
+      this.#buildStatement(initPath);
+    }
+    const initBlockTerminus = this.currentBlock;
+
+    // Build the test block.
+    const testPath: NodePath<t.ForStatement["test"]> =
+      statementPath.get("test");
+    const testBlock = createBlock(this.environment);
+    this.blocks.set(testBlock.id, testBlock);
+
+    // If the test is not provided, it is equivalent to while(true).
+    if (!testPath.hasNode()) {
+      testPath.replaceWith(t.valueToNode(true));
+    }
+    testPath.assertExpression();
+
+    this.currentBlock = testBlock;
+    const testPlace = this.#buildExpression(testPath);
+    const testBlockTerminus = this.currentBlock;
+
+    // Build the body block.
+    const bodyPath = statementPath.get("body");
+    const bodyBlock = createBlock(this.environment);
+    this.blocks.set(bodyBlock.id, bodyBlock);
+
+    this.currentBlock = bodyBlock;
+    this.#buildStatement(bodyPath);
+
+    // Build the update inside body block.
+    const updatePath: NodePath<t.ForStatement["update"]> =
+      statementPath.get("update");
+    if (updatePath.hasNode()) {
+      this.#buildExpressionAsStatement(updatePath);
+    }
+
+    const bodyBlockTerminus = this.currentBlock;
+
+    // Build the exit block.
+    const exitBlock = createBlock(this.environment);
+    this.blocks.set(exitBlock.id, exitBlock);
+
+    // Set the jump terminal for init block to test block.
+    initBlockTerminus.terminal = new JumpTerminal(
+      makeInstructionId(this.environment.nextInstructionId++),
+      testBlock.id
+    );
+
+    // Set the branch terminal for test block.
+    testBlockTerminus.terminal = new BranchTerminal(
+      makeInstructionId(this.environment.nextInstructionId++),
+      testPlace,
+      bodyBlock.id,
+      exitBlock.id,
+      exitBlock.id
+    );
+
+    // Set the jump terminal for body block to create a back edge.
+    bodyBlockTerminus.terminal = new JumpTerminal(
+      makeInstructionId(this.environment.nextInstructionId++),
+      testBlock.id
+    );
+
+    // Set the jump terminal for the current block.
+    currentBlock.terminal = new JumpTerminal(
+      makeInstructionId(this.environment.nextInstructionId++),
+      initBlock.id
+    );
+
+    this.currentBlock = exitBlock;
   }
 
   #buildFunctionDeclaration(statementPath: NodePath<t.FunctionDeclaration>) {
