@@ -336,13 +336,13 @@ export class HIRBuilder {
   #buildFunctionDeclaration(statementPath: NodePath<t.FunctionDeclaration>) {
     const currentBlock = this.currentBlock;
 
-    this.#buildBindings(statementPath);
-
     // Build the body block.
     const bodyBlock = createBlock(this.environment);
     this.blocks.set(bodyBlock.id, bodyBlock);
 
     this.currentBlock = bodyBlock;
+
+    this.#buildBindings(statementPath);
 
     const params = statementPath.get("params");
     const paramPlaces = params.map((param) => {
