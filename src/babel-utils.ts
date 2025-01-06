@@ -22,6 +22,19 @@ export function getFunctionName(
   return null;
 }
 
+export function getMethodName(
+  path: NodePath<t.ObjectMethod | t.ArrowFunctionExpression>
+): NodePath<t.Identifier> | null {
+  if (path.isObjectMethod()) {
+    const id = path.get("key");
+    if (id.isIdentifier()) {
+      return id;
+    }
+  }
+
+  return null;
+}
+
 export function assertJSXChild(
   node: t.Node | null
 ): asserts node is

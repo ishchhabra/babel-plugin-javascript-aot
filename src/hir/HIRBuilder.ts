@@ -23,6 +23,8 @@ import {
   LoadLocalInstruction,
   makeInstructionId,
   MemberExpressionInstruction,
+  ObjectExpressionInstruction,
+  ObjectPropertyInstruction,
   Place,
   ReturnTerminal,
   SpreadElementInstruction,
@@ -36,6 +38,7 @@ import {
   JSXFragmentInstruction,
   JSXTextInstruction,
   LogicalExpressionInstruction,
+  ObjectMethodInstruction,
 } from "../ir/Instruction";
 
 interface HIR {
@@ -138,9 +141,21 @@ export class HIRBuilder {
     });
 
     // Register the parameter bindings for function declarations.
-    if (bindingsPath.isFunctionDeclaration()) {
+    if (bindingsPath.isFunctionDeclaration() || bindingsPath.isObjectMethod()) {
       const paramPaths = bindingsPath.get("params");
+      if (!Array.isArray(paramPaths)) {
+        throw new Error(`Expected params to be an array`);
+      }
+
       for (const paramPath of paramPaths) {
+        if (
+          !paramPath.isIdentifier() &&
+          !paramPath.isRestElement() &&
+          !paramPath.isPattern()
+        ) {
+          throw new Error(`Unsupported parameter type: ${paramPath.type}`);
+        }
+
         this.#buildParameterBindings(paramPath, bindingsPath);
       }
     }
@@ -242,6 +257,23 @@ export class HIRBuilder {
       default:
         throw new Error(`Unsupported parameter type: ${nodePath.type}`);
     }
+  }
+
+  /******************************************************************************
+   * Node Building
+   *
+   * Methods for building HIR from different types of nodes
+   ******************************************************************************/
+
+  #buildNode(nodePath: NodePath<t.Node>): Place | undefined {
+    if (nodePath.isExpression() || nodePath.isIdentifier()) {
+      return this.#buildExpression(nodePath);
+    } else if (nodePath.isStatement()) {
+      this.#buildStatement(nodePath);
+      return;
+    }
+
+    throw new Error(`Unsupported node type: ${nodePath.type}`);
   }
 
   /******************************************************************************
@@ -728,6 +760,9 @@ export class HIRBuilder {
       case "MemberExpression":
         expressionPath.assertMemberExpression();
         return this.#buildMemberExpression(expressionPath);
+      case "ObjectExpression":
+        expressionPath.assertObjectExpression();
+        return this.#buildObjectExpression(expressionPath);
       case "UpdateExpression":
         expressionPath.assertUpdateExpression();
         return this.#buildUpdateExpression(expressionPath);
@@ -997,6 +1032,135 @@ export class HIRBuilder {
       )
     );
 
+    return place;
+  }
+
+  #buildObjectExpression(expressionPath: NodePath<t.ObjectExpression>): Place {
+    const propertiesPath = expressionPath.get("properties");
+    const propertyPlaces = propertiesPath.map(
+      (propertyPath: NodePath<t.ObjectExpression["properties"][number]>) => {
+        if (propertyPath.isSpreadElement()) {
+          return this.#buildSpreadElement(propertyPath);
+        } else if (propertyPath.isObjectMethod()) {
+          return this.#buildObjectMethod(propertyPath);
+        } else if (propertyPath.isObjectProperty()) {
+          return this.#buildObjectProperty(propertyPath);
+        }
+
+        throw new Error(`Unsupported property type: ${propertyPath.type}`);
+      }
+    );
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    this.currentBlock.instructions.push(
+      new ObjectExpressionInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath,
+        propertyPlaces
+      )
+    );
+
+    return place;
+  }
+
+  #buildObjectMethod(methodPath: NodePath<t.ObjectMethod>): Place {
+    const currentBlock = this.currentBlock;
+
+    // Build the key place
+    const keyPath = methodPath.get("key");
+    const keyPlace = this.#buildNode(keyPath);
+    if (keyPlace === undefined) {
+      throw new Error(`Unable to build key place for ${methodPath.type}`);
+    }
+
+    // Build the body block.
+    const bodyBlock = createBlock(this.environment);
+    this.blocks.set(bodyBlock.id, bodyBlock);
+
+    this.currentBlock = bodyBlock;
+
+    this.#buildBindings(methodPath);
+
+    const params = methodPath.get("params");
+    const paramPlaces = params.map((param) => {
+      if (!param.isIdentifier()) {
+        throw new Error(`Unsupported parameter type: ${param.type}`);
+      }
+
+      const declarationId = this.#getDeclarationId(param.node.name, methodPath);
+      if (declarationId === undefined) {
+        throw new Error(
+          `Variable accessed before declaration: ${param.node.name}`
+        );
+      }
+
+      const place = this.#getLatestDeclarationPlace(declarationId);
+      if (place === undefined) {
+        throw new Error(`Unable to find the place for ${param.node.name}`);
+      }
+
+      return place;
+    });
+
+    const bodyPath = methodPath.get("body");
+    this.currentBlock = bodyBlock;
+    this.#buildStatement(bodyPath);
+
+    const methodIdentifier = createIdentifier(this.environment);
+    const methodPlace = createPlace(methodIdentifier, this.environment);
+
+    const instruction = new ObjectMethodInstruction(
+      makeInstructionId(this.environment.nextInstructionId++),
+      methodPlace,
+      methodPath,
+      keyPlace,
+      paramPlaces,
+      bodyBlock.id,
+      methodPath.node.computed,
+      methodPath.node.generator,
+      methodPath.node.async,
+      methodPath.node.kind
+    );
+    currentBlock.instructions.push(instruction);
+
+    // Set the terminal for the current block.
+    currentBlock.terminal = new JumpTerminal(
+      makeInstructionId(this.environment.nextInstructionId++),
+      bodyBlock.id
+    );
+
+    this.currentBlock = currentBlock;
+    return methodPlace;
+  }
+
+  #buildObjectProperty(propertyPath: NodePath<t.ObjectProperty>): Place {
+    const keyPath = propertyPath.get("key");
+    const keyPlace = this.#buildNode(keyPath);
+    if (keyPlace === undefined) {
+      throw new Error(`Unable to build key place for ${propertyPath.type}`);
+    }
+
+    const valuePath = propertyPath.get("value");
+    const valuePlace = this.#buildNode(valuePath);
+    if (valuePlace === undefined) {
+      throw new Error(`Unable to build value place for ${propertyPath.type}`);
+    }
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    this.currentBlock.instructions.push(
+      new ObjectPropertyInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        propertyPath,
+        keyPlace,
+        valuePlace,
+        propertyPath.node.computed,
+        propertyPath.node.shorthand
+      )
+    );
     return place;
   }
 

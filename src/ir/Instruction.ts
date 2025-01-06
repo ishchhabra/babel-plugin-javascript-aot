@@ -522,6 +522,102 @@ export class MemberExpressionInstruction extends ExpressionInstruction {
   }
 }
 
+export class ObjectExpressionInstruction extends ExpressionInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly properties: Place[]
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+    return new ObjectExpressionInstruction(
+      this.id,
+      this.place,
+      this.nodePath,
+      this.properties.map(
+        (property) => values.get(property.identifier) ?? property
+      )
+    );
+  }
+
+  getReadPlaces(): Place[] {
+    return this.properties;
+  }
+
+  public get isPure(): boolean {
+    return true;
+  }
+}
+
+export class ObjectMethodInstruction extends MiscellaneousInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly key: Place,
+    public readonly params: Place[],
+    public readonly body: BlockId,
+    public readonly computed: boolean,
+    public readonly generator: boolean,
+    public readonly async: boolean,
+    public readonly kind: "method" | "get" | "set"
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+    return new ObjectMethodInstruction(
+      this.id,
+      this.place,
+      this.nodePath,
+      values.get(this.key.identifier) ?? this.key,
+      this.params.map((param) => values.get(param.identifier) ?? param),
+      this.body,
+      this.computed,
+      this.generator,
+      this.async,
+      this.kind
+    );
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.key, ...this.params];
+  }
+}
+
+export class ObjectPropertyInstruction extends MiscellaneousInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly key: Place,
+    public readonly value: Place,
+    public readonly computed: boolean,
+    public readonly shorthand: boolean
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+    return new ObjectPropertyInstruction(
+      this.id,
+      this.place,
+      this.nodePath,
+      values.get(this.key.identifier) ?? this.key,
+      values.get(this.value.identifier) ?? this.value,
+      this.computed,
+      this.shorthand
+    );
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.key, this.value];
+  }
+}
+
 export class SpreadElementInstruction extends MiscellaneousInstruction {
   constructor(
     public readonly id: InstructionId,

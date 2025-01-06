@@ -24,6 +24,8 @@ export {
   LogicalExpressionInstruction,
   MemberExpressionInstruction,
   MiscellaneousInstruction,
+  ObjectExpressionInstruction,
+  ObjectPropertyInstruction,
   PatternInstruction,
   SpreadElementInstruction,
   StatementInstruction,

@@ -38,6 +38,9 @@ import {
   JSXFragmentInstruction,
   JSXInstruction,
   JSXTextInstruction,
+  ObjectExpressionInstruction,
+  ObjectMethodInstruction,
+  ObjectPropertyInstruction,
 } from "../ir/Instruction";
 
 /**
@@ -255,6 +258,8 @@ export class CodeGenerator {
       return this.#generateLogicalExpression(instruction);
     } else if (instruction instanceof MemberExpressionInstruction) {
       return this.#generateMemberExpression(instruction);
+    } else if (instruction instanceof ObjectExpressionInstruction) {
+      return this.#generateObjectExpression(instruction);
     } else if (instruction instanceof UnaryExpressionInstruction) {
       return this.#generateUnaryExpression(instruction);
     }
@@ -412,6 +417,30 @@ export class CodeGenerator {
     }
 
     const node = t.memberExpression(object, property);
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
+  #generateObjectExpression(
+    instruction: ObjectExpressionInstruction
+  ): t.ObjectExpression {
+    const properties = instruction.properties.map((property) => {
+      const propertyNode = this.places.get(property.id);
+      if (propertyNode === undefined) {
+        throw new Error(`Place ${property.id} not found`);
+      }
+
+      if (
+        !t.isObjectProperty(propertyNode) &&
+        !t.isObjectMethod(propertyNode)
+      ) {
+        throw new Error(`Unsupported property type: ${propertyNode?.type}`);
+      }
+
+      return propertyNode;
+    });
+
+    const node = t.objectExpression(properties);
     this.places.set(instruction.place.id, node);
     return node;
   }
@@ -644,9 +673,13 @@ export class CodeGenerator {
 
   #generateMiscellaneousNode(
     instruction: MiscellaneousInstruction
-  ): t.SpreadElement | null {
+  ): t.Node | null {
     if (instruction instanceof HoleInstruction) {
       return this.#generateHole(instruction);
+    } else if (instruction instanceof ObjectMethodInstruction) {
+      return this.#generateObjectMethod(instruction);
+    } else if (instruction instanceof ObjectPropertyInstruction) {
+      return this.#generateObjectProperty(instruction);
     } else if (instruction instanceof SpreadElementInstruction) {
       return this.#generateSpreadElement(instruction);
     }
@@ -658,6 +691,57 @@ export class CodeGenerator {
 
   #generateHole(instruction: HoleInstruction): null {
     const node = null;
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
+  #generateObjectMethod(instruction: ObjectMethodInstruction): t.ObjectMethod {
+    const key = this.places.get(instruction.key.id);
+    if (key === undefined) {
+      throw new Error(`Place ${instruction.key.id} not found`);
+    }
+
+    t.assertExpression(key);
+
+    const params = instruction.params.map((param) => {
+      // Since this is the first time we're using param, it does not exist in the
+      // places map. We need to create a new identifier for it.
+      const identifier = t.identifier(param.identifier.name);
+      this.places.set(param.id, identifier);
+      return identifier;
+    });
+
+    const body = this.#generateBlock(instruction.body);
+    const node = t.objectMethod(
+      instruction.kind,
+      key,
+      params,
+      t.blockStatement(body),
+      instruction.computed,
+      instruction.generator,
+      instruction.async
+    );
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
+  #generateObjectProperty(
+    instruction: ObjectPropertyInstruction
+  ): t.ObjectProperty {
+    const key = this.places.get(instruction.key.id);
+    if (key === undefined) {
+      throw new Error(`Place ${instruction.key.id} not found`);
+    }
+
+    const value = this.places.get(instruction.value.id);
+    if (value === undefined) {
+      throw new Error(`Place ${instruction.value.id} not found`);
+    }
+
+    t.assertExpression(key);
+    t.assertExpression(value);
+
+    const node = t.objectProperty(key, value);
     this.places.set(instruction.place.id, node);
     return node;
   }
