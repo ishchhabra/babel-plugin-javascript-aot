@@ -34,6 +34,7 @@ import {
   UnsupportedNodeInstruction,
 } from "../ir";
 import {
+  ExportDefaultDeclarationInstruction,
   JSXElementInstruction,
   JSXFragmentInstruction,
   JSXTextInstruction,
@@ -41,7 +42,7 @@ import {
   ObjectMethodInstruction,
 } from "../ir/Instruction";
 
-interface HIR {
+export interface HIR {
   blocks: Map<BlockId, BasicBlock>;
 }
 
@@ -89,7 +90,11 @@ export class HIRBuilder {
             // For function declarations, we only want direct children
             // of the binding path. The nested function declarations
             // are not in the scope of the current path.
-            if (path.parentPath !== bindingsPath) {
+            const parentPath = path.parentPath;
+            if (
+              !parentPath.isExportDefaultDeclaration() &&
+              parentPath !== bindingsPath
+            ) {
               return;
             }
 
@@ -124,7 +129,12 @@ export class HIRBuilder {
 
             const isHoistable =
               bindingsPath.isFunctionDeclaration() && path.node.kind === "var";
-            if (path.parentPath !== bindingsPath && !isHoistable) {
+            const parentPath = path.parentPath;
+            if (
+              !parentPath.isExportDeclaration() &&
+              parentPath !== bindingsPath &&
+              !isHoistable
+            ) {
               return;
             }
 
@@ -281,11 +291,15 @@ export class HIRBuilder {
    *
    * Methods for building HIR from different types of statement nodes
    ******************************************************************************/
-  #buildStatement(statementPath: NodePath<t.Statement>) {
+  #buildStatement(statementPath: NodePath<t.Statement>): Place | undefined {
     switch (statementPath.type) {
       case "BlockStatement":
         statementPath.assertBlockStatement();
         this.#buildBlockStatement(statementPath);
+        break;
+      case "ExportDefaultDeclaration":
+        statementPath.assertExportDefaultDeclaration();
+        this.#buildExportDefaultDeclaration(statementPath);
         break;
       case "ExpressionStatement":
         statementPath.assertExpressionStatement();
@@ -297,8 +311,7 @@ export class HIRBuilder {
         break;
       case "FunctionDeclaration":
         statementPath.assertFunctionDeclaration();
-        this.#buildFunctionDeclaration(statementPath);
-        break;
+        return this.#buildFunctionDeclaration(statementPath);
       case "IfStatement":
         statementPath.assertIfStatement();
         this.#buildIfStatement(statementPath);
@@ -339,6 +352,33 @@ export class HIRBuilder {
       makeInstructionId(this.environment.nextInstructionId++),
       block.id
     );
+  }
+
+  #buildExportDefaultDeclaration(
+    statementPath: NodePath<t.ExportDefaultDeclaration>
+  ): Place {
+    const declarationPath = statementPath.get("declaration");
+    const declarationPlace = this.#buildNode(declarationPath);
+    if (declarationPlace === undefined) {
+      throw new Error("Unable to find the place for declaration");
+    }
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    const instructionId = makeInstructionId(
+      this.environment.nextInstructionId++
+    );
+    this.currentBlock.instructions.push(
+      new ExportDefaultDeclarationInstruction(
+        instructionId,
+        place,
+        statementPath,
+        declarationPlace
+      )
+    );
+
+    this.environment.exportToPlaces.set("default", place);
+    return place;
   }
 
   #buildExpressionAsStatement(expressionPath: NodePath<t.Expression>) {
@@ -478,7 +518,9 @@ export class HIRBuilder {
     this.currentBlock = exitBlock;
   }
 
-  #buildFunctionDeclaration(statementPath: NodePath<t.FunctionDeclaration>) {
+  #buildFunctionDeclaration(
+    statementPath: NodePath<t.FunctionDeclaration>
+  ): Place {
     const currentBlock = this.currentBlock;
 
     // Build the body block.
@@ -557,6 +599,7 @@ export class HIRBuilder {
     );
 
     this.currentBlock = currentBlock;
+    return functionPlace;
   }
 
   #buildIfStatement(statementPath: NodePath<t.IfStatement>) {

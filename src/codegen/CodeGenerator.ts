@@ -34,6 +34,7 @@ import {
   UnsupportedNodeInstruction,
 } from "../ir";
 import {
+  ExportDefaultDeclarationInstruction,
   JSXElementInstruction,
   JSXFragmentInstruction,
   JSXInstruction,
@@ -465,7 +466,9 @@ export class CodeGenerator {
    * Methods for generating code from different types of statements
    ******************************************************************************/
   #generateStatement(instruction: StatementInstruction): t.Statement {
-    if (instruction instanceof ExpressionStatementInstruction) {
+    if (instruction instanceof ExportDefaultDeclarationInstruction) {
+      return this.#generateExportDefaultDeclaration(instruction);
+    } else if (instruction instanceof ExpressionStatementInstruction) {
       return this.#generateExpressionStatement(instruction);
     } else if (instruction instanceof FunctionDeclarationInstruction) {
       return this.#generateFunctionDeclaration(instruction);
@@ -476,6 +479,27 @@ export class CodeGenerator {
     throw new Error(
       `Unsupported statement type: ${instruction.constructor.name}`
     );
+  }
+
+  #generateExportDefaultDeclaration(
+    instruction: ExportDefaultDeclarationInstruction
+  ): t.Statement {
+    const declaration = this.places.get(instruction.declaration.id);
+    if (declaration === undefined) {
+      throw new Error(`Place ${instruction.declaration.id} not found`);
+    }
+
+    if (
+      !t.isFunctionDeclaration(declaration) &&
+      !t.isClassDeclaration(declaration) &&
+      !t.isExpression(declaration)
+    ) {
+      throw new Error(
+        `Unsupported export default declaration type: ${declaration?.type}`
+      );
+    }
+
+    return t.exportDefaultDeclaration(declaration);
   }
 
   #generateExpressionStatement(

@@ -206,6 +206,25 @@ export class CopyInstruction extends ExpressionInstruction {
   }
 }
 
+export class ExportDefaultDeclarationInstruction extends StatementInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly declaration: Place
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(): BaseInstruction {
+    return this;
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.declaration];
+  }
+}
+
 export class ExpressionStatementInstruction extends StatementInstruction {
   constructor(
     public readonly id: InstructionId,

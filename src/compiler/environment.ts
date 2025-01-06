@@ -5,6 +5,7 @@ import { Place } from "../ir/Place";
 export class Environment {
   declToPlaces: Map<DeclarationId, Array<{ blockId: BlockId; place: Place }>> =
     new Map();
+  exportToPlaces: Map<string, Place> = new Map();
 
   nextBlockId = 0;
   nextDeclarationId = 0;
