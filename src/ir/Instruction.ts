@@ -458,6 +458,38 @@ export class LoadLocalInstruction extends ExpressionInstruction {
   }
 }
 
+export class LogicalExpressionInstruction extends ExpressionInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly operator: t.LogicalExpression["operator"],
+    public readonly left: Place,
+    public readonly right: Place
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+    return new LogicalExpressionInstruction(
+      this.id,
+      this.place,
+      this.nodePath,
+      this.operator,
+      values.get(this.left.identifier) ?? this.left,
+      values.get(this.right.identifier) ?? this.right
+    );
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.left, this.right];
+  }
+
+  public get isPure(): boolean {
+    return false;
+  }
+}
+
 export class MemberExpressionInstruction extends ExpressionInstruction {
   constructor(
     public readonly id: InstructionId,

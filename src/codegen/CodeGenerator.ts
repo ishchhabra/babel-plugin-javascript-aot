@@ -19,6 +19,7 @@ import {
   LiteralInstruction,
   LoadGlobalInstruction,
   LoadLocalInstruction,
+  LogicalExpressionInstruction,
   makeBlockId,
   MemberExpressionInstruction,
   MiscellaneousInstruction,
@@ -250,6 +251,8 @@ export class CodeGenerator {
       return this.#generateLoadGlobalInstruction(instruction);
     } else if (instruction instanceof LoadLocalInstruction) {
       return this.#generateLoadLocalInstruction(instruction);
+    } else if (instruction instanceof LogicalExpressionInstruction) {
+      return this.#generateLogicalExpression(instruction);
     } else if (instruction instanceof MemberExpressionInstruction) {
       return this.#generateMemberExpression(instruction);
     } else if (instruction instanceof UnaryExpressionInstruction) {
@@ -361,6 +364,27 @@ export class CodeGenerator {
     instruction: LoadLocalInstruction
   ): t.Expression {
     const node = t.identifier(instruction.value.identifier.name);
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
+  #generateLogicalExpression(
+    instruction: LogicalExpressionInstruction
+  ): t.Expression {
+    const left = this.places.get(instruction.left.id);
+    if (left === undefined) {
+      throw new Error(`Place ${instruction.left.id} not found`);
+    }
+
+    const right = this.places.get(instruction.right.id);
+    if (right === undefined) {
+      throw new Error(`Place ${instruction.right.id} not found`);
+    }
+
+    t.assertExpression(left);
+    t.assertExpression(right);
+
+    const node = t.logicalExpression(instruction.operator, left, right);
     this.places.set(instruction.place.id, node);
     return node;
   }

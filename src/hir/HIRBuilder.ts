@@ -35,6 +35,7 @@ import {
   JSXElementInstruction,
   JSXFragmentInstruction,
   JSXTextInstruction,
+  LogicalExpressionInstruction,
 } from "../ir/Instruction";
 
 interface HIR {
@@ -721,6 +722,9 @@ export class HIRBuilder {
       case "JSXFragment":
         expressionPath.assertJSXFragment();
         return this.#buildJSXFragment(expressionPath);
+      case "LogicalExpression":
+        expressionPath.assertLogicalExpression();
+        return this.#buildLogicalExpression(expressionPath);
       case "MemberExpression":
         expressionPath.assertMemberExpression();
         return this.#buildMemberExpression(expressionPath);
@@ -939,6 +943,31 @@ export class HIRBuilder {
     const place = createPlace(identifier, this.environment);
     this.currentBlock.instructions.push(
       new LoadLocalInstruction(instructionId, place, expressionPath, valuePlace)
+    );
+
+    return place;
+  }
+
+  #buildLogicalExpression(
+    expressionPath: NodePath<t.LogicalExpression>
+  ): Place {
+    const leftPath = expressionPath.get("left");
+    const leftPlace = this.#buildExpression(leftPath);
+
+    const rightPath = expressionPath.get("right");
+    const rightPlace = this.#buildExpression(rightPath);
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    this.currentBlock.instructions.push(
+      new LogicalExpressionInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath,
+        expressionPath.node.operator,
+        leftPlace,
+        rightPlace
+      )
     );
 
     return place;

@@ -21,6 +21,7 @@ export {
   LiteralInstruction,
   LoadGlobalInstruction,
   LoadLocalInstruction,
+  LogicalExpressionInstruction,
   MemberExpressionInstruction,
   MiscellaneousInstruction,
   PatternInstruction,
