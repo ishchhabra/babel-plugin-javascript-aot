@@ -986,6 +986,7 @@ export class HIRBuilder {
 
     const declarationId = this.#getDeclarationId(name, expressionPath);
     if (declarationId === undefined) {
+      const binding = expressionPath.scope.getBinding(name);
       const identifier = createIdentifier(this.environment);
       const place = createPlace(identifier, this.environment);
 
@@ -994,7 +995,8 @@ export class HIRBuilder {
           makeInstructionId(this.environment.nextInstructionId++),
           place,
           expressionPath,
-          name
+          name,
+          binding?.kind === "module" ? "import" : "builtin"
         )
       );
 

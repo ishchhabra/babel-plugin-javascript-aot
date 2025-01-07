@@ -424,7 +424,8 @@ export class LoadGlobalInstruction extends ExpressionInstruction {
     public readonly id: InstructionId,
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
-    public readonly name: string
+    public readonly name: string,
+    public readonly kind: "builtin" | "import"
   ) {
     super(id, place, nodePath);
   }
