@@ -4,7 +4,7 @@ import typescript from "@rollup/plugin-typescript";
 
 /** @type {import('rollup').RollupOptions} */
 const config = {
-  input: "src/babel-plugin.ts",
+  input: "src/cli.ts",
   output: {
     dir: "dist",
     format: "esm",
@@ -12,7 +12,7 @@ const config = {
     preserveModulesRoot: "src",
     sourcemap: true,
   },
-  external: [/@babel\/.*/, "lodash-es", "zod"],
+  external: [/@babel\/.*/, "lodash-es", "zod", "commander"],
   plugins: [
     typescript({
       tsconfig: "./tsconfig.json",

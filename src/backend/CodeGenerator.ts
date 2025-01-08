@@ -1,3 +1,4 @@
+import _generate from "@babel/generator";
 import * as t from "@babel/types";
 import { assertJSXChild } from "../babel-utils";
 import {
@@ -20,7 +21,6 @@ import {
   LoadGlobalInstruction,
   LoadLocalInstruction,
   LogicalExpressionInstruction,
-  makeBlockId,
   MemberExpressionInstruction,
   MiscellaneousInstruction,
   PatternInstruction,
@@ -32,7 +32,7 @@ import {
   StoreLocalInstruction,
   UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
-} from "../ir";
+} from "../frontend/ir";
 import {
   ExportDefaultDeclarationInstruction,
   JSXElementInstruction,
@@ -42,7 +42,10 @@ import {
   ObjectExpressionInstruction,
   ObjectMethodInstruction,
   ObjectPropertyInstruction,
-} from "../ir/Instruction";
+} from "../frontend/ir/Instruction";
+
+const generate = (_generate as unknown as { default: typeof _generate })
+  .default;
 
 /**
  * Generates the code from the IR.
@@ -55,12 +58,13 @@ export class CodeGenerator {
 
   constructor(
     private readonly blocks: Map<BlockId, BasicBlock>,
-    private readonly backEdges: Map<BlockId, Set<BlockId>>
+    private readonly backEdges: Map<BlockId, Set<BlockId>>,
   ) {}
 
-  generate(): t.Program {
-    const statements = this.#generateBlock(makeBlockId(0));
-    return t.program(statements);
+  generate(): string {
+    const statements = this.#generateBlock(this.blocks.keys().next().value!);
+    const program = t.program(statements);
+    return generate(program).code;
   }
 
   /******************************************************************************
@@ -93,7 +97,7 @@ export class CodeGenerator {
   }
 
   #generateUnsupportedNodeInstruction(
-    instruction: UnsupportedNodeInstruction
+    instruction: UnsupportedNodeInstruction,
   ): t.Node {
     const node = instruction.node;
     this.places.set(instruction.place.id, node);
@@ -155,7 +159,7 @@ export class CodeGenerator {
     const terminal = this.blocks.get(blockId)!.terminal!;
     if (!(terminal instanceof BranchTerminal)) {
       throw new Error(
-        `Unsupported back edge from ${blockId} to ${blockId} (${terminal.constructor.name})`
+        `Unsupported back edge from ${blockId} to ${blockId} (${terminal.constructor.name})`,
       );
     }
 
@@ -213,7 +217,7 @@ export class CodeGenerator {
     const node = t.ifStatement(
       test,
       t.blockStatement(consequent),
-      alternate ? t.blockStatement(alternate) : null
+      alternate ? t.blockStatement(alternate) : null,
     );
 
     const statements = [node, ...fallthrough];
@@ -266,12 +270,12 @@ export class CodeGenerator {
     }
 
     throw new Error(
-      `Unsupported expression type: ${instruction.constructor.name}`
+      `Unsupported expression type: ${instruction.constructor.name}`,
     );
   }
 
   #generateArrayExpression(
-    instruction: ArrayExpressionInstruction
+    instruction: ArrayExpressionInstruction,
   ): t.Expression {
     const elements = instruction.elements.map((element) => {
       const node = this.places.get(element.id);
@@ -293,7 +297,7 @@ export class CodeGenerator {
   }
 
   #generateBinaryExpression(
-    instruction: BinaryExpressionInstruction
+    instruction: BinaryExpressionInstruction,
   ): t.Expression {
     const left = this.places.get(instruction.left.id);
     if (left === undefined) {
@@ -314,7 +318,7 @@ export class CodeGenerator {
   }
 
   #generateCallExpression(
-    instruction: CallExpressionInstruction
+    instruction: CallExpressionInstruction,
   ): t.Expression {
     const callee = this.places.get(instruction.callee.id);
     if (callee === undefined) {
@@ -359,7 +363,7 @@ export class CodeGenerator {
   }
 
   #generateLoadGlobalInstruction(
-    instruction: LoadGlobalInstruction
+    instruction: LoadGlobalInstruction,
   ): t.Expression {
     const node = t.identifier(instruction.name);
     this.places.set(instruction.place.id, node);
@@ -367,7 +371,7 @@ export class CodeGenerator {
   }
 
   #generateLoadLocalInstruction(
-    instruction: LoadLocalInstruction
+    instruction: LoadLocalInstruction,
   ): t.Expression {
     const node = t.identifier(instruction.value.identifier.name);
     this.places.set(instruction.place.id, node);
@@ -375,7 +379,7 @@ export class CodeGenerator {
   }
 
   #generateLogicalExpression(
-    instruction: LogicalExpressionInstruction
+    instruction: LogicalExpressionInstruction,
   ): t.Expression {
     const left = this.places.get(instruction.left.id);
     if (left === undefined) {
@@ -396,7 +400,7 @@ export class CodeGenerator {
   }
 
   #generateMemberExpression(
-    instruction: MemberExpressionInstruction
+    instruction: MemberExpressionInstruction,
   ): t.Expression {
     const object = this.places.get(instruction.object.id);
     if (object === undefined) {
@@ -413,7 +417,7 @@ export class CodeGenerator {
     this.#assertNonNull(property);
     if (!t.isIdentifier(property) && !t.isPrivateName(property)) {
       throw new Error(
-        `Unsupported property type: ${property.constructor.name}`
+        `Unsupported property type: ${property.constructor.name}`,
       );
     }
 
@@ -423,7 +427,7 @@ export class CodeGenerator {
   }
 
   #generateObjectExpression(
-    instruction: ObjectExpressionInstruction
+    instruction: ObjectExpressionInstruction,
   ): t.ObjectExpression {
     const properties = instruction.properties.map((property) => {
       const propertyNode = this.places.get(property.id);
@@ -447,7 +451,7 @@ export class CodeGenerator {
   }
 
   #generateUnaryExpression(
-    instruction: UnaryExpressionInstruction
+    instruction: UnaryExpressionInstruction,
   ): t.Expression {
     const argument = this.places.get(instruction.argument.id);
     if (argument === undefined) {
@@ -477,12 +481,12 @@ export class CodeGenerator {
     }
 
     throw new Error(
-      `Unsupported statement type: ${instruction.constructor.name}`
+      `Unsupported statement type: ${instruction.constructor.name}`,
     );
   }
 
   #generateExportDefaultDeclaration(
-    instruction: ExportDefaultDeclarationInstruction
+    instruction: ExportDefaultDeclarationInstruction,
   ): t.Statement {
     const declaration = this.places.get(instruction.declaration.id);
     if (declaration === undefined) {
@@ -495,7 +499,7 @@ export class CodeGenerator {
       !t.isExpression(declaration)
     ) {
       throw new Error(
-        `Unsupported export default declaration type: ${declaration?.type}`
+        `Unsupported export default declaration type: ${declaration?.type}`,
       );
     }
 
@@ -503,7 +507,7 @@ export class CodeGenerator {
   }
 
   #generateExpressionStatement(
-    instruction: ExpressionStatementInstruction
+    instruction: ExpressionStatementInstruction,
   ): t.Statement {
     const expression = this.places.get(instruction.expression.id);
     if (expression === undefined) {
@@ -517,7 +521,7 @@ export class CodeGenerator {
   }
 
   #generateFunctionDeclaration(
-    instruction: FunctionDeclarationInstruction
+    instruction: FunctionDeclarationInstruction,
   ): t.Statement {
     // Since this is the first time we're using param, it does not exist in the
     // places map. We need to create a new identifier for it.
@@ -538,14 +542,14 @@ export class CodeGenerator {
       paramNodes,
       t.blockStatement(body),
       instruction.generator,
-      instruction.async
+      instruction.async,
     );
     this.places.set(instruction.place.id, node);
     return node;
   }
 
   #generateStoreLocalInstruction(
-    instruction: StoreLocalInstruction
+    instruction: StoreLocalInstruction,
   ): t.Statement {
     // Since this is the first time we're using lval, it does not exist in the
     // places map. We need to create a new identifier for it.
@@ -579,7 +583,7 @@ export class CodeGenerator {
     }
 
     throw new Error(
-      `Unsupported pattern type: ${instruction.constructor.name}`
+      `Unsupported pattern type: ${instruction.constructor.name}`,
     );
   }
 
@@ -615,7 +619,7 @@ export class CodeGenerator {
     }
 
     throw new Error(
-      `Unsupported JSX node type: ${instruction.constructor.name}`
+      `Unsupported JSX node type: ${instruction.constructor.name}`,
     );
   }
 
@@ -634,7 +638,7 @@ export class CodeGenerator {
 
     if (closingElement !== null && !t.isJSXClosingElement(closingElement)) {
       throw new Error(
-        `Unsupported JSX closing element type: ${closingElement.constructor.name}`
+        `Unsupported JSX closing element type: ${closingElement.constructor.name}`,
       );
     }
 
@@ -696,7 +700,7 @@ export class CodeGenerator {
    ******************************************************************************/
 
   #generateMiscellaneousNode(
-    instruction: MiscellaneousInstruction
+    instruction: MiscellaneousInstruction,
   ): t.Node | null {
     if (instruction instanceof HoleInstruction) {
       return this.#generateHole(instruction);
@@ -709,7 +713,7 @@ export class CodeGenerator {
     }
 
     throw new Error(
-      `Unsupported miscellaneous node type: ${instruction.constructor.name}`
+      `Unsupported miscellaneous node type: ${instruction.constructor.name}`,
     );
   }
 
@@ -743,14 +747,14 @@ export class CodeGenerator {
       t.blockStatement(body),
       instruction.computed,
       instruction.generator,
-      instruction.async
+      instruction.async,
     );
     this.places.set(instruction.place.id, node);
     return node;
   }
 
   #generateObjectProperty(
-    instruction: ObjectPropertyInstruction
+    instruction: ObjectPropertyInstruction,
   ): t.ObjectProperty {
     const key = this.places.get(instruction.key.id);
     if (key === undefined) {
@@ -771,7 +775,7 @@ export class CodeGenerator {
   }
 
   #generateSpreadElement(
-    instruction: SpreadElementInstruction
+    instruction: SpreadElementInstruction,
   ): t.SpreadElement {
     const argument = this.places.get(instruction.argument.id);
     if (argument === undefined) {
@@ -792,7 +796,7 @@ export class CodeGenerator {
 
   #lookupPlace(
     place: Place,
-    isVariableDeclaratorId: boolean = false
+    isVariableDeclaratorId: boolean = false,
   ): t.Node | null {
     const node = this.places.get(place.id);
     if (node === undefined) {

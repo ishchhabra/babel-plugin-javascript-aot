@@ -43,7 +43,7 @@ echo "${GREEN}✅ Prettier check passed!${NC}\n"
 echo "${BLUE}🔍 Running ESLint...${NC}"
 STAGED_JS_FILES=$(echo "$STAGED_FILES" | grep -E '\.(js|jsx|ts|tsx)$')
 if [ ! -z "$STAGED_JS_FILES" ]; then
-    echo "$STAGED_JS_FILES" | xargs pnpm exec eslint --max-warnings=0 || {
+    echo "$STAGED_JS_FILES" | xargs pnpm exec eslint --flag unstable_config_lookup_from_file --max-warnings=0 || {
         handle_error "ESLint check" "Fix the issues highlighted above and try again"
     }
     echo "${GREEN}✅ ESLint check passed!${NC}\n"

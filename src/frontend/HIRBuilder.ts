@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { getFunctionName } from "../babel-utils";
-import { Environment } from "../compiler";
+import { Environment } from "../environment";
 import {
   ArrayExpressionInstruction,
   ArrayPatternInstruction,
@@ -32,31 +32,40 @@ import {
   StoreLocalInstruction,
   UnaryExpressionInstruction,
   UnsupportedNodeInstruction,
-} from "../ir";
+} from "./ir";
 import {
   ExportDefaultDeclarationInstruction,
+  ImportDeclarationInstruction,
   JSXElementInstruction,
   JSXFragmentInstruction,
   JSXTextInstruction,
   LogicalExpressionInstruction,
   ObjectMethodInstruction,
-} from "../ir/Instruction";
+} from "./ir/Instruction";
 
+/**
+ * Represents the High-Level Intermediate Representation (HIR) of a program.
+ */
 export interface HIR {
   blocks: Map<BlockId, BasicBlock>;
+  exportToPlaces: Map<string, Place>;
+  importToPlaces: Map<string, Place>;
 }
 
 /**
- * Builds the high-level intermediate representation (HIR) from the AST.
+ * Builds the High-Level Intermediate Representation (HIR) from the AST.
  */
 export class HIRBuilder {
+  private readonly exportToPlaces: Map<string, Place> = new Map();
+  private readonly importToPlaces: Map<string, Place> = new Map();
+
   private currentBlock: BasicBlock;
 
   private readonly blocks: Map<BlockId, BasicBlock> = new Map();
 
   constructor(
     private readonly program: NodePath<t.Program>,
-    private readonly environment: Environment
+    private readonly environment: Environment,
   ) {
     const entryBlock = createBlock(environment);
     this.blocks.set(entryBlock.id, entryBlock);
@@ -71,7 +80,11 @@ export class HIRBuilder {
       this.#buildStatement(statementPath);
     }
 
-    return { blocks: this.blocks };
+    return {
+      blocks: this.blocks,
+      exportToPlaces: this.exportToPlaces,
+      importToPlaces: this.importToPlaces,
+    };
   }
 
   /******************************************************************************
@@ -107,7 +120,7 @@ export class HIRBuilder {
             this.#registerDeclarationName(
               functionName.node.name,
               identifier.declarationId,
-              bindingsPath
+              bindingsPath,
             );
 
             // Rename the variable name in the scope to the temporary place.
@@ -115,7 +128,7 @@ export class HIRBuilder {
             this.#registerDeclarationName(
               identifier.name,
               identifier.declarationId,
-              bindingsPath
+              bindingsPath,
             );
 
             const place = createPlace(identifier, this.environment);
@@ -196,13 +209,13 @@ export class HIRBuilder {
 
   #buildIdentifierBindings(
     nodePath: NodePath<t.Identifier>,
-    bindingsPath: NodePath
+    bindingsPath: NodePath,
   ) {
     const identifier = createIdentifier(this.environment);
     this.#registerDeclarationName(
       nodePath.node.name,
       identifier.declarationId,
-      bindingsPath
+      bindingsPath,
     );
 
     // Rename the variable name in the scope to the temporary place.
@@ -210,7 +223,7 @@ export class HIRBuilder {
     this.#registerDeclarationName(
       identifier.name,
       identifier.declarationId,
-      bindingsPath
+      bindingsPath,
     );
 
     const place = createPlace(identifier, this.environment);
@@ -219,7 +232,7 @@ export class HIRBuilder {
 
   #buildArrayPatternBindings(
     nodePath: NodePath<t.ArrayPattern>,
-    bindingsPath: NodePath
+    bindingsPath: NodePath,
   ) {
     const elementsPath: NodePath<t.ArrayPattern["elements"][number]>[] =
       nodePath.get("elements");
@@ -231,7 +244,7 @@ export class HIRBuilder {
 
   #buildObjectPatternBindings(
     nodePath: NodePath<t.ObjectPattern>,
-    bindingsPath: NodePath
+    bindingsPath: NodePath,
   ) {
     const propertiesPath = nodePath.get("properties");
     for (const propertyPath of propertiesPath) {
@@ -245,7 +258,7 @@ export class HIRBuilder {
 
   #buildRestElementBindings(
     nodePath: NodePath<t.RestElement>,
-    bindingsPath: NodePath
+    bindingsPath: NodePath,
   ) {
     const elementPath = nodePath.get("argument");
     this.#buildLValBindings(elementPath, bindingsPath);
@@ -253,7 +266,7 @@ export class HIRBuilder {
 
   #buildParameterBindings(
     nodePath: NodePath<t.Identifier | t.RestElement | t.Pattern>,
-    bindingsPath: NodePath
+    bindingsPath: NodePath,
   ) {
     switch (nodePath.type) {
       case "Identifier":
@@ -316,6 +329,10 @@ export class HIRBuilder {
         statementPath.assertIfStatement();
         this.#buildIfStatement(statementPath);
         break;
+      case "ImportDeclaration":
+        statementPath.assertImportDeclaration();
+        this.#buildImportDeclaration(statementPath);
+        break;
       case "ReturnStatement":
         statementPath.assertReturnStatement();
         this.#buildReturnStatement(statementPath);
@@ -350,12 +367,12 @@ export class HIRBuilder {
 
     currentBlock.terminal = new JumpTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      block.id
+      block.id,
     );
   }
 
   #buildExportDefaultDeclaration(
-    statementPath: NodePath<t.ExportDefaultDeclaration>
+    statementPath: NodePath<t.ExportDefaultDeclaration>,
   ): Place {
     const declarationPath = statementPath.get("declaration");
     const declarationPlace = this.#buildNode(declarationPath);
@@ -366,18 +383,18 @@ export class HIRBuilder {
     const identifier = createIdentifier(this.environment);
     const place = createPlace(identifier, this.environment);
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++
+      this.environment.nextInstructionId++,
     );
     this.currentBlock.instructions.push(
       new ExportDefaultDeclarationInstruction(
         instructionId,
         place,
         statementPath,
-        declarationPlace
-      )
+        declarationPlace,
+      ),
     );
 
-    this.environment.exportToPlaces.set("default", place);
+    this.exportToPlaces.set("default", place);
     return place;
   }
 
@@ -388,15 +405,15 @@ export class HIRBuilder {
     const place = createPlace(identifier, this.environment);
 
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++
+      this.environment.nextInstructionId++,
     );
     this.currentBlock.instructions.push(
       new ExpressionStatementInstruction(
         instructionId,
         place,
         expressionPath,
-        expressionPlace
-      )
+        expressionPlace,
+      ),
     );
   }
 
@@ -417,15 +434,15 @@ export class HIRBuilder {
     const identifier = createIdentifier(this.environment);
     const place = createPlace(identifier, this.environment);
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++
+      this.environment.nextInstructionId++,
     );
     this.currentBlock.instructions.push(
       new ExpressionStatementInstruction(
         instructionId,
         place,
         expressionPath,
-        expressionPlace
-      )
+        expressionPlace,
+      ),
     );
   }
 
@@ -491,7 +508,7 @@ export class HIRBuilder {
     // Set the jump terminal for init block to test block.
     initBlockTerminus.terminal = new JumpTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      testBlock.id
+      testBlock.id,
     );
 
     // Set the branch terminal for test block.
@@ -500,26 +517,26 @@ export class HIRBuilder {
       testPlace,
       bodyBlock.id,
       exitBlock.id,
-      exitBlock.id
+      exitBlock.id,
     );
 
     // Set the jump terminal for body block to create a back edge.
     bodyBlockTerminus.terminal = new JumpTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      testBlock.id
+      testBlock.id,
     );
 
     // Set the jump terminal for the current block.
     currentBlock.terminal = new JumpTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      initBlock.id
+      initBlock.id,
     );
 
     this.currentBlock = exitBlock;
   }
 
   #buildFunctionDeclaration(
-    statementPath: NodePath<t.FunctionDeclaration>
+    statementPath: NodePath<t.FunctionDeclaration>,
   ): Place {
     const currentBlock = this.currentBlock;
 
@@ -539,11 +556,11 @@ export class HIRBuilder {
 
       const declarationId = this.#getDeclarationId(
         param.node.name,
-        statementPath
+        statementPath,
       );
       if (declarationId === undefined) {
         throw new Error(
-          `Variable accessed before declaration: ${param.node.name}`
+          `Variable accessed before declaration: ${param.node.name}`,
         );
       }
 
@@ -566,18 +583,18 @@ export class HIRBuilder {
 
     const declarationId = this.#getDeclarationId(
       functionName.node.name,
-      statementPath
+      statementPath,
     );
     if (declarationId === undefined) {
       throw new Error(
-        `Function accessed before declaration: ${functionName.node.name}`
+        `Function accessed before declaration: ${functionName.node.name}`,
       );
     }
 
     const functionPlace = this.#getLatestDeclarationPlace(declarationId);
     if (functionPlace === undefined) {
       throw new Error(
-        `Unable to find the place for ${functionName.node.name} (${declarationId})`
+        `Unable to find the place for ${functionName.node.name} (${declarationId})`,
       );
     }
 
@@ -588,14 +605,14 @@ export class HIRBuilder {
       paramPlaces,
       bodyBlock.id,
       statementPath.node.generator,
-      statementPath.node.async
+      statementPath.node.async,
     );
     currentBlock.instructions.push(instruction);
 
     // Set the terminal for the current block.
     currentBlock.terminal = new JumpTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      bodyBlock.id
+      bodyBlock.id,
     );
 
     this.currentBlock = currentBlock;
@@ -624,7 +641,7 @@ export class HIRBuilder {
     // from the last block to the join block.
     this.currentBlock.terminal = new JumpTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      joinBlock.id
+      joinBlock.id,
     );
 
     // Build the alternate block
@@ -642,7 +659,7 @@ export class HIRBuilder {
     // from the last block to the join block.
     this.currentBlock.terminal = new JumpTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      joinBlock.id
+      joinBlock.id,
     );
 
     // Set branch terminal for the current block.
@@ -651,10 +668,35 @@ export class HIRBuilder {
       testPlace,
       consequentBlock.id,
       alternateBlock.id,
-      joinBlock.id
+      joinBlock.id,
     );
 
     this.currentBlock = joinBlock;
+  }
+
+  #buildImportDeclaration(statementPath: NodePath<t.ImportDeclaration>) {
+    const sourcePath = statementPath.get("source");
+    const sourceValue = sourcePath.node.value;
+
+    const specifiersPath = statementPath.get("specifiers");
+    const specifierPlaces = specifiersPath.map(
+      (specifierPath) => this.#buildNode(specifierPath)!,
+    );
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    this.currentBlock.instructions.push(
+      new ImportDeclarationInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        statementPath,
+        sourceValue,
+        specifierPlaces,
+      ),
+    );
+
+    this.importToPlaces.set(sourceValue, place);
+    return place;
   }
 
   #buildReturnStatement(statementPath: NodePath<t.ReturnStatement>) {
@@ -666,7 +708,7 @@ export class HIRBuilder {
     const valuePlace = this.#buildExpression(argument);
     this.currentBlock.terminal = new ReturnTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      valuePlace
+      valuePlace,
     );
   }
 
@@ -691,7 +733,7 @@ export class HIRBuilder {
       const place = createPlace(identifier, this.environment);
 
       const instructionId = makeInstructionId(
-        this.environment.nextInstructionId++
+        this.environment.nextInstructionId++,
       );
       this.currentBlock.instructions.push(
         new StoreLocalInstruction(
@@ -700,8 +742,8 @@ export class HIRBuilder {
           statementPath,
           lvalPlace,
           valuePlace,
-          "const"
-        )
+          "const",
+        ),
       );
     }
   }
@@ -737,19 +779,19 @@ export class HIRBuilder {
       testPlace,
       bodyBlock.id,
       exitBlock.id,
-      exitBlock.id
+      exitBlock.id,
     );
 
     // Set the jump terminal for body block to create a back edge.
     bodyBlockTerminus.terminal = new JumpTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      testBlock.id
+      testBlock.id,
     );
 
     // Set the jump terminal for the current block.
     currentBlock.terminal = new JumpTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      testBlock.id
+      testBlock.id,
     );
 
     this.currentBlock = exitBlock;
@@ -764,8 +806,8 @@ export class HIRBuilder {
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         statementPath,
-        statementPath.node
-      )
+        statementPath.node,
+      ),
     );
   }
 
@@ -836,29 +878,29 @@ export class HIRBuilder {
 
         elementPath.assertExpression();
         return this.#buildExpression(elementPath);
-      }
+      },
     );
 
     const identifier = createIdentifier(this.environment);
     const place = createPlace(identifier, this.environment);
 
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++
+      this.environment.nextInstructionId++,
     );
     this.currentBlock.instructions.push(
       new ArrayExpressionInstruction(
         instructionId,
         place,
         expressionPath,
-        elementPlaces
-      )
+        elementPlaces,
+      ),
     );
 
     return place;
   }
 
   #buildAssignmentExpression(
-    expressionPath: NodePath<t.AssignmentExpression>
+    expressionPath: NodePath<t.AssignmentExpression>,
   ): Place {
     const leftPath = expressionPath.get("left");
     if (!leftPath.isIdentifier()) {
@@ -867,11 +909,11 @@ export class HIRBuilder {
 
     const declarationId = this.#getDeclarationId(
       leftPath.node.name,
-      expressionPath
+      expressionPath,
     );
     if (declarationId === undefined) {
       throw new Error(
-        `Variable accessed before declaration: ${leftPath.node.name}`
+        `Variable accessed before declaration: ${leftPath.node.name}`,
       );
     }
 
@@ -888,7 +930,7 @@ export class HIRBuilder {
     this.#registerDeclarationPlace(declarationId, lvalPlace);
 
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++
+      this.environment.nextInstructionId++,
     );
     this.currentBlock.instructions.push(
       new StoreLocalInstruction(
@@ -897,8 +939,8 @@ export class HIRBuilder {
         expressionPath,
         lvalPlace,
         rightPlace,
-        "const"
-      )
+        "const",
+      ),
     );
 
     return place;
@@ -919,7 +961,7 @@ export class HIRBuilder {
     const place = createPlace(identifier, this.environment);
 
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++
+      this.environment.nextInstructionId++,
     );
     this.currentBlock.instructions.push(
       new BinaryExpressionInstruction(
@@ -928,8 +970,8 @@ export class HIRBuilder {
         expressionPath,
         expressionPath.node.operator,
         leftPlace,
-        rightPlace
-      )
+        rightPlace,
+      ),
     );
 
     return place;
@@ -952,14 +994,14 @@ export class HIRBuilder {
 
         argumentPath.assertExpression();
         return this.#buildExpression(argumentPath);
-      }
+      },
     );
 
     const identifier = createIdentifier(this.environment);
     const place = createPlace(identifier, this.environment);
 
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++
+      this.environment.nextInstructionId++,
     );
     this.currentBlock.instructions.push(
       new CallExpressionInstruction(
@@ -967,8 +1009,8 @@ export class HIRBuilder {
         place,
         expressionPath,
         calleePlace,
-        argumentPlaces
-      )
+        argumentPlaces,
+      ),
     );
 
     return place;
@@ -980,7 +1022,7 @@ export class HIRBuilder {
    */
   #buildIdentifier(
     expressionPath: NodePath<t.Identifier>,
-    isVariableDeclaratorId: boolean = false
+    isVariableDeclaratorId: boolean = false,
   ): Place {
     const name = expressionPath.node.name;
 
@@ -996,8 +1038,8 @@ export class HIRBuilder {
           place,
           expressionPath,
           name,
-          binding?.kind === "module" ? "import" : "builtin"
-        )
+          binding?.kind === "module" ? "import" : "builtin",
+        ),
       );
 
       return place;
@@ -1006,7 +1048,7 @@ export class HIRBuilder {
     const valuePlace = this.#getLatestDeclarationPlace(declarationId);
     if (valuePlace === undefined) {
       throw new Error(
-        `Unable to find the place for ${name} (${declarationId})`
+        `Unable to find the place for ${name} (${declarationId})`,
       );
     }
 
@@ -1017,19 +1059,24 @@ export class HIRBuilder {
     }
 
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++
+      this.environment.nextInstructionId++,
     );
     const identifier = createIdentifier(this.environment);
     const place = createPlace(identifier, this.environment);
     this.currentBlock.instructions.push(
-      new LoadLocalInstruction(instructionId, place, expressionPath, valuePlace)
+      new LoadLocalInstruction(
+        instructionId,
+        place,
+        expressionPath,
+        valuePlace,
+      ),
     );
 
     return place;
   }
 
   #buildLogicalExpression(
-    expressionPath: NodePath<t.LogicalExpression>
+    expressionPath: NodePath<t.LogicalExpression>,
   ): Place {
     const leftPath = expressionPath.get("left");
     const leftPlace = this.#buildExpression(leftPath);
@@ -1046,8 +1093,8 @@ export class HIRBuilder {
         expressionPath,
         expressionPath.node.operator,
         leftPlace,
-        rightPlace
-      )
+        rightPlace,
+      ),
     );
 
     return place;
@@ -1073,8 +1120,8 @@ export class HIRBuilder {
         expressionPath,
         objectPlace,
         propertyPlace,
-        expressionPath.node.computed
-      )
+        expressionPath.node.computed,
+      ),
     );
 
     return place;
@@ -1093,7 +1140,7 @@ export class HIRBuilder {
         }
 
         throw new Error(`Unsupported property type: ${propertyPath.type}`);
-      }
+      },
     );
 
     const identifier = createIdentifier(this.environment);
@@ -1103,8 +1150,8 @@ export class HIRBuilder {
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         expressionPath,
-        propertyPlaces
-      )
+        propertyPlaces,
+      ),
     );
 
     return place;
@@ -1137,7 +1184,7 @@ export class HIRBuilder {
       const declarationId = this.#getDeclarationId(param.node.name, methodPath);
       if (declarationId === undefined) {
         throw new Error(
-          `Variable accessed before declaration: ${param.node.name}`
+          `Variable accessed before declaration: ${param.node.name}`,
         );
       }
 
@@ -1166,14 +1213,14 @@ export class HIRBuilder {
       methodPath.node.computed,
       methodPath.node.generator,
       methodPath.node.async,
-      methodPath.node.kind
+      methodPath.node.kind,
     );
     currentBlock.instructions.push(instruction);
 
     // Set the terminal for the current block.
     currentBlock.terminal = new JumpTerminal(
       makeInstructionId(this.environment.nextInstructionId++),
-      bodyBlock.id
+      bodyBlock.id,
     );
 
     this.currentBlock = currentBlock;
@@ -1203,8 +1250,8 @@ export class HIRBuilder {
         keyPlace,
         valuePlace,
         propertyPath.node.computed,
-        propertyPath.node.shorthand
-      )
+        propertyPath.node.shorthand,
+      ),
     );
     return place;
   }
@@ -1217,18 +1264,18 @@ export class HIRBuilder {
 
     const declarationId = this.#getDeclarationId(
       argumentPath.node.name,
-      expressionPath
+      expressionPath,
     );
     if (declarationId === undefined) {
       throw new Error(
-        `Variable accessed before declaration: ${argumentPath.node.name}`
+        `Variable accessed before declaration: ${argumentPath.node.name}`,
       );
     }
 
     const originalPlace = this.#getLatestDeclarationPlace(declarationId);
     if (originalPlace === undefined) {
       throw new Error(
-        `Unable to find the place for ${argumentPath.node.name} (${declarationId})`
+        `Unable to find the place for ${argumentPath.node.name} (${declarationId})`,
       );
     }
 
@@ -1240,11 +1287,11 @@ export class HIRBuilder {
     const binaryExpression = t.binaryExpression(
       isIncrement ? "+" : "-",
       argumentPath.node,
-      rightLiteral
+      rightLiteral,
     );
     const binaryExpressionPath = this.#createSyntheticBinaryPath(
       expressionPath,
-      binaryExpression
+      binaryExpression,
     );
 
     const valuePlace = this.#buildBinaryExpression(binaryExpressionPath);
@@ -1261,8 +1308,8 @@ export class HIRBuilder {
         expressionPath,
         lvalPlace,
         valuePlace,
-        "const"
-      )
+        "const",
+      ),
     );
     return expressionPath.node.prefix ? valuePlace : originalPlace;
   }
@@ -1275,7 +1322,7 @@ export class HIRBuilder {
     const place = createPlace(identifier, this.environment);
 
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++
+      this.environment.nextInstructionId++,
     );
     this.currentBlock.instructions.push(
       new UnaryExpressionInstruction(
@@ -1283,8 +1330,8 @@ export class HIRBuilder {
         place,
         expressionPath,
         expressionPath.node.operator,
-        argumentPlace
-      )
+        argumentPlace,
+      ),
     );
 
     return place;
@@ -1303,15 +1350,15 @@ export class HIRBuilder {
     const place = createPlace(identifier, this.environment);
 
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++
+      this.environment.nextInstructionId++,
     );
     this.currentBlock.instructions.push(
       new LiteralInstruction(
         instructionId,
         place,
         expressionPath,
-        expressionPath.node.value
-      )
+        expressionPath.node.value,
+      ),
     );
 
     return place;
@@ -1326,8 +1373,8 @@ export class HIRBuilder {
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         expressionPath,
-        expressionPath.node
-      )
+        expressionPath.node,
+      ),
     );
 
     return place;
@@ -1378,8 +1425,8 @@ export class HIRBuilder {
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         patternPath,
-        elementPlaces
-      )
+        elementPlaces,
+      ),
     );
 
     return place;
@@ -1399,8 +1446,8 @@ export class HIRBuilder {
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         patternPath,
-        patternPath.node
-      )
+        patternPath.node,
+      ),
     );
 
     return place;
@@ -1415,7 +1462,7 @@ export class HIRBuilder {
    ******************************************************************************/
   #buildLVal(
     lvalPath: NodePath<t.LVal>,
-    isVariableDeclaratorId: boolean = false
+    isVariableDeclaratorId: boolean = false,
   ): Place {
     switch (lvalPath.type) {
       case "Identifier":
@@ -1441,8 +1488,8 @@ export class HIRBuilder {
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         lvalPath,
-        lvalPath.node
-      )
+        lvalPath.node,
+      ),
     );
 
     return place;
@@ -1461,7 +1508,7 @@ export class HIRBuilder {
       | t.JSXSpreadChild
       | t.JSXElement
       | t.JSXFragment
-    >
+    >,
   ): Place {
     switch (nodePath.type) {
       case "JSXElement":
@@ -1489,7 +1536,7 @@ export class HIRBuilder {
 
     const childrenPath = expressionPath.get("children");
     const childrenPlaces = childrenPath.map((childPath) =>
-      this.#buildJSX(childPath)
+      this.#buildJSX(childPath),
     );
 
     const identifier = createIdentifier(this.environment);
@@ -1501,25 +1548,26 @@ export class HIRBuilder {
         expressionPath,
         openingElementPlace,
         closingElementPlace,
-        childrenPlaces
-      )
+        childrenPlaces,
+      ),
     );
 
     return place;
   }
+
   #buildJSXClosingElement(
-    expressionPath: NodePath<t.JSXClosingElement | null | undefined>
+    expressionPath: NodePath<t.JSXClosingElement | null | undefined>,
   ): Place {
     return this.#buildUnsupportedExpression(
-      expressionPath as unknown as NodePath<t.Expression>
+      expressionPath as unknown as NodePath<t.Expression>,
     );
   }
 
   #buildJSXClosingFragment(
-    expressionPath: NodePath<t.JSXClosingFragment>
+    expressionPath: NodePath<t.JSXClosingFragment>,
   ): Place {
     return this.#buildUnsupportedExpression(
-      expressionPath as unknown as NodePath<t.Expression>
+      expressionPath as unknown as NodePath<t.Expression>,
     );
   }
 
@@ -1534,7 +1582,7 @@ export class HIRBuilder {
 
     const childrenPath = expressionPath.get("children");
     const childrenPlaces = childrenPath.map((childPath) =>
-      this.#buildJSX(childPath)
+      this.#buildJSX(childPath),
     );
 
     const identifier = createIdentifier(this.environment);
@@ -1546,21 +1594,21 @@ export class HIRBuilder {
         expressionPath,
         openingFragmentPlace,
         closingFragmentPlace,
-        childrenPlaces
-      )
+        childrenPlaces,
+      ),
     );
 
     return place;
   }
 
   #buildJSXOpeningElement(
-    expressionPath: NodePath<t.JSXOpeningElement>
+    expressionPath: NodePath<t.JSXOpeningElement>,
   ): Place {
     return this.#buildUnsupportedJSX(expressionPath);
   }
 
   #buildJSXOpeningFragment(
-    expressionPath: NodePath<t.JSXOpeningFragment>
+    expressionPath: NodePath<t.JSXOpeningFragment>,
   ): Place {
     return this.#buildUnsupportedJSX(expressionPath);
   }
@@ -1574,8 +1622,8 @@ export class HIRBuilder {
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         expressionPath,
-        expressionPath.node.value
-      )
+        expressionPath.node.value,
+      ),
     );
 
     return place;
@@ -1590,8 +1638,8 @@ export class HIRBuilder {
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         expressionPath,
-        expressionPath.node
-      )
+        expressionPath.node,
+      ),
     );
 
     return place;
@@ -1611,8 +1659,8 @@ export class HIRBuilder {
       new HoleInstruction(
         makeInstructionId(this.environment.nextInstructionId++),
         place,
-        expressionPath
-      )
+        expressionPath,
+      ),
     );
 
     return place;
@@ -1630,8 +1678,8 @@ export class HIRBuilder {
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         expressionPath,
-        argumentPlace
-      )
+        argumentPlace,
+      ),
     );
 
     return place;
@@ -1645,14 +1693,14 @@ export class HIRBuilder {
   #registerDeclarationName(
     name: string,
     declarationId: DeclarationId,
-    nodePath: NodePath<t.Node>
+    nodePath: NodePath<t.Node>,
   ) {
     nodePath.scope.setData(name, declarationId);
   }
 
   #getDeclarationId(
     name: string,
-    nodePath: NodePath<t.Node>
+    nodePath: NodePath<t.Node>,
   ): DeclarationId | undefined {
     return nodePath.scope.getData(name);
   }
@@ -1674,7 +1722,7 @@ export class HIRBuilder {
    */
   #createSyntheticBinaryPath(
     parentPath: NodePath<t.Node>,
-    binExpr: t.BinaryExpression
+    binExpr: t.BinaryExpression,
   ): NodePath<t.BinaryExpression> {
     const containerNode = t.expressionStatement(binExpr);
 
@@ -1691,5 +1739,5 @@ export class HIRBuilder {
 }
 
 function assertNullPath<T extends t.Node>(
-  path: NodePath<T | null>
+  path: NodePath<T | null>,
 ): asserts path is NodePath<null> {}

@@ -8,7 +8,7 @@ import * as t from "@babel/types";
  * @returns The name of the function declaration or arrow function expression.
  */
 export function getFunctionName(
-  path: NodePath<t.FunctionDeclaration | t.ArrowFunctionExpression>
+  path: NodePath<t.FunctionDeclaration | t.ArrowFunctionExpression>,
 ): NodePath<t.Identifier> | null {
   if (path.isFunctionDeclaration()) {
     const id = path.get("id");
@@ -23,7 +23,7 @@ export function getFunctionName(
 }
 
 export function getMethodName(
-  path: NodePath<t.ObjectMethod | t.ArrowFunctionExpression>
+  path: NodePath<t.ObjectMethod | t.ArrowFunctionExpression>,
 ): NodePath<t.Identifier> | null {
   if (path.isObjectMethod()) {
     const id = path.get("key");
@@ -36,7 +36,7 @@ export function getMethodName(
 }
 
 export function assertJSXChild(
-  node: t.Node | null
+  node: t.Node | null,
 ): asserts node is
   | t.JSXText
   | t.JSXExpressionContainer
