@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "fs";
 import { join, relative } from "path";
 import * as prettier from "prettier";
-import { compile } from "../src/compile";
+import { compile, CompilerOptions } from "../src/compile";
 
 /**
  * Represents a single fixture file pair:
@@ -87,12 +87,12 @@ function getFolderName(path: string): string {
  * Actually compiles the input, reads expected output, formats both,
  * and does the jest `expect(...)`.
  */
-async function runCompileTest(input: string, output: string) {
-  const { code: actualCode } = compile(input, {
-    enableConstantPropagationPass: false,
-    enableLoadStoreForwardingPass: false,
-    enableLateDeadCodeEliminationPass: false,
-  });
+async function runCompileTest(
+  input: string,
+  output: string,
+  options: CompilerOptions,
+) {
+  const { code: actualCode } = compile(input, options);
 
   const expectedCode = readFileSync(output, "utf-8").trim();
   const formattedActual = await prettier.format(actualCode, {
@@ -110,7 +110,11 @@ async function runCompileTest(input: string, output: string) {
  * - If a folder has exactly one fixture and no subfolders, it becomes a single test line.
  * - If a folder has multiple fixtures or subfolders, it becomes a describe(...).
  */
-function addTestSuites(tree: TreeNode, nodeName?: string) {
+function addTestSuites(
+  tree: TreeNode,
+  options: CompilerOptions,
+  nodeName?: string,
+) {
   const subDirs = Object.keys(tree).filter((k) => k !== "__fixtures");
   const fixtures = tree.__fixtures ?? [];
 
@@ -118,7 +122,7 @@ function addTestSuites(tree: TreeNode, nodeName?: string) {
   if (subDirs.length === 0 && fixtures.length === 1) {
     const { input, output } = fixtures[0];
     test(nodeName ?? getFolderName(input), async () => {
-      await runCompileTest(input, output);
+      await runCompileTest(input, output, options);
     });
     return;
   }
@@ -129,12 +133,12 @@ function addTestSuites(tree: TreeNode, nodeName?: string) {
       // Add tests for each fixture in this directory
       for (const { input, output } of fixtures) {
         test(getFolderName(input), async () => {
-          await runCompileTest(input, output);
+          await runCompileTest(input, output, options);
         });
       }
       // Recurse for subdirectories
       for (const subDir of subDirs) {
-        addTestSuites(tree[subDir] as TreeNode, subDir);
+        addTestSuites(tree[subDir] as TreeNode, options, subDir);
       }
     });
   } else {
@@ -142,12 +146,12 @@ function addTestSuites(tree: TreeNode, nodeName?: string) {
     // Add any top-level fixtures as tests
     for (const { input, output } of fixtures) {
       test(getFolderName(input), async () => {
-        await runCompileTest(input, output);
+        await runCompileTest(input, output, options);
       });
     }
     // Recurse on subDirs
     for (const subDir of subDirs) {
-      addTestSuites(tree[subDir] as TreeNode, subDir);
+      addTestSuites(tree[subDir] as TreeNode, options, subDir);
     }
   }
 }
@@ -163,10 +167,10 @@ function addTestSuites(tree: TreeNode, nodeName?: string) {
  *
  * Example usage in a .test.ts file:
  *    import { testFixtures } from "./somewhere/fixture-tester";
- *    testFixtures(__dirname);
+ *    testFixtures(__dirname, { enableConstantPropagationPass: true });
  */
-export function testFixtures(directory: string) {
+export function testFixtures(directory: string, options: CompilerOptions) {
   const allFixtures = findFixtures(directory);
   const tree = buildTreeFromFixtures(directory, allFixtures);
-  addTestSuites(tree);
+  addTestSuites(tree, options);
 }
