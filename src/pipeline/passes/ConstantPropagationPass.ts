@@ -8,8 +8,27 @@ import {
   BaseInstruction,
   BinaryExpressionInstruction,
   TPrimitiveValue,
+  UnaryExpressionInstruction,
 } from "../../frontend/ir/Instruction";
 
+/**
+ * A pass that propagates constant values through the program by evaluating expressions
+ * with known constant operands at compile time. For example:
+ *
+ * ```js
+ * const a = 5;
+ * const b = 3;
+ * const c = a + b;    // This will be optimized
+ * ```
+ *
+ * Will be transformed into:
+ *
+ * ```js
+ * const a = 5;
+ * const b = 3;
+ * const c = 8;        // Computed at compile time!
+ * ```
+ */
 export class ConstantPropagationPass {
   private readonly constants: Map<IdentifierId, TPrimitiveValue>;
 
@@ -58,6 +77,8 @@ export class ConstantPropagationPass {
       return this.evaluateLiteralInstruction(instruction);
     } else if (instruction instanceof BinaryExpressionInstruction) {
       return this.evaluateBinaryExpressionInstruction(instruction);
+    } else if (instruction instanceof UnaryExpressionInstruction) {
+      return this.evaluateUnaryExpressionInstruction(instruction);
     }
 
     return undefined;
@@ -77,7 +98,107 @@ export class ConstantPropagationPass {
       return undefined;
     }
 
-    const result = (left as number) + (right as number);
+    let result: TPrimitiveValue;
+    switch (instruction.operator) {
+      case "+":
+        result = (left as number) + (right as number);
+        break;
+      case "-":
+        result = (left as number) - (right as number);
+        break;
+      case "*":
+        result = (left as number) * (right as number);
+        break;
+      case "/":
+        result = (left as number) / (right as number);
+        break;
+      case "|":
+        result = (left as number) | (right as number);
+        break;
+      case "&":
+        result = (left as number) & (right as number);
+        break;
+      case "^":
+        result = (left as number) ^ (right as number);
+        break;
+      case ">>":
+        result = (left as number) >> (right as number);
+        break;
+      case ">>>":
+        result = (left as number) >>> (right as number);
+        break;
+      case "==":
+        result = left === right;
+        break;
+      case "!=":
+        result = left !== right;
+        break;
+      case ">":
+        result = (left as number) > (right as number);
+        break;
+      case ">=":
+        result = (left as number) >= (right as number);
+        break;
+      case "<":
+        result = (left as number) < (right as number);
+        break;
+      case "<=":
+        result = (left as number) <= (right as number);
+        break;
+      case "!==":
+        result = left !== right;
+        break;
+      case "===":
+        result = left === right;
+        break;
+      case "%":
+        result = (left as number) % (right as number);
+        break;
+      case "**":
+        result = (left as number) ** (right as number);
+        break;
+      case "<<":
+        result = (left as number) << (right as number);
+        break;
+      default:
+        return undefined;
+    }
+
+    this.constants.set(instruction.place.identifier.id, result);
+    return new LiteralInstruction(
+      instruction.id,
+      instruction.place,
+      instruction.nodePath,
+      result,
+    );
+  }
+
+  private evaluateUnaryExpressionInstruction(
+    instruction: UnaryExpressionInstruction,
+  ) {
+    const operand = this.constants.get(instruction.argument.identifier.id);
+    if (operand === undefined) {
+      return undefined;
+    }
+
+    let result: TPrimitiveValue;
+    switch (instruction.operator) {
+      case "!":
+        result = !operand;
+        break;
+      case "-":
+        result = -(operand as number);
+        break;
+      case "~":
+        result = ~(operand as number);
+        break;
+      case "+":
+        result = +(operand as number);
+        break;
+      default:
+        return undefined;
+    }
+
     this.constants.set(instruction.place.identifier.id, result);
     return new LiteralInstruction(
       instruction.id,
