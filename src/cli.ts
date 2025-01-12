@@ -25,7 +25,7 @@ program
     (value) => value === "true",
   )
   .action((entry, output, options) => {
-    const { code } = compile(entry, {
+    const code = compile(entry, {
       enableConstantPropagationPass: options.enableConstantPropagationPass,
       enableLoadStoreForwardingPass: options.enableLoadStoreForwardingPass,
       enableLateDeadCodeEliminationPass:

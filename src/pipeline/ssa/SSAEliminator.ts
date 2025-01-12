@@ -1,4 +1,3 @@
-import { Environment } from "../../environment";
 import {
   BasicBlock,
   BlockId,
@@ -12,6 +11,7 @@ import {
   CopyInstruction,
   LoadLocalInstruction,
 } from "../../frontend/ir/Instruction";
+import { ModuleUnit } from "../../frontend/ModuleBuilder";
 import { Phi } from "./Phi";
 
 interface SSAEliminationResult {
@@ -23,9 +23,7 @@ interface SSAEliminationResult {
  */
 export class SSAEliminator {
   constructor(
-    private readonly environment: Environment,
-    private readonly blocks: Map<BlockId, BasicBlock>,
-    private readonly dominators: Map<BlockId, Set<BlockId>>,
+    private readonly moduleUnit: ModuleUnit,
     private readonly phis: Set<Phi>,
   ) {}
 
@@ -43,26 +41,30 @@ export class SSAEliminator {
       this.#insertPhiCopies(phi);
     }
 
-    return { blocks: this.blocks };
+    return { blocks: this.moduleUnit.blocks };
   }
 
   #insertPhiDeclaration(phi: Phi) {
     const declarationId = phi.place.identifier.declarationId;
-    const declaration = this.environment.declToPlaces.get(declarationId)?.[0];
+    const declaration =
+      this.moduleUnit.environment.declToPlaces.get(declarationId)?.[0];
     if (declaration === undefined) {
       throw new Error(`Declaration place not found for ${declarationId}`);
     }
 
-    const declarationBlock = this.blocks.get(declaration.blockId);
+    const declarationBlock = this.moduleUnit.blocks.get(declaration.blockId);
     if (declarationBlock === undefined) {
       throw new Error(`Declaration block not found for ${declarationId}`);
     }
 
-    const identifier = createIdentifier(this.environment, declarationId);
-    const place = createPlace(identifier, this.environment);
+    const identifier = createIdentifier(
+      this.moduleUnit.environment,
+      declarationId,
+    );
+    const place = createPlace(identifier, this.moduleUnit.environment);
 
     const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++,
+      this.moduleUnit.environment.nextInstructionId++,
     );
     const instruction = new StoreLocalInstruction(
       instructionId,
@@ -78,36 +80,42 @@ export class SSAEliminator {
 
   #insertPhiCopies(phi: Phi) {
     for (const [blockId, place] of phi.operands) {
-      const block = this.blocks.get(blockId);
+      const block = this.moduleUnit.blocks.get(blockId);
       if (block === undefined) {
         throw new Error(`Block not found for ${blockId}`);
       }
 
       // Step 1: Load the value of the variable into a place.
-      const loadId = makeInstructionId(this.environment.nextInstructionId++);
+      const loadId = makeInstructionId(
+        this.moduleUnit.environment.nextInstructionId++,
+      );
       const loadPlace = createPlace(
-        createIdentifier(this.environment),
-        this.environment,
+        createIdentifier(this.moduleUnit.environment),
+        this.moduleUnit.environment,
       );
       block.instructions.push(
         new LoadLocalInstruction(loadId, loadPlace, undefined, place),
       );
 
       // Step 2: Create a copy instruction using the loaded value.
-      const copyId = makeInstructionId(this.environment.nextInstructionId++);
+      const copyId = makeInstructionId(
+        this.moduleUnit.environment.nextInstructionId++,
+      );
       const copyPlace = createPlace(
-        createIdentifier(this.environment),
-        this.environment,
+        createIdentifier(this.moduleUnit.environment),
+        this.moduleUnit.environment,
       );
       block.instructions.push(
         new CopyInstruction(copyId, copyPlace, undefined, phi.place, loadPlace),
       );
 
       // Step 3: Wrap the copy instruction in an expression statement.
-      const exprId = makeInstructionId(this.environment.nextInstructionId++);
+      const exprId = makeInstructionId(
+        this.moduleUnit.environment.nextInstructionId++,
+      );
       const exprPlace = createPlace(
-        createIdentifier(this.environment),
-        this.environment,
+        createIdentifier(this.moduleUnit.environment),
+        this.moduleUnit.environment,
       );
       block.instructions.push(
         new ExpressionStatementInstruction(
@@ -128,8 +136,8 @@ export class SSAEliminator {
       ]),
     );
 
-    for (const [blockId, block] of this.blocks) {
-      const dominators = this.dominators.get(blockId)!;
+    for (const [blockId, block] of this.moduleUnit.blocks) {
+      const dominators = this.moduleUnit.dominators.get(blockId)!;
       if (!dominators.has(phi.blockId)) {
         continue;
       }

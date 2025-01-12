@@ -14,6 +14,9 @@ importers:
       '@babel/generator':
         specifier: ^7.26.3
         version: 7.26.3
+      '@babel/helper-validator-identifier':
+        specifier: ^7.25.9
+        version: 7.25.9
       '@babel/parser':
         specifier: ^7.26.3
         version: 7.26.3
@@ -57,6 +60,9 @@ importers:
       '@types/babel__generator':
         specifier: ^7.6.8
         version: 7.6.8
+      '@types/babel__helper-validator-identifier':
+        specifier: ^7.15.2
+        version: 7.15.2
       '@types/babel__traverse':
         specifier: ^7.20.6
         version: 7.20.6
@@ -955,6 +961,9 @@ packages:
 
   '@types/babel__generator@7.6.8':
     resolution: {integrity: sha512-ASsj+tpEDsEiFr1arWrlN6V3mdfjRMZt6LtK/Vp/kreFLnr5QH5+DhvD5nINYZXzwJvXeGq+05iUXcAzVrqWtw==}
+
+  '@types/babel__helper-validator-identifier@7.15.2':
+    resolution: {integrity: sha512-l3dkwCt890NFhMwPKXbxsWXC0Por0/+KaFIiQP1j38/vWSH2P3Tn6m+IuJHkx2SBI3VLFqincFe9JtBk2NFHOw==}
 
   '@types/babel__template@7.4.4':
     resolution: {integrity: sha512-h/NUaSyG5EyxBIp8YRxo4RMe2/qQgvyowRwVMzhYhBCONbW8PUsg4lkFMrhgZhUe5z3L3MiLDuvyJ/CaPa2A8A==}
@@ -3252,6 +3261,8 @@ snapshots:
     dependencies:
       '@babel/types': 7.26.3
 
+  '@types/babel__helper-validator-identifier@7.15.2': {}
+
   '@types/babel__template@7.4.4':
     dependencies:
       '@babel/parser': 7.26.3
@@ -3543,6 +3554,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.26.0
       '@babel/generator': 7.26.3
+      '@babel/helper-validator-identifier': 7.25.9
       '@babel/parser': 7.26.3
       '@babel/traverse': 7.26.4
       '@babel/types': 7.26.3

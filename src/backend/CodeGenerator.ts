@@ -1,4 +1,5 @@
 import _generate from "@babel/generator";
+import { isKeyword } from "@babel/helper-validator-identifier";
 import * as t from "@babel/types";
 import { assertJSXChild } from "../babel-utils";
 import {
@@ -35,6 +36,11 @@ import {
 } from "../frontend/ir";
 import {
   ExportDefaultDeclarationInstruction,
+  ExportNamedDeclarationInstruction,
+  ExportSpecifierInstruction,
+  IdentifierInstruction,
+  ImportDeclarationInstruction,
+  ImportSpecifierInstruction,
   JSXElementInstruction,
   JSXFragmentInstruction,
   JSXInstruction,
@@ -43,6 +49,7 @@ import {
   ObjectMethodInstruction,
   ObjectPropertyInstruction,
 } from "../frontend/ir/Instruction";
+import { ProjectUnit } from "../frontend/ProjectBuilder";
 
 const generate = (_generate as unknown as { default: typeof _generate })
   .default;
@@ -56,10 +63,17 @@ export class CodeGenerator {
     new Map();
   private readonly generatedBlocks: Set<BlockId> = new Set();
 
+  private readonly blocks: Map<BlockId, BasicBlock>;
+  private readonly backEdges: Map<BlockId, Set<BlockId>>;
+
   constructor(
-    private readonly blocks: Map<BlockId, BasicBlock>,
-    private readonly backEdges: Map<BlockId, Set<BlockId>>,
-  ) {}
+    private readonly projectUnit: ProjectUnit,
+    private readonly path: string,
+  ) {
+    const moduleUnit = this.projectUnit.modules.get(path)!;
+    this.blocks = moduleUnit.blocks;
+    this.backEdges = moduleUnit.backEdges;
+  }
 
   generate(): string {
     const statements = this.#generateBlock(this.blocks.keys().next().value!);
@@ -79,7 +93,10 @@ export class CodeGenerator {
     if (instruction instanceof ExpressionInstruction) {
       this.#generateExpression(instruction);
     } else if (instruction instanceof StatementInstruction) {
-      statements.push(this.#generateStatement(instruction));
+      const node = this.#generateStatement(instruction);
+      if (!t.isExportSpecifier(node)) {
+        statements.push(node);
+      }
     } else if (instruction instanceof PatternInstruction) {
       this.#generatePattern(instruction);
     } else if (instruction instanceof JSXInstruction) {
@@ -267,6 +284,8 @@ export class CodeGenerator {
       return this.#generateObjectExpression(instruction);
     } else if (instruction instanceof UnaryExpressionInstruction) {
       return this.#generateUnaryExpression(instruction);
+    } else if (instruction instanceof IdentifierInstruction) {
+      return this.#generateIdentifierInstruction(instruction);
     }
 
     throw new Error(
@@ -464,6 +483,14 @@ export class CodeGenerator {
     return node;
   }
 
+  #generateIdentifierInstruction(
+    instruction: IdentifierInstruction,
+  ): t.Expression {
+    const node = t.identifier(instruction.name);
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
   /******************************************************************************
    * Statement Generation
    *
@@ -472,10 +499,17 @@ export class CodeGenerator {
   #generateStatement(instruction: StatementInstruction): t.Statement {
     if (instruction instanceof ExportDefaultDeclarationInstruction) {
       return this.#generateExportDefaultDeclaration(instruction);
+    } else if (instruction instanceof ExportNamedDeclarationInstruction) {
+      return this.#generateExportNamedDeclaration(instruction);
+    } else if (instruction instanceof ExportSpecifierInstruction) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return this.#generateExportSpecifier(instruction) as any;
     } else if (instruction instanceof ExpressionStatementInstruction) {
       return this.#generateExpressionStatement(instruction);
     } else if (instruction instanceof FunctionDeclarationInstruction) {
       return this.#generateFunctionDeclaration(instruction);
+    } else if (instruction instanceof ImportDeclarationInstruction) {
+      return this.#generateImportDeclaration(instruction);
     } else if (instruction instanceof StoreLocalInstruction) {
       return this.#generateStoreLocalInstruction(instruction);
     }
@@ -483,6 +517,36 @@ export class CodeGenerator {
     throw new Error(
       `Unsupported statement type: ${instruction.constructor.name}`,
     );
+  }
+
+  #generateExportNamedDeclaration(
+    instruction: ExportNamedDeclarationInstruction,
+  ): t.Statement {
+    if (instruction.declaration !== undefined) {
+      const declaration = this.places.get(instruction.declaration.id);
+      if (declaration === undefined) {
+        throw new Error(`Place ${instruction.declaration.id} not found`);
+      }
+
+      t.assertDeclaration(declaration);
+      const node = t.exportNamedDeclaration(declaration, []);
+      this.places.set(instruction.place.id, node);
+      return node;
+    }
+
+    const specifiers = instruction.specifiers.map((specifier) => {
+      const node = this.places.get(specifier.id);
+      if (node === undefined) {
+        throw new Error(`Place ${specifier.id} not found`);
+      }
+
+      t.assertExportSpecifier(node);
+      return node;
+    });
+
+    const node = t.exportNamedDeclaration(null, specifiers);
+    this.places.set(instruction.place.id, node);
+    return node;
   }
 
   #generateExportDefaultDeclaration(
@@ -504,6 +568,27 @@ export class CodeGenerator {
     }
 
     return t.exportDefaultDeclaration(declaration);
+  }
+
+  #generateExportSpecifier(
+    instruction: ExportSpecifierInstruction,
+  ): t.ExportSpecifier {
+    const local = this.places.get(instruction.local.id);
+    if (local === undefined) {
+      throw new Error(`Place ${instruction.local.id} not found`);
+    }
+
+    t.assertIdentifier(local);
+
+    const exported =
+      t.isValidIdentifier(instruction.exported) ||
+      isKeyword(instruction.exported)
+        ? t.identifier(instruction.exported)
+        : t.stringLiteral(instruction.exported);
+
+    const node = t.exportSpecifier(local, exported);
+    this.places.set(instruction.place.id, node);
+    return node;
   }
 
   #generateExpressionStatement(
@@ -544,6 +629,49 @@ export class CodeGenerator {
       instruction.generator,
       instruction.async,
     );
+    this.places.set(instruction.place.id, node);
+    return node;
+  }
+
+  #generateImportDeclaration(
+    instruction: ImportDeclarationInstruction,
+  ): t.Statement {
+    const source = t.valueToNode(instruction.source);
+    const specifiers = instruction.specifiers.map((specifier) => {
+      const node = this.places.get(specifier.id);
+      if (node === undefined) {
+        throw new Error(`Place ${specifier.id} not found`);
+      }
+
+      t.assertImportSpecifier(node);
+      return node;
+    });
+
+    return t.importDeclaration(specifiers, source);
+  }
+
+  #generateImportSpecifier(
+    instruction: ImportSpecifierInstruction,
+  ): t.ImportSpecifier {
+    const imported = this.places.get(instruction.imported.id);
+    if (imported === undefined) {
+      throw new Error(`Place ${instruction.imported.id} not found`);
+    }
+
+    t.assertIdentifier(imported);
+
+    // Handle case where local is undefined
+    let local = imported;
+    if (instruction.local) {
+      const localNode = this.places.get(instruction.local.id);
+      if (localNode === undefined) {
+        throw new Error(`Place ${instruction.local.id} not found`);
+      }
+      t.assertIdentifier(localNode);
+      local = localNode;
+    }
+
+    const node = t.importSpecifier(imported, local);
     this.places.set(instruction.place.id, node);
     return node;
   }
@@ -710,6 +838,8 @@ export class CodeGenerator {
       return this.#generateObjectProperty(instruction);
     } else if (instruction instanceof SpreadElementInstruction) {
       return this.#generateSpreadElement(instruction);
+    } else if (instruction instanceof ImportSpecifierInstruction) {
+      return this.#generateImportSpecifier(instruction);
     }
 
     throw new Error(

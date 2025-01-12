@@ -92,7 +92,7 @@ async function runCompileTest(
   output: string,
   options: CompilerOptions,
 ) {
-  const { code: actualCode } = compile(input, options);
+  const actualCode = compile(input, options);
 
   const expectedCode = readFileSync(output, "utf-8").trim();
   const formattedActual = await prettier.format(actualCode, {

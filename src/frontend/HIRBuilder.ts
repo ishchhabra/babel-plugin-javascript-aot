@@ -1,5 +1,6 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { createRequire } from "module";
 import { getFunctionName } from "../babel-utils";
 import { Environment } from "../environment";
 import {
@@ -19,8 +20,6 @@ import {
   HoleInstruction,
   JumpTerminal,
   LiteralInstruction,
-  LoadGlobalInstruction,
-  LoadLocalInstruction,
   makeInstructionId,
   MemberExpressionInstruction,
   ObjectExpressionInstruction,
@@ -34,11 +33,18 @@ import {
   UnsupportedNodeInstruction,
 } from "./ir";
 import {
+  BaseInstruction,
   ExportDefaultDeclarationInstruction,
+  ExportNamedDeclarationInstruction,
+  ExportSpecifierInstruction,
+  IdentifierInstruction,
   ImportDeclarationInstruction,
+  ImportSpecifierInstruction,
   JSXElementInstruction,
   JSXFragmentInstruction,
   JSXTextInstruction,
+  LoadGlobalInstruction,
+  LoadLocalInstruction,
   LogicalExpressionInstruction,
   ObjectMethodInstruction,
 } from "./ir/Instruction";
@@ -48,7 +54,7 @@ import {
  */
 export interface HIR {
   blocks: Map<BlockId, BasicBlock>;
-  exportToPlaces: Map<string, Place>;
+  exportToInstructions: Map<string, BaseInstruction>;
   importToPlaces: Map<string, Place>;
 }
 
@@ -56,7 +62,8 @@ export interface HIR {
  * Builds the High-Level Intermediate Representation (HIR) from the AST.
  */
 export class HIRBuilder {
-  private readonly exportToPlaces: Map<string, Place> = new Map();
+  private readonly exportToInstructions: Map<string, BaseInstruction> =
+    new Map();
   private readonly importToPlaces: Map<string, Place> = new Map();
 
   private currentBlock: BasicBlock;
@@ -64,6 +71,7 @@ export class HIRBuilder {
   private readonly blocks: Map<BlockId, BasicBlock> = new Map();
 
   constructor(
+    private readonly path: string,
     private readonly program: NodePath<t.Program>,
     private readonly environment: Environment,
   ) {
@@ -82,7 +90,7 @@ export class HIRBuilder {
 
     return {
       blocks: this.blocks,
-      exportToPlaces: this.exportToPlaces,
+      exportToInstructions: this.exportToInstructions,
       importToPlaces: this.importToPlaces,
     };
   }
@@ -288,12 +296,11 @@ export class HIRBuilder {
    * Methods for building HIR from different types of nodes
    ******************************************************************************/
 
-  #buildNode(nodePath: NodePath<t.Node>): Place | undefined {
+  #buildNode(nodePath: NodePath<t.Node>): Place | Place[] | undefined {
     if (nodePath.isExpression() || nodePath.isIdentifier()) {
       return this.#buildExpression(nodePath);
     } else if (nodePath.isStatement()) {
-      this.#buildStatement(nodePath);
-      return;
+      return this.#buildStatement(nodePath);
     }
 
     throw new Error(`Unsupported node type: ${nodePath.type}`);
@@ -304,16 +311,20 @@ export class HIRBuilder {
    *
    * Methods for building HIR from different types of statement nodes
    ******************************************************************************/
-  #buildStatement(statementPath: NodePath<t.Statement>): Place | undefined {
+  #buildStatement(
+    statementPath: NodePath<t.Statement>,
+  ): Place | Place[] | undefined {
     switch (statementPath.type) {
       case "BlockStatement":
         statementPath.assertBlockStatement();
         this.#buildBlockStatement(statementPath);
         break;
+      case "ExportNamedDeclaration":
+        statementPath.assertExportNamedDeclaration();
+        return this.#buildExportNamedDeclaration(statementPath);
       case "ExportDefaultDeclaration":
         statementPath.assertExportDefaultDeclaration();
-        this.#buildExportDefaultDeclaration(statementPath);
-        break;
+        return this.#buildExportDefaultDeclaration(statementPath);
       case "ExpressionStatement":
         statementPath.assertExpressionStatement();
         this.#buildExpressionStatement(statementPath);
@@ -339,8 +350,7 @@ export class HIRBuilder {
         break;
       case "VariableDeclaration":
         statementPath.assertVariableDeclaration();
-        this.#buildVariableDeclaration(statementPath);
-        break;
+        return this.#buildVariableDeclaration(statementPath);
       case "WhileStatement":
         statementPath.assertWhileStatement();
         this.#buildWhileStatement(statementPath);
@@ -371,11 +381,58 @@ export class HIRBuilder {
     );
   }
 
+  #buildExportNamedDeclaration(
+    statementPath: NodePath<t.ExportNamedDeclaration>,
+  ) {
+    const declarationPath = statementPath.get("declaration");
+    const specifiersPath = statementPath.get("specifiers");
+
+    // An export can have either declaration or specifiers, but not both.
+    if (declarationPath.hasNode()) {
+      let declarationPlace = this.#buildNode(declarationPath);
+      if (Array.isArray(declarationPlace)) {
+        declarationPlace = declarationPlace[0];
+      }
+
+      const identifier = createIdentifier(this.environment);
+      const place = createPlace(identifier, this.environment);
+      const instruction = new ExportNamedDeclarationInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        statementPath,
+        [],
+        declarationPlace!,
+      );
+
+      this.currentBlock.instructions.push(instruction);
+      this.exportToInstructions.set(identifier.name, instruction);
+      return place;
+    } else {
+      const exportSpecifierPlaces = specifiersPath.map(
+        (specifierPath) => this.#buildExportSpecifier(specifierPath)!,
+      );
+
+      const identifier = createIdentifier(this.environment);
+      const place = createPlace(identifier, this.environment);
+      const instruction = new ExportNamedDeclarationInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        statementPath,
+        exportSpecifierPlaces,
+        undefined,
+      );
+
+      this.currentBlock.instructions.push(instruction);
+      this.exportToInstructions.set(identifier.name, instruction);
+      return place;
+    }
+  }
+
   #buildExportDefaultDeclaration(
     statementPath: NodePath<t.ExportDefaultDeclaration>,
   ): Place {
     const declarationPath = statementPath.get("declaration");
-    const declarationPlace = this.#buildNode(declarationPath);
+    const declarationPlace = this.#buildNode(declarationPath) as Place;
     if (declarationPlace === undefined) {
       throw new Error("Unable to find the place for declaration");
     }
@@ -385,16 +442,48 @@ export class HIRBuilder {
     const instructionId = makeInstructionId(
       this.environment.nextInstructionId++,
     );
-    this.currentBlock.instructions.push(
-      new ExportDefaultDeclarationInstruction(
-        instructionId,
-        place,
-        statementPath,
-        declarationPlace,
-      ),
+    const instruction = new ExportDefaultDeclarationInstruction(
+      instructionId,
+      place,
+      statementPath,
+      declarationPlace,
     );
 
-    this.exportToPlaces.set("default", place);
+    this.currentBlock.instructions.push(instruction);
+    this.exportToInstructions.set("default", instruction);
+    return place;
+  }
+
+  #buildExportSpecifier(
+    specifierPath: NodePath<
+      t.ExportDefaultSpecifier | t.ExportNamespaceSpecifier | t.ExportSpecifier
+    >,
+  ) {
+    specifierPath.assertExportSpecifier();
+
+    const localPath = specifierPath.get("local");
+    const localPlace = this.#buildNode(localPath) as Place;
+
+    const exportedPath = specifierPath.get("exported") ?? localPath;
+    let exportedName: string | undefined;
+    if (exportedPath.isIdentifier()) {
+      exportedName = exportedPath.node.name;
+    } else if (exportedPath.isStringLiteral()) {
+      exportedName = exportedPath.node.value;
+    }
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    const instruction = new ExportSpecifierInstruction(
+      makeInstructionId(this.environment.nextInstructionId++),
+      place,
+      specifierPath,
+      localPlace,
+      exportedName!,
+    );
+
+    this.currentBlock.instructions.push(instruction);
+    this.exportToInstructions.set(exportedName!, instruction);
     return place;
   }
 
@@ -677,10 +766,11 @@ export class HIRBuilder {
   #buildImportDeclaration(statementPath: NodePath<t.ImportDeclaration>) {
     const sourcePath = statementPath.get("source");
     const sourceValue = sourcePath.node.value;
+    const resolvedSourceValue = resolveModulePath(sourceValue, this.path);
 
     const specifiersPath = statementPath.get("specifiers");
-    const specifierPlaces = specifiersPath.map(
-      (specifierPath) => this.#buildNode(specifierPath)!,
+    const specifierPlaces = specifiersPath.map((specifierPath) =>
+      this.#buildImportSpecifier(specifierPath),
     );
 
     const identifier = createIdentifier(this.environment);
@@ -691,11 +781,46 @@ export class HIRBuilder {
         place,
         statementPath,
         sourceValue,
+        resolvedSourceValue,
         specifierPlaces,
       ),
     );
 
-    this.importToPlaces.set(sourceValue, place);
+    this.importToPlaces.set(resolvedSourceValue, place);
+    return place;
+  }
+
+  #buildImportSpecifier(
+    specifierPath: NodePath<
+      t.ImportDefaultSpecifier | t.ImportSpecifier | t.ImportNamespaceSpecifier
+    >,
+  ) {
+    if (!specifierPath.isImportSpecifier()) {
+      throw new Error(
+        `Unsupported import specifier type: ${specifierPath.type}`,
+      );
+    }
+
+    const importedPath = specifierPath.get("imported");
+    const importedPlace = this.#buildNode(importedPath)!;
+
+    const localPath = specifierPath.get("local");
+    const localPlace = localPath.hasNode()
+      ? this.#buildNode(localPath)!
+      : undefined;
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    this.currentBlock.instructions.push(
+      new ImportSpecifierInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        specifierPath,
+        importedPlace as Place,
+        localPlace as Place,
+      ),
+    );
+
     return place;
   }
 
@@ -712,11 +837,13 @@ export class HIRBuilder {
     );
   }
 
-  #buildVariableDeclaration(statementPath: NodePath<t.VariableDeclaration>) {
+  #buildVariableDeclaration(
+    statementPath: NodePath<t.VariableDeclaration>,
+  ): Place[] {
     const declarations = statementPath.get("declarations");
-    for (const declaration of declarations) {
+    const declarationPlaces = declarations.map((declaration) => {
       const id = declaration.get("id");
-      const lvalPlace = this.#buildLVal(id, true);
+      const lvalPlace = this.#buildLVal(id);
 
       const init: NodePath<t.Expression | null | undefined> =
         declaration.get("init");
@@ -745,7 +872,11 @@ export class HIRBuilder {
           "const",
         ),
       );
-    }
+
+      return place;
+    });
+
+    return declarationPlaces;
   }
 
   #buildWhileStatement(statementPath: NodePath<t.WhileStatement>) {
@@ -1020,57 +1151,89 @@ export class HIRBuilder {
    * Builds a place for an identifier. If the identifier is not a variable declarator,
    * a load instruction is created to load the identifier from the scope.
    */
-  #buildIdentifier(
-    expressionPath: NodePath<t.Identifier>,
-    isVariableDeclaratorId: boolean = false,
-  ): Place {
+  #buildIdentifier(expressionPath: NodePath<t.Identifier>): Place {
+    if (expressionPath.isReferencedIdentifier()) {
+      return this.#buildReferencedIdentifier(expressionPath);
+    } else {
+      return this.#buildBindingIdentifier(expressionPath);
+    }
+  }
+
+  #buildBindingIdentifier(expressionPath: NodePath<t.Identifier>): Place {
     const name = expressionPath.node.name;
 
+    let place: Place | undefined;
+    // In case we already have a declaration place, we need to use that, so that
+    // we're using the place that was created when the binding was discovered
+    // in #buildBindings.
     const declarationId = this.#getDeclarationId(name, expressionPath);
+    if (declarationId !== undefined) {
+      place = this.#getLatestDeclarationPlace(declarationId);
+    }
+
+    if (place === undefined) {
+      const identifier = createIdentifier(this.environment);
+      place = createPlace(identifier, this.environment);
+    }
+
+    this.currentBlock.instructions.push(
+      new IdentifierInstruction(
+        makeInstructionId(this.environment.nextInstructionId++),
+        place,
+        expressionPath,
+        name,
+      ),
+    );
+
+    return place;
+  }
+
+  #buildReferencedIdentifier(expressionPath: NodePath<t.Identifier>): Place {
+    const name = expressionPath.node.name;
+    const declarationId = this.#getDeclarationId(name, expressionPath);
+
+    const identifier = createIdentifier(this.environment);
+    const place = createPlace(identifier, this.environment);
+    const instructionId = makeInstructionId(
+      this.environment.nextInstructionId++,
+    );
+
     if (declarationId === undefined) {
       const binding = expressionPath.scope.getBinding(name);
-      const identifier = createIdentifier(this.environment);
-      const place = createPlace(identifier, this.environment);
-
       this.currentBlock.instructions.push(
         new LoadGlobalInstruction(
-          makeInstructionId(this.environment.nextInstructionId++),
+          instructionId,
           place,
           expressionPath,
           name,
           binding?.kind === "module" ? "import" : "builtin",
+          binding?.kind === "module"
+            ? (binding.path.parent as t.ImportDeclaration).source.value
+            : undefined,
         ),
       );
+    } else {
+      const declarationId = this.#getDeclarationId(name, expressionPath);
+      if (declarationId === undefined) {
+        throw new Error(`Variable accessed before declaration: ${name}`);
+      }
 
-      return place;
-    }
+      const declarationPlace = this.#getLatestDeclarationPlace(declarationId);
+      if (declarationPlace === undefined) {
+        throw new Error(
+          `Unable to find the place for ${name} (${declarationId})`,
+        );
+      }
 
-    const valuePlace = this.#getLatestDeclarationPlace(declarationId);
-    if (valuePlace === undefined) {
-      throw new Error(
-        `Unable to find the place for ${name} (${declarationId})`,
+      this.currentBlock.instructions.push(
+        new LoadLocalInstruction(
+          instructionId,
+          place,
+          expressionPath,
+          declarationPlace,
+        ),
       );
     }
-
-    // If we're building a variable declarator id, we don't need to (and can't)
-    // load the value, because up until now, the value has not been declared yet.
-    if (isVariableDeclaratorId) {
-      return valuePlace;
-    }
-
-    const instructionId = makeInstructionId(
-      this.environment.nextInstructionId++,
-    );
-    const identifier = createIdentifier(this.environment);
-    const place = createPlace(identifier, this.environment);
-    this.currentBlock.instructions.push(
-      new LoadLocalInstruction(
-        instructionId,
-        place,
-        expressionPath,
-        valuePlace,
-      ),
-    );
 
     return place;
   }
@@ -1207,7 +1370,7 @@ export class HIRBuilder {
       makeInstructionId(this.environment.nextInstructionId++),
       methodPlace,
       methodPath,
-      keyPlace,
+      keyPlace as Place,
       paramPlaces,
       bodyBlock.id,
       methodPath.node.computed,
@@ -1247,8 +1410,8 @@ export class HIRBuilder {
         makeInstructionId(this.environment.nextInstructionId++),
         place,
         propertyPath,
-        keyPlace,
-        valuePlace,
+        keyPlace as Place,
+        valuePlace as Place,
         propertyPath.node.computed,
         propertyPath.node.shorthand,
       ),
@@ -1390,7 +1553,7 @@ export class HIRBuilder {
     switch (patternPath.type) {
       case "Identifier":
         patternPath.assertIdentifier();
-        return this.#buildIdentifier(patternPath, true);
+        return this.#buildIdentifier(patternPath);
       case "ArrayPattern":
         patternPath.assertArrayPattern();
         return this.#buildArrayPattern(patternPath);
@@ -1460,14 +1623,11 @@ export class HIRBuilder {
    * object patterns, and rest elements. LVal nodes represent the left side of
    * assignments and declarations.
    ******************************************************************************/
-  #buildLVal(
-    lvalPath: NodePath<t.LVal>,
-    isVariableDeclaratorId: boolean = false,
-  ): Place {
+  #buildLVal(lvalPath: NodePath<t.LVal>): Place {
     switch (lvalPath.type) {
       case "Identifier":
         lvalPath.assertIdentifier();
-        return this.#buildIdentifier(lvalPath, isVariableDeclaratorId);
+        return this.#buildIdentifier(lvalPath);
       case "ArrayPattern":
         lvalPath.assertArrayPattern();
         return this.#buildArrayPattern(lvalPath);
@@ -1741,3 +1901,8 @@ export class HIRBuilder {
 function assertNullPath<T extends t.Node>(
   path: NodePath<T | null>,
 ): asserts path is NodePath<null> {}
+
+function resolveModulePath(importPath: string, path: string): string {
+  const require = createRequire(path);
+  return require.resolve(importPath);
+}

@@ -45,6 +45,14 @@ export abstract class BaseInstruction {
   public get isPure(): boolean {
     return false;
   }
+
+  public toString(): string {
+    return JSON.stringify({
+      ...this,
+      kind: this.constructor.name,
+      nodePath: undefined,
+    });
+  }
 }
 
 export abstract class ExpressionInstruction extends BaseInstruction {}
@@ -225,6 +233,49 @@ export class ExportDefaultDeclarationInstruction extends StatementInstruction {
   }
 }
 
+export class ExportNamedDeclarationInstruction extends StatementInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly specifiers: Place[],
+    public readonly declaration: Place | undefined,
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(): BaseInstruction {
+    return this;
+  }
+
+  getReadPlaces(): Place[] {
+    return [
+      ...this.specifiers,
+      ...(this.declaration ? [this.declaration] : []),
+    ];
+  }
+}
+
+export class ExportSpecifierInstruction extends StatementInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly local: Place,
+    public readonly exported: string,
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(): BaseInstruction {
+    return this;
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.local];
+  }
+}
+
 export class ExpressionStatementInstruction extends StatementInstruction {
   constructor(
     public readonly id: InstructionId,
@@ -310,12 +361,41 @@ export class HoleInstruction extends MiscellaneousInstruction {
   }
 }
 
+/**
+ * In most cases, when we see an identifier, it is a load instruction. However, in some cases when
+ * the value is not already in context, we need to use an identifier instruction. For example:
+ *
+ * 1. When we see a variable declaration like `let x = 10;`, we need to use an identifier instruction
+ *    for "x".
+ * 2. When we see an import declaration like `import { x } from "y";`, we need to use an identifier
+ *    instruction for "x".
+ */
+export class IdentifierInstruction extends ExpressionInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly name: string,
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(): BaseInstruction {
+    return this;
+  }
+
+  getReadPlaces(): Place[] {
+    return [];
+  }
+}
+
 export class ImportDeclarationInstruction extends StatementInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly source: string,
+    public readonly resolvedSource: string,
     public readonly specifiers: Place[],
   ) {
     super(id, place, nodePath);
@@ -327,6 +407,26 @@ export class ImportDeclarationInstruction extends StatementInstruction {
 
   getReadPlaces(): Place[] {
     return [...this.specifiers];
+  }
+}
+
+export class ImportSpecifierInstruction extends MiscellaneousInstruction {
+  constructor(
+    public readonly id: InstructionId,
+    public readonly place: Place,
+    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly imported: Place,
+    public readonly local: Place | undefined,
+  ) {
+    super(id, place, nodePath);
+  }
+
+  rewriteInstruction(): BaseInstruction {
+    return this;
+  }
+
+  getReadPlaces(): Place[] {
+    return [this.imported, ...(this.local ? [this.local] : [])];
   }
 }
 
@@ -446,6 +546,7 @@ export class LoadGlobalInstruction extends ExpressionInstruction {
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly name: string,
     public readonly kind: "builtin" | "import",
+    public readonly source?: string,
   ) {
     super(id, place, nodePath);
   }

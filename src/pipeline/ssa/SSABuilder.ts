@@ -1,5 +1,5 @@
-import { Environment } from "../../environment";
 import { BlockId, createPlace } from "../../frontend/ir";
+import { ModuleUnit } from "../../frontend/ModuleBuilder";
 import { Phi } from "./Phi";
 import { createPhiIdentifier } from "./utils";
 
@@ -11,17 +11,14 @@ interface SSA {
  * Computes the phis for the HIR.
  */
 export class SSABuilder {
-  constructor(
-    private readonly predecessors: Map<BlockId, Set<BlockId>>,
-    private readonly dominanceFrontier: Map<BlockId, Set<BlockId>>,
-    private readonly environment: Environment,
-  ) {}
+  constructor(private readonly moduleUnit: ModuleUnit) {}
 
   public build(): SSA {
     const phis = new Set<Phi>();
 
     // Compute phis.
-    for (const [declarationId, places] of this.environment.declToPlaces) {
+    for (const [declarationId, places] of this.moduleUnit.environment
+      .declToPlaces) {
       const definitionBlocks = places.map((p) => p.blockId);
       if (definitionBlocks.length <= 1) {
         continue;
@@ -31,7 +28,7 @@ export class SSABuilder {
       const hasPhi = new Set<BlockId>();
       while (workList.length > 0) {
         const definitionBlock = workList.pop()!;
-        const frontier = this.dominanceFrontier.get(definitionBlock);
+        const frontier = this.moduleUnit.dominanceFrontier.get(definitionBlock);
         if (frontier === undefined) {
           continue;
         }
@@ -43,10 +40,10 @@ export class SSABuilder {
 
           // Insert phi node for declarationId in block y.
           const identifier = createPhiIdentifier(
-            this.environment,
+            this.moduleUnit.environment,
             declarationId,
           );
-          const place = createPlace(identifier, this.environment);
+          const place = createPlace(identifier, this.moduleUnit.environment);
           phis.add(new Phi(blockId, place, new Map()));
           hasPhi.add(blockId);
 
@@ -61,8 +58,8 @@ export class SSABuilder {
 
     // After collecting all phis, populate their operands.
     for (const phi of phis) {
-      const predecessors = [...this.predecessors.get(phi.blockId)!];
-      const places = this.environment.declToPlaces.get(
+      const predecessors = [...this.moduleUnit.predecessors.get(phi.blockId)!];
+      const places = this.moduleUnit.environment.declToPlaces.get(
         phi.place.identifier.declarationId,
       );
 
