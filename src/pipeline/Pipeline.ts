@@ -1,6 +1,6 @@
 import { CompilerOptions } from "../compile";
-import { BasicBlock, BlockId } from "../frontend/ir";
 import { ProjectUnit } from "../frontend/ProjectBuilder";
+import { BasicBlock, BlockId } from "../ir";
 import { ConstantPropagationPass } from "./passes/ConstantPropagationPass";
 import { SSABuilder } from "./ssa/SSABuilder";
 import { SSAEliminator } from "./ssa/SSAEliminator";

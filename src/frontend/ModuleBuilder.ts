@@ -3,6 +3,13 @@ import _traverse, { NodePath } from "@babel/traverse";
 import { Program } from "@babel/types";
 import { readFileSync } from "fs";
 import { Environment } from "../environment";
+import {
+  BaseInstruction,
+  BasicBlock,
+  BlockId,
+  makeBlockId,
+  Place,
+} from "../ir";
 import { getBackEdges } from "../pipeline/getBackEdges";
 import { getPredecessors } from "../pipeline/getPredecessors";
 import {
@@ -11,7 +18,6 @@ import {
   getImmediateDominators,
 } from "../pipeline/ssa/dominator-utils";
 import { HIRBuilder } from "./HIRBuilder";
-import { BaseInstruction, BasicBlock, BlockId, makeBlockId, Place } from "./ir";
 
 const traverse = (_traverse as unknown as { default: typeof _traverse })
   .default;

@@ -1,12 +1,7 @@
+import { BaseTerminal } from "../base";
+import { InstructionId } from "../base/Instruction";
 import { BlockId } from "./Block";
-import { InstructionId } from "./Instruction";
 import { Place } from "./Place";
-
-export abstract class BaseTerminal {
-  constructor(public readonly id: InstructionId) {}
-
-  abstract getReadPlaces(): Place[];
-}
 
 export class BranchTerminal extends BaseTerminal {
   constructor(

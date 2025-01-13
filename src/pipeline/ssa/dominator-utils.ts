@@ -1,5 +1,5 @@
 import { isEqual } from "lodash-es";
-import { BlockId } from "../../frontend/ir";
+import { BlockId } from "../../ir";
 
 /** Computes the set of dominators for each block in the CFG.
  *

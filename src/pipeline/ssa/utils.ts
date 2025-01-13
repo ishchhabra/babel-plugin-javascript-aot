@@ -4,7 +4,7 @@ import {
   Identifier,
   makeDeclarationId,
   makeIdentifierId,
-} from "../../frontend/ir";
+} from "../../ir";
 
 export function createPhiIdentifier(
   environment: Environment,

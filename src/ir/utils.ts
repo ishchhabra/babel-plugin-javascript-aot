@@ -1,12 +1,12 @@
-import { Environment } from "../../environment";
-import { BasicBlock, makeBlockId } from "./Block";
+import { Environment } from "../environment";
+import { BasicBlock, makeBlockId } from "./core/Block";
 import {
   DeclarationId,
   Identifier,
   makeDeclarationId,
   makeIdentifierId,
-} from "./Identifier";
-import { makePlaceId, Place } from "./Place";
+} from "./core/Identifier";
+import { makePlaceId, Place } from "./core/Place";
 
 export function createPlace(
   identifier: Identifier,

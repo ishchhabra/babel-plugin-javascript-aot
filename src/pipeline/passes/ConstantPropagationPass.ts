@@ -1,22 +1,20 @@
 import { createRequire } from "module";
-import {
-  BasicBlock,
-  IdentifierId,
-  LiteralInstruction,
-} from "../../frontend/ir";
+import { ModuleUnit } from "../../frontend/ModuleBuilder";
+import { ProjectUnit } from "../../frontend/ProjectBuilder";
 import {
   BaseInstruction,
+  BasicBlock,
   BinaryExpressionInstruction,
   ExportNamedDeclarationInstruction,
   ExportSpecifierInstruction,
+  IdentifierId,
+  LiteralInstruction,
   LoadGlobalInstruction,
   LoadLocalInstruction,
   StoreLocalInstruction,
   TPrimitiveValue,
   UnaryExpressionInstruction,
-} from "../../frontend/ir/Instruction";
-import { ModuleUnit } from "../../frontend/ModuleBuilder";
-import { ProjectUnit } from "../../frontend/ProjectBuilder";
+} from "../../ir";
 
 /**
  * A pass that propagates constant values through the program by evaluating expressions

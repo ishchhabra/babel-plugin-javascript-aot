@@ -1,17 +1,15 @@
+import { ModuleUnit } from "../../frontend/ModuleBuilder";
 import {
   BasicBlock,
   BlockId,
+  CopyInstruction,
   createIdentifier,
   createPlace,
   ExpressionStatementInstruction,
+  LoadLocalInstruction,
   makeInstructionId,
   StoreLocalInstruction,
-} from "../../frontend/ir";
-import {
-  CopyInstruction,
-  LoadLocalInstruction,
-} from "../../frontend/ir/Instruction";
-import { ModuleUnit } from "../../frontend/ModuleBuilder";
+} from "../../ir";
 import { Phi } from "./Phi";
 
 interface SSAEliminationResult {

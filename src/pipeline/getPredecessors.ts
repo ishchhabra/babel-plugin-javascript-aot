@@ -4,7 +4,7 @@ import {
   BranchTerminal,
   JumpTerminal,
   makeBlockId,
-} from "../frontend/ir";
+} from "../ir";
 
 export function getPredecessors(blocks: Map<BlockId, BasicBlock>) {
   const predecessors = new Map<BlockId, Set<BlockId>>();

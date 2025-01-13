@@ -1,5 +1,4 @@
-import { BaseInstruction } from "./Instruction";
-import { BaseTerminal } from "./Terminal";
+import { BaseInstruction, BaseTerminal } from "../base";
 
 /**
  * Simulated opaque type for BlockId to prevent using normal numbers as ids

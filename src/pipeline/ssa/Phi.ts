@@ -1,4 +1,4 @@
-import { BlockId, IdentifierId, Place } from "../../frontend/ir";
+import { BlockId, IdentifierId, Place } from "../../ir";
 
 export function makePhiIdentifierName(id: IdentifierId): string {
   return `phi_${id}`;

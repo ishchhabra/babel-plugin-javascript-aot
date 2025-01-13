@@ -1,5 +1,5 @@
 import { Environment } from "../../environment";
-import { BasicBlock, BlockId } from "../../frontend/ir";
+import { BasicBlock, BlockId } from "../../ir";
 
 export interface OptimizationResult {
   changed: boolean;

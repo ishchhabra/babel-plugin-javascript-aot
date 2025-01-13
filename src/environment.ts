@@ -1,6 +1,6 @@
-import { BlockId } from "./frontend/ir";
-import { DeclarationId } from "./frontend/ir/Identifier";
-import { Place } from "./frontend/ir/Place";
+import { BlockId } from "./ir";
+import { DeclarationId } from "./ir/core/Identifier";
+import { Place } from "./ir/core/Place";
 
 export class Environment {
   declToPlaces: Map<DeclarationId, Array<{ blockId: BlockId; place: Place }>> =

@@ -1,6 +1,6 @@
 import { CompilerOptions } from "../../compile";
 import { Environment } from "../../environment";
-import { BasicBlock, BlockId } from "../../frontend/ir";
+import { BasicBlock, BlockId } from "../../ir";
 import { LateDeadCodeEliminationPass } from "./passes/LateDeadCodeEliminationPass";
 import { LoadStoreForwardingPass } from "./passes/LoadStoreForwardingPass";
 

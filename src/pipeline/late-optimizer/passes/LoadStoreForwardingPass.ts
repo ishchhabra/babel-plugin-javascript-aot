@@ -6,7 +6,7 @@ import {
   LoadLocalInstruction,
   Place,
   StoreLocalInstruction,
-} from "../../../frontend/ir";
+} from "../../../ir";
 import { BaseOptimizationPass, OptimizationResult } from "../OptimizationPass";
 
 /**

@@ -1,5 +1,5 @@
-import { BlockId, createPlace } from "../../frontend/ir";
 import { ModuleUnit } from "../../frontend/ModuleBuilder";
+import { BlockId, createPlace } from "../../ir";
 import { Phi } from "./Phi";
 import { createPhiIdentifier } from "./utils";
 
