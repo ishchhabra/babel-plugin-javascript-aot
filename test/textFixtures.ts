@@ -1,7 +1,14 @@
-import { readdirSync, readFileSync } from "fs";
-import { join, relative } from "path";
+// testFixtures.ts
+
+import { existsSync, readdirSync, readFileSync } from "fs";
+import { merge } from "lodash-es"; // npm install lodash-es
+import { dirname, join, relative } from "path";
 import * as prettier from "prettier";
-import { compile, CompilerOptions } from "../src/compile";
+import {
+  compile,
+  CompilerOptions,
+  CompilerOptionsSchema,
+} from "../src/compile";
 
 /**
  * Represents a single fixture file pair:
@@ -21,6 +28,56 @@ interface Fixture {
 interface TreeNode {
   __fixtures?: Fixture[];
   [key: string]: TreeNode | Fixture[] | undefined;
+}
+
+/**
+ * Safely reads and parses JSON from a file, returning undefined if the file
+ * doesn't exist or if parsing fails.
+ */
+function safeReadJson(filePath: string): CompilerOptions | undefined {
+  if (!existsSync(filePath)) return undefined;
+  try {
+    return CompilerOptionsSchema.parse(
+      JSON.parse(readFileSync(filePath, "utf-8")),
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Traverses from `rootDir` up to `testDir`, collecting any `options.json` along the way,
+ * and merges them (outer → inner) into a single CompilerOptions object.
+ */
+function loadOptionsChain(
+  rootDir: string,
+  testDir: string,
+  baseOptions: CompilerOptions,
+): CompilerOptions {
+  const dirs: string[] = [];
+  let current = testDir;
+
+  while (true) {
+    dirs.push(current);
+    if (current === rootDir) break;
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+
+  // Reverse so we apply outermost first, then innermost
+  dirs.reverse();
+
+  // Start with a copy of baseOptions
+  let merged = { ...baseOptions };
+
+  for (const dir of dirs) {
+    const localOpts = safeReadJson(join(dir, "options.json"));
+    if (localOpts && typeof localOpts === "object") {
+      merged = merge({}, merged, localOpts);
+    }
+  }
+  return merged;
 }
 
 /**
@@ -54,7 +111,8 @@ function buildTreeFromFixtures(dir: string, fixtures: Fixture[]): TreeNode {
   for (const { input, output } of fixtures) {
     // Convert to relative path so it doesn't show the full absolute path
     const relPath = relative(dir, input);
-    // e.g. "variable-declaration/array-pattern/code.js" => ["variable-declaration","array-pattern","code.js"]
+    // e.g. "variable-declaration/array-pattern/code.js"
+    //      => ["variable-declaration","array-pattern","code.js"]
     const parts = relPath.split("/");
     parts.pop(); // remove "code.js"
 
@@ -93,8 +151,8 @@ async function runCompileTest(
   options: CompilerOptions,
 ) {
   const actualCode = compile(input, options);
-
   const expectedCode = readFileSync(output, "utf-8").trim();
+
   const formattedActual = await prettier.format(actualCode, {
     parser: "babel",
   });
@@ -109,20 +167,31 @@ async function runCompileTest(
  * Recursively creates describe/test blocks from the tree.
  * - If a folder has exactly one fixture and no subfolders, it becomes a single test line.
  * - If a folder has multiple fixtures or subfolders, it becomes a describe(...).
+ *
+ * Now we integrate `loadOptionsChain` so each test merges `options.json`
+ * from outer → inner directories.
  */
 function addTestSuites(
   tree: TreeNode,
-  options: CompilerOptions,
+  baseOptions: CompilerOptions,
   nodeName?: string,
+  rootDir?: string,
+  currentDir?: string,
 ) {
   const subDirs = Object.keys(tree).filter((k) => k !== "__fixtures");
   const fixtures = tree.__fixtures ?? [];
 
-  // If exactly one fixture and no subdirectories, make a single test (no describe)
+  // If exactly one fixture and no subdirectories, single test
   if (subDirs.length === 0 && fixtures.length === 1) {
     const { input, output } = fixtures[0];
     test(nodeName ?? getFolderName(input), async () => {
-      await runCompileTest(input, output, options);
+      // Load merged options for this fixture's directory
+      const localOptions = loadOptionsChain(
+        rootDir!,
+        dirname(input),
+        baseOptions,
+      );
+      await runCompileTest(input, output, localOptions);
     });
     return;
   }
@@ -133,25 +202,48 @@ function addTestSuites(
       // Add tests for each fixture in this directory
       for (const { input, output } of fixtures) {
         test(getFolderName(input), async () => {
-          await runCompileTest(input, output, options);
+          const localOptions = loadOptionsChain(
+            rootDir!,
+            dirname(input),
+            baseOptions,
+          );
+          await runCompileTest(input, output, localOptions);
         });
       }
       // Recurse for subdirectories
       for (const subDir of subDirs) {
-        addTestSuites(tree[subDir] as TreeNode, options, subDir);
+        const nextDir = join(currentDir ?? "", subDir);
+        addTestSuites(
+          tree[subDir] as TreeNode,
+          baseOptions,
+          subDir,
+          rootDir,
+          nextDir,
+        );
       }
     });
   } else {
     // Top-level root: no named describe
-    // Add any top-level fixtures as tests
     for (const { input, output } of fixtures) {
       test(getFolderName(input), async () => {
-        await runCompileTest(input, output, options);
+        const localOptions = loadOptionsChain(
+          rootDir!,
+          dirname(input),
+          baseOptions,
+        );
+        await runCompileTest(input, output, localOptions);
       });
     }
-    // Recurse on subDirs
+    // Recurse on subdirectories
     for (const subDir of subDirs) {
-      addTestSuites(tree[subDir] as TreeNode, options, subDir);
+      const nextDir = join(currentDir ?? "", subDir);
+      addTestSuites(
+        tree[subDir] as TreeNode,
+        baseOptions,
+        subDir,
+        rootDir,
+        nextDir,
+      );
     }
   }
 }
@@ -164,13 +256,14 @@ function addTestSuites(
  *   1) Find all fixtures under that directory
  *   2) Build a nested tree structure
  *   3) Add describe/test suites so that Jest can run them
+ *   4) Merge any `options.json` from outer → inner directories before each test
  *
  * Example usage in a .test.ts file:
  *    import { testFixtures } from "./somewhere/fixture-tester";
  *    testFixtures(__dirname, { enableConstantPropagationPass: true });
  */
-export function testFixtures(directory: string, options: CompilerOptions) {
+export function testFixtures(directory: string, baseOptions: CompilerOptions) {
   const allFixtures = findFixtures(directory);
   const tree = buildTreeFromFixtures(directory, allFixtures);
-  addTestSuites(tree, options);
+  addTestSuites(tree, baseOptions, undefined, directory, directory);
 }

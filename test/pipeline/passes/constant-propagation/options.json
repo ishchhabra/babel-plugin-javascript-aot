@@ -1,0 +1,4 @@
+{
+  "enableOptimizer": true,
+  "enableConstantPropagationPass": true
+}

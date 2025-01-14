@@ -33,8 +33,10 @@ export class LateDeadCodeEliminationPass extends BaseOptimizationPass {
     const usedPlaceIds = new Set<IdentifierId>();
 
     // Process blocks in post order
-    for (const blockId of this.postOrder) {
-      const block = this.blocks.get(blockId);
+    // TODO: Fix this type assertion by adding postOrder to ModuleUnit
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const blockId of (this.moduleUnit as any).postOrder) {
+      const block = this.moduleUnit.blocks.get(blockId);
       if (!block) {
         throw new Error(`Block ${blockId} not found`);
       }

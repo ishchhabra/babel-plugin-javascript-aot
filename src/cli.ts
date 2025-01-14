@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { writeFileSync } from "fs";
-import { compile } from "./compile";
+import { compile, CompilerOptionsSchema } from "./compile";
 
 const program = new Command();
 
@@ -25,12 +25,8 @@ program
     (value) => value === "true",
   )
   .action((entry, output, options) => {
-    const code = compile(entry, {
-      enableConstantPropagationPass: options.enableConstantPropagationPass,
-      enableLoadStoreForwardingPass: options.enableLoadStoreForwardingPass,
-      enableLateDeadCodeEliminationPass:
-        options.enableLateDeadCodeEliminationPass,
-    });
+    const compilerOptions = CompilerOptionsSchema.parse(options);
+    const code = compile(entry, compilerOptions);
 
     if (output) {
       writeFileSync(output, code);

@@ -1,6 +1,6 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
-import { BaseInstruction, InstructionId, MemoryInstruction } from "../../base";
+import { InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
 
 /**
@@ -19,7 +19,7 @@ export class CopyInstruction extends MemoryInstruction {
     super(id, place, nodePath);
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+  rewriteInstruction(values: Map<Identifier, Place>): CopyInstruction {
     return new CopyInstruction(
       this.id,
       this.place,

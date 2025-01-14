@@ -1,16 +1,11 @@
-import { Environment } from "../../environment";
-import { BasicBlock, BlockId } from "../../ir";
+import { ModuleUnit } from "../../frontend/ModuleBuilder";
 
 export interface OptimizationResult {
   changed: boolean;
 }
 
 export abstract class BaseOptimizationPass {
-  constructor(
-    protected readonly environment: Environment,
-    protected blocks: Map<BlockId, BasicBlock>,
-    protected postOrder: Array<BlockId>,
-  ) {}
+  constructor(protected readonly moduleUnit: ModuleUnit) {}
 
   public run() {
     let continueOptimizing = true;
@@ -22,7 +17,7 @@ export abstract class BaseOptimizationPass {
       }
     }
 
-    return { blocks: this.blocks };
+    return { blocks: this.moduleUnit.blocks };
   }
 
   protected abstract step(): OptimizationResult;

@@ -1,7 +1,8 @@
 import { CompilerOptions } from "../compile";
 import { ProjectUnit } from "../frontend/ProjectBuilder";
 import { BasicBlock, BlockId } from "../ir";
-import { ConstantPropagationPass } from "./passes/ConstantPropagationPass";
+import { LateOptimizer } from "./late-optimizer/LateOptimizer";
+import { Optimizer } from "./optimizer/Optimizer";
 import { SSABuilder } from "./ssa/SSABuilder";
 import { SSAEliminator } from "./ssa/SSAEliminator";
 
@@ -24,13 +25,23 @@ export class Pipeline {
       const ssaBuilderResult = new SSABuilder(moduleUnit).build();
       new SSAEliminator(moduleUnit, ssaBuilderResult.phis).eliminate();
 
-      if (this.options.enableConstantPropagationPass) {
-        const constantPropagationResult = new ConstantPropagationPass(
+      if (this.options.enableOptimizer) {
+        const optimizerResult = new Optimizer(
           moduleUnit,
           this.projectUnit,
+          this.options,
           context,
         ).run();
-        moduleUnit.blocks = constantPropagationResult.blocks;
+        moduleUnit.blocks = optimizerResult.blocks;
+      }
+
+      if (this.options.enableLateOptimizer) {
+        const lateOptimizerResult = new LateOptimizer(
+          moduleUnit,
+          this.projectUnit,
+          this.options,
+        ).run();
+        moduleUnit.blocks = lateOptimizerResult.blocks;
       }
     }
 
