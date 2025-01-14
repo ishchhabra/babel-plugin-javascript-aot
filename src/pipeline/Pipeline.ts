@@ -23,7 +23,6 @@ export class Pipeline {
     for (const moduleName of this.projectUnit.postOrder.toReversed()) {
       const moduleUnit = this.projectUnit.modules.get(moduleName)!;
       const ssaBuilderResult = new SSABuilder(moduleUnit).build();
-      new SSAEliminator(moduleUnit, ssaBuilderResult.phis).eliminate();
 
       if (this.options.enableOptimizer) {
         const optimizerResult = new Optimizer(
@@ -34,6 +33,8 @@ export class Pipeline {
         ).run();
         moduleUnit.blocks = optimizerResult.blocks;
       }
+
+      new SSAEliminator(moduleUnit, ssaBuilderResult.phis).eliminate();
 
       if (this.options.enableLateOptimizer) {
         const lateOptimizerResult = new LateOptimizer(
