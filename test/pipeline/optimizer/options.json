@@ -1,0 +1,5 @@
+{
+  "enableOptimizer": true,
+  "enableConstantPropagationPass": false,
+  "enableLateOptimizer": false
+}

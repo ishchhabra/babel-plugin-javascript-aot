@@ -1,15 +1,13 @@
 const $0_0 = 5;
-let $0_phi_25 = $0_0;
-$0_phi_25 = $0_0;
-while ($0_phi_25 > 0) {
+let $21_phi_0 = $0_0;
+while ($21_phi_0 > 0) {
   const $7_0 = 3;
-  let $7_phi_26 = $7_0;
-  $7_phi_26 = $7_0;
-  while ($7_phi_26 > 0) {
-    const $7_1 = $7_phi_26 - 1;
-    $7_phi_26 = $7_1;
+  let $22_phi_1 = $7_0;
+  while ($22_phi_1 > 0) {
+    const $7_1 = $22_phi_1 - 1;
+    $22_phi_1 = $22_phi_1 - 1;
   }
-  const $0_1 = $0_phi_25 - 1;
-  $0_phi_25 = $0_1;
+  const $0_1 = $21_phi_0 - 1;
+  $21_phi_0 = $21_phi_0 - 1;
 }
-const $1_0 = $0_phi_25;
+const $1_0 = $21_phi_0;

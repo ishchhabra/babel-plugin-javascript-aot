@@ -11,4 +11,5 @@ export class Environment {
   nextIdentifierId = 0;
   nextInstructionId = 0;
   nextPlaceId = 0;
+  nextPhiId = 0;
 }

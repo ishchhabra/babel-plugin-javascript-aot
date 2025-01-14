@@ -1,0 +1,5 @@
+{
+  "enableOptimizer": false,
+  "enableLateOptimizer": true,
+  "enableLoadStoreForwardingPass": true
+}

@@ -1,4 +1,3 @@
 {
-  "enableOptimizer": true,
   "enableConstantPropagationPass": true
 }

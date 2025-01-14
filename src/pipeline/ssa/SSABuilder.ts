@@ -39,12 +39,9 @@ export class SSABuilder {
           }
 
           // Insert phi node for declarationId in block y.
-          const identifier = createPhiIdentifier(
-            this.moduleUnit.environment,
-            declarationId,
-          );
+          const identifier = createPhiIdentifier(this.moduleUnit.environment);
           const place = createPlace(identifier, this.moduleUnit.environment);
-          phis.add(new Phi(blockId, place, new Map()));
+          phis.add(new Phi(blockId, place, new Map(), declarationId));
           hasPhi.add(blockId);
 
           // If y is not already a definition block for declarationId, add it to
@@ -60,7 +57,7 @@ export class SSABuilder {
     for (const phi of phis) {
       const predecessors = [...this.moduleUnit.predecessors.get(phi.blockId)!];
       const places = this.moduleUnit.environment.declToPlaces.get(
-        phi.place.identifier.declarationId,
+        phi.declarationId,
       );
 
       for (const predecessor of predecessors) {

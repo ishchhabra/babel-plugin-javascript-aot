@@ -1,17 +1,15 @@
 const $0_0 = 0;
-let $0_phi_31 = $0_0;
-$0_phi_31 = $0_0;
-while ($0_phi_31 < 10) {
+let $29_phi_0 = $0_0;
+while ($29_phi_0 < 10) {
   const $6_0 = 0;
-  let $6_phi_32 = $6_0;
-  $6_phi_32 = $6_0;
-  while ($6_phi_32 < 10) {
-    console.log($0_phi_31, $6_phi_32);
-    const $6_1 = $6_phi_32 + 1;
-    $6_phi_32;
-    $6_phi_32 = $6_1;
+  let $30_phi_1 = $6_0;
+  while ($30_phi_1 < 10) {
+    console.log($29_phi_0, $30_phi_1);
+    const $6_1 = $30_phi_1 + 1;
+    $30_phi_1;
+    $30_phi_1 = $6_1;
   }
-  const $0_1 = $0_phi_31 + 1;
-  $0_phi_31;
-  $0_phi_31 = $0_1;
+  const $0_1 = $29_phi_0 + 1;
+  $29_phi_0;
+  $29_phi_0 = $0_1;
 }

@@ -3,6 +3,7 @@ import { ModuleUnit } from "../../frontend/ModuleBuilder";
 import { ProjectUnit } from "../../frontend/ProjectBuilder";
 import { BasicBlock, BlockId } from "../../ir";
 import { LoadStoreForwardingPass } from "./passes/LoadStoreForwardingPass";
+import { RedundantCopyEliminationPass } from "./passes/RedundantCopyEliminationPass";
 
 interface LateOptimizerResult {
   blocks: Map<BlockId, BasicBlock>;
@@ -22,6 +23,13 @@ export class LateOptimizer {
         this.moduleUnit,
       ).run();
       blocks = loadStoreForwardingResult.blocks;
+    }
+
+    if (this.options.enableRedundantCopyEliminationPass) {
+      const redundantStoreEliminationResult = new RedundantCopyEliminationPass(
+        this.moduleUnit,
+      ).run();
+      blocks = redundantStoreEliminationResult.blocks;
     }
 
     return { blocks };

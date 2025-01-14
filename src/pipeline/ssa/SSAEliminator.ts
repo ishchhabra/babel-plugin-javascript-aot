@@ -43,21 +43,21 @@ export class SSAEliminator {
   }
 
   #insertPhiDeclaration(phi: Phi) {
-    const declarationId = phi.place.identifier.declarationId;
-    const declaration =
-      this.moduleUnit.environment.declToPlaces.get(declarationId)?.[0];
+    const declaration = this.moduleUnit.environment.declToPlaces.get(
+      phi.declarationId,
+    )?.[0];
     if (declaration === undefined) {
-      throw new Error(`Declaration place not found for ${declarationId}`);
+      throw new Error(`Declaration place not found for ${phi.declarationId}`);
     }
 
     const declarationBlock = this.moduleUnit.blocks.get(declaration.blockId);
     if (declarationBlock === undefined) {
-      throw new Error(`Declaration block not found for ${declarationId}`);
+      throw new Error(`Declaration block not found for ${phi.declarationId}`);
     }
 
     const identifier = createIdentifier(
       this.moduleUnit.environment,
-      declarationId,
+      phi.place.identifier.declarationId,
     );
     const place = createPlace(identifier, this.moduleUnit.environment);
 
@@ -100,7 +100,10 @@ export class SSAEliminator {
         this.moduleUnit.environment.nextInstructionId++,
       );
       const copyPlace = createPlace(
-        createIdentifier(this.moduleUnit.environment),
+        createIdentifier(
+          this.moduleUnit.environment,
+          phi.place.identifier.declarationId,
+        ),
         this.moduleUnit.environment,
       );
       block.instructions.push(

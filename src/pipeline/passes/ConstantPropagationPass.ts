@@ -273,6 +273,10 @@ export class ConstantPropagationPass {
   }
 
   private evaluateLoadGlobalInstruction(instruction: LoadGlobalInstruction) {
+    if (instruction.kind === "builtin") {
+      return undefined;
+    }
+
     const source = instruction.source!;
     const resolvedSource = resolveModulePath(source, this.moduleUnit.path);
 

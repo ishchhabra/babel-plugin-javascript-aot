@@ -262,7 +262,10 @@ function addTestSuites(
  *    import { testFixtures } from "./somewhere/fixture-tester";
  *    testFixtures(__dirname, { enableConstantPropagationPass: true });
  */
-export function testFixtures(directory: string, baseOptions: CompilerOptions) {
+export function testFixtures(
+  directory: string,
+  baseOptions: CompilerOptions = CompilerOptionsSchema.parse({}),
+) {
   const allFixtures = findFixtures(directory);
   const tree = buildTreeFromFixtures(directory, allFixtures);
   addTestSuites(tree, baseOptions, undefined, directory, directory);

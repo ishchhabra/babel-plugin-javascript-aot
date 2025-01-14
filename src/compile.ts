@@ -13,6 +13,8 @@ export const CompilerOptionsSchema = z.object({
   enableLateOptimizer: z.boolean().default(true),
   /** Whether to enable the load store forwarding pass */
   enableLoadStoreForwardingPass: z.boolean().default(true),
+  /** Whether to enable the redundant store elimination pass */
+  enableRedundantCopyEliminationPass: z.boolean().default(true),
   /** Whether to enable the late dead code elimination pass */
   enableLateDeadCodeEliminationPass: z.boolean().default(true),
 });
