@@ -44,6 +44,12 @@ export class SSABuilder {
           phis.add(new Phi(blockId, place, new Map(), declarationId));
           hasPhi.add(blockId);
 
+          // Register the phi node declaration.
+          this.moduleUnit.environment.declToPlaces.set(declarationId, [
+            ...places,
+            { blockId, place },
+          ]);
+
           // If y is not already a definition block for declarationId, add it to
           // the work list.
           if (!definitionBlocks.includes(blockId)) {
