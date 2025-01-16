@@ -1,7 +1,7 @@
 // testFixtures.ts
 
-import { existsSync, readdirSync, readFileSync } from "fs";
-import { merge } from "lodash-es"; // npm install lodash-es
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "fs";
+import { merge } from "lodash-es";
 import { dirname, join, relative } from "path";
 import * as prettier from "prettier";
 import {
@@ -142,7 +142,7 @@ function getFolderName(path: string): string {
 }
 
 /**
- * Actually compiles the input, reads expected output, formats both,
+ * Actually compiles the input, reads/creates expected output, formats both,
  * and does the jest `expect(...)`.
  */
 async function runCompileTest(
@@ -151,11 +151,21 @@ async function runCompileTest(
   options: CompilerOptions,
 ) {
   const actualCode = compile(input, options);
-  const expectedCode = readFileSync(output, "utf-8").trim();
 
   const formattedActual = await prettier.format(actualCode, {
     parser: "babel",
   });
+
+  const outputExists = existsSync(output);
+  if (
+    !outputExists &&
+    expect.getState().snapshotState._updateSnapshot == "new"
+  ) {
+    writeFileSync(output, formattedActual, "utf8");
+    console.info(`[INFO] Created missing fixture file at: ${output}`);
+  }
+
+  const expectedCode = readFileSync(output, "utf-8").trim();
   const formattedExpected = await prettier.format(expectedCode, {
     parser: "babel",
   });
@@ -167,9 +177,6 @@ async function runCompileTest(
  * Recursively creates describe/test blocks from the tree.
  * - If a folder has exactly one fixture and no subfolders, it becomes a single test line.
  * - If a folder has multiple fixtures or subfolders, it becomes a describe(...).
- *
- * Now we integrate `loadOptionsChain` so each test merges `options.json`
- * from outer → inner directories.
  */
 function addTestSuites(
   tree: TreeNode,
@@ -251,16 +258,16 @@ function addTestSuites(
 /**
  * MAIN EXPORTED FUNCTION:
  *
- * Call this in your .test.ts file with a directory (e.g. `__dirname`).
- * It will:
- *   1) Find all fixtures under that directory
- *   2) Build a nested tree structure
- *   3) Add describe/test suites so that Jest can run them
- *   4) Merge any `options.json` from outer → inner directories before each test
+ * Call this in your Jest test file with a directory (e.g. `__dirname`):
+ *   testFixtures(__dirname, { enableConstantPropagationPass: true });
  *
- * Example usage in a .test.ts file:
- *    import { testFixtures } from "./somewhere/fixture-tester";
- *    testFixtures(__dirname, { enableConstantPropagationPass: true });
+ * It will:
+ *   1) Find all fixtures under the directory (look for `code.js`)
+ *   2) Build a nested tree structure
+ *   3) Dynamically add describe/test blocks for each fixture/subdirectory
+ *   4) Merge any `options.json` from outer → inner directories for each test
+ *   5) If `output.js` is missing and `JEST_UPDATE_SNAPSHOTS` is true, create it
+ *      using the compiled code's actual output.
  */
 export function testFixtures(
   directory: string,
