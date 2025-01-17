@@ -6,16 +6,18 @@ import {
   createPlace,
   makeInstructionId,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildArrayExpression(
   nodePath: NodePath<t.ArrayExpression>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const elementsPath = nodePath.get("elements");
   const elementPlaces = elementsPath.map((elementPath) => {
-    const elementPlace = buildNode(elementPath, builder);
+    const elementPlace = buildNode(elementPath, functionBuilder, moduleBuilder);
     if (elementPlace === undefined || Array.isArray(elementPlace)) {
       throw new Error("Array expression element must be a single place");
     }
@@ -23,13 +25,13 @@ export function buildArrayExpression(
     return elementPlace;
   });
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
   const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
+    functionBuilder.environment.nextInstructionId++,
   );
 
-  builder.currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new ArrayExpressionInstruction(
       instructionId,
       place,

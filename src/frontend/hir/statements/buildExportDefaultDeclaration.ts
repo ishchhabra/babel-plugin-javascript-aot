@@ -6,23 +6,29 @@ import {
   ExportDefaultDeclarationInstruction,
   makeInstructionId,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildExportDefaultDeclaration(
   nodePath: NodePath<t.ExportDefaultDeclaration>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const declarationPath = nodePath.get("declaration");
-  const declarationPlace = buildNode(declarationPath, builder);
+  const declarationPlace = buildNode(
+    declarationPath,
+    functionBuilder,
+    moduleBuilder,
+  );
   if (declarationPlace === undefined || Array.isArray(declarationPlace)) {
     throw new Error("Export default declaration must be a single place");
   }
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
   const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
+    functionBuilder.environment.nextInstructionId++,
   );
 
   const instruction = new ExportDefaultDeclarationInstruction(
@@ -31,7 +37,7 @@ export function buildExportDefaultDeclaration(
     nodePath,
     declarationPlace,
   );
-  builder.currentBlock.instructions.push(instruction);
-  builder.exportToInstructions.set("default", instruction);
+  functionBuilder.currentBlock.instructions.push(instruction);
+  moduleBuilder.exportToInstructions.set("default", instruction);
   return place;
 }

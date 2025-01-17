@@ -6,31 +6,33 @@ import {
   makeInstructionId,
   ObjectPropertyInstruction,
 } from "../../ir";
-import { HIRBuilder } from "../HIRBuilder";
 import { buildNode } from "./buildNode";
+import { FunctionIRBuilder } from "./FunctionIRBuilder";
+import { ModuleIRBuilder } from "./ModuleIRBuilder";
 
 export function buildObjectProperty(
   nodePath: NodePath<t.ObjectProperty>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const keyPath = nodePath.get("key");
-  const keyPlace = buildNode(keyPath, builder);
+  const keyPlace = buildNode(keyPath, functionBuilder, moduleBuilder);
   if (keyPlace === undefined || Array.isArray(keyPlace)) {
     throw new Error(`Object property key must be a single place`);
   }
 
   const valuePath = nodePath.get("value");
-  const valuePlace = buildNode(valuePath, builder);
+  const valuePlace = buildNode(valuePath, functionBuilder, moduleBuilder);
   if (valuePlace === undefined || Array.isArray(valuePlace)) {
     throw new Error(`Object property value must be a single place`);
   }
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
 
-  builder.currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new ObjectPropertyInstruction(
-      makeInstructionId(builder.environment.nextInstructionId++),
+      makeInstructionId(functionBuilder.environment.nextInstructionId++),
       place,
       nodePath,
       keyPlace,

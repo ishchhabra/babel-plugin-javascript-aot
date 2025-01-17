@@ -4,28 +4,31 @@ import {
   BranchTerminal,
   createBlock,
   createIdentifier,
+  createInstructionId,
   createPlace,
   ExpressionStatementInstruction,
   JumpTerminal,
   makeInstructionId,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildBindings } from "../bindings/buildBindings";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 import { buildStatement } from "./buildStatement";
 
 export function buildForStatement(
   nodePath: NodePath<t.ForStatement>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
-  const currentBlock = builder.currentBlock;
+  const currentBlock = functionBuilder.currentBlock;
 
   // Build the init block.
   const initPath: NodePath<t.ForStatement["init"]> = nodePath.get("init");
-  const initBlock = createBlock(builder.environment);
-  builder.blocks.set(initBlock.id, initBlock);
+  const initBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(initBlock.id, initBlock);
 
-  builder.currentBlock = initBlock;
+  functionBuilder.currentBlock = initBlock;
   if (initPath.hasNode()) {
     // If the init is an expression, wrap it with an expression statement.
     if (initPath.isExpression()) {
@@ -33,15 +36,15 @@ export function buildForStatement(
     }
 
     initPath.assertStatement();
-    buildBindings(nodePath, builder);
-    buildStatement(initPath, builder);
+    buildBindings(nodePath, functionBuilder);
+    buildStatement(initPath, functionBuilder, moduleBuilder);
   }
-  const initBlockTerminus = builder.currentBlock;
+  const initBlockTerminus = functionBuilder.currentBlock;
 
   // Build the test block.
   const testPath: NodePath<t.ForStatement["test"]> = nodePath.get("test");
-  const testBlock = createBlock(builder.environment);
-  builder.blocks.set(testBlock.id, testBlock);
+  const testBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(testBlock.id, testBlock);
 
   // If the test is not provided, it is equivalent to while(true).
   if (!testPath.hasNode()) {
@@ -49,42 +52,42 @@ export function buildForStatement(
   }
   testPath.assertExpression();
 
-  builder.currentBlock = testBlock;
-  const testPlace = buildNode(testPath, builder);
+  functionBuilder.currentBlock = testBlock;
+  const testPlace = buildNode(testPath, functionBuilder, moduleBuilder);
   if (testPlace === undefined || Array.isArray(testPlace)) {
     throw new Error("For statement test place must be a single place");
   }
-  const testBlockTerminus = builder.currentBlock;
+  const testBlockTerminus = functionBuilder.currentBlock;
 
   // Build the body block.
   const bodyPath = nodePath.get("body");
-  const bodyBlock = createBlock(builder.environment);
-  builder.blocks.set(bodyBlock.id, bodyBlock);
+  const bodyBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(bodyBlock.id, bodyBlock);
 
-  builder.currentBlock = bodyBlock;
-  buildNode(bodyPath, builder);
+  functionBuilder.currentBlock = bodyBlock;
+  buildNode(bodyPath, functionBuilder, moduleBuilder);
 
   // Build the update inside body block.
   const updatePath: NodePath<t.ForStatement["update"]> = nodePath.get("update");
   if (updatePath.hasNode()) {
-    buildExpressionAsStatement(updatePath, builder);
+    buildExpressionAsStatement(updatePath, functionBuilder, moduleBuilder);
   }
 
-  const bodyBlockTerminus = builder.currentBlock;
+  const bodyBlockTerminus = functionBuilder.currentBlock;
 
   // Build the exit block.
-  const exitBlock = createBlock(builder.environment);
-  builder.blocks.set(exitBlock.id, exitBlock);
+  const exitBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(exitBlock.id, exitBlock);
 
   // Set the jump terminal for init block to test block.
   initBlockTerminus.terminal = new JumpTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    makeInstructionId(functionBuilder.environment.nextInstructionId++),
     testBlock.id,
   );
 
   // Set the branch terminal for test block.
   testBlockTerminus.terminal = new BranchTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    makeInstructionId(functionBuilder.environment.nextInstructionId++),
     testPlace,
     bodyBlock.id,
     exitBlock.id,
@@ -93,36 +96,38 @@ export function buildForStatement(
 
   // Set the jump terminal for body block to create a back edge.
   bodyBlockTerminus.terminal = new JumpTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    makeInstructionId(functionBuilder.environment.nextInstructionId++),
     testBlock.id,
   );
 
   // Set the jump terminal for the current block.
   currentBlock.terminal = new JumpTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    makeInstructionId(functionBuilder.environment.nextInstructionId++),
     initBlock.id,
   );
 
-  builder.currentBlock = exitBlock;
+  functionBuilder.currentBlock = exitBlock;
   return undefined;
 }
 
 function buildExpressionAsStatement(
   expressionPath: NodePath<t.Expression>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
-  const expressionPlace = buildNode(expressionPath, builder);
+  const expressionPlace = buildNode(
+    expressionPath,
+    functionBuilder,
+    moduleBuilder,
+  );
   if (expressionPlace === undefined || Array.isArray(expressionPlace)) {
     throw new Error("Expression place is undefined");
   }
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
-
-  const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
-  );
-  builder.currentBlock.instructions.push(
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  const instructionId = createInstructionId(functionBuilder.environment);
+  functionBuilder.currentBlock.instructions.push(
     new ExpressionStatementInstruction(
       instructionId,
       place,

@@ -2,31 +2,31 @@ import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import {
   createIdentifier,
+  createInstructionId,
   createPlace,
-  makeInstructionId,
   Place,
   SpreadElementInstruction,
 } from "../../ir";
-import { HIRBuilder } from "../HIRBuilder";
+import { FunctionIRBuilder } from "./FunctionIRBuilder";
+import { ModuleIRBuilder } from "./ModuleIRBuilder";
 import { buildNode } from "./buildNode";
 
 export function buildSpreadElement(
   nodePath: NodePath<t.SpreadElement>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ): Place {
   const argumentPath = nodePath.get("argument");
-  const argumentPlace = buildNode(argumentPath, builder);
+  const argumentPlace = buildNode(argumentPath, functionBuilder, moduleBuilder);
   if (argumentPlace === undefined || Array.isArray(argumentPlace)) {
     throw new Error("Spread element argument must be a single place");
   }
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
-  const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
-  );
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  const instructionId = createInstructionId(functionBuilder.environment);
 
-  builder.currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new SpreadElementInstruction(instructionId, place, nodePath, argumentPlace),
   );
 

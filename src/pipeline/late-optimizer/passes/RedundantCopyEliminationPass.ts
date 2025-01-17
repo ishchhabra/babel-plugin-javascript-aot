@@ -48,7 +48,7 @@ import { BaseOptimizationPass, OptimizationResult } from "../OptimizationPass";
 export class RedundantCopyEliminationPass extends BaseOptimizationPass {
   protected step(): OptimizationResult {
     let changed = false;
-    for (const block of this.moduleUnit.blocks.values()) {
+    for (const block of this.functionIR.blocks.values()) {
       const blockChanged = this.eliminateRedundantCopiesInBlock(block);
       if (blockChanged) {
         changed = true;

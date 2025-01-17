@@ -21,28 +21,35 @@ export class Pipeline {
     const context = new Map<string, any>();
 
     for (const moduleName of this.projectUnit.postOrder.toReversed()) {
-      const moduleUnit = this.projectUnit.modules.get(moduleName)!;
-      const ssaBuilderResult = new SSABuilder(moduleUnit).build();
+      const moduleIR = this.projectUnit.modules.get(moduleName)!;
+      for (const functionIR of moduleIR.functions.values()) {
+        const ssaBuilderResult = new SSABuilder(functionIR, moduleIR).build();
 
-      if (this.options.enableOptimizer) {
-        const optimizerResult = new Optimizer(
-          moduleUnit,
-          this.projectUnit,
-          this.options,
-          context,
-        ).run();
-        moduleUnit.blocks = optimizerResult.blocks;
-      }
+        if (this.options.enableOptimizer) {
+          const optimizerResult = new Optimizer(
+            functionIR,
+            moduleIR,
+            this.projectUnit,
+            this.options,
+            context,
+          ).run();
+          functionIR.blocks = optimizerResult.blocks;
+        }
 
-      new SSAEliminator(moduleUnit, ssaBuilderResult.phis).eliminate();
+        new SSAEliminator(
+          functionIR,
+          moduleIR,
+          ssaBuilderResult.phis,
+        ).eliminate();
 
-      if (this.options.enableLateOptimizer) {
-        const lateOptimizerResult = new LateOptimizer(
-          moduleUnit,
-          this.projectUnit,
-          this.options,
-        ).run();
-        moduleUnit.blocks = lateOptimizerResult.blocks;
+        if (this.options.enableLateOptimizer) {
+          const lateOptimizerResult = new LateOptimizer(
+            functionIR,
+            this.projectUnit,
+            this.options,
+          ).run();
+          functionIR.blocks = lateOptimizerResult.blocks;
+        }
       }
     }
 

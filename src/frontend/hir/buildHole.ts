@@ -6,11 +6,11 @@ import {
   makeInstructionId,
   Place,
 } from "../../ir";
-import { HIRBuilder } from "../HIRBuilder";
+import { FunctionIRBuilder } from "./FunctionIRBuilder";
 
 export function buildHole(
   expressionPath: NodePath<null>,
-  builder: HIRBuilder,
+  builder: FunctionIRBuilder,
 ): Place {
   const identifier = createIdentifier(builder.environment);
   const place = createPlace(identifier, builder.environment);

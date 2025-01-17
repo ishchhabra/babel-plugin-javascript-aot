@@ -1,11 +1,11 @@
-import { ModuleUnit } from "../../frontend/ModuleBuilder";
+import { FunctionIR } from "../../ir/core/FunctionIR";
 
 export interface OptimizationResult {
   changed: boolean;
 }
 
 export abstract class BaseOptimizationPass {
-  constructor(protected readonly moduleUnit: ModuleUnit) {}
+  constructor(protected readonly functionIR: FunctionIR) {}
 
   public run() {
     let continueOptimizing = true;
@@ -17,7 +17,7 @@ export abstract class BaseOptimizationPass {
       }
     }
 
-    return { blocks: this.moduleUnit.blocks };
+    return { blocks: this.functionIR.blocks };
   }
 
   protected abstract step(): OptimizationResult;

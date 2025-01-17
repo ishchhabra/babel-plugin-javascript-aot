@@ -1,9 +1,8 @@
 import { CompilerOptions } from "../../compile";
-import { ModuleUnit } from "../../frontend/ModuleBuilder";
 import { ProjectUnit } from "../../frontend/ProjectBuilder";
-import { BasicBlock } from "../../ir";
-
-import { BlockId } from "../../ir";
+import { BasicBlock, BlockId } from "../../ir";
+import { FunctionIR } from "../../ir/core/FunctionIR";
+import { ModuleIR } from "../../ir/core/ModuleIR";
 import { ConstantPropagationPass } from "../passes/ConstantPropagationPass";
 
 interface OptimizerResult {
@@ -12,7 +11,8 @@ interface OptimizerResult {
 
 export class Optimizer {
   constructor(
-    private readonly moduleUnit: ModuleUnit,
+    private readonly functionIR: FunctionIR,
+    private readonly moduleIR: ModuleIR,
     private readonly projectUnit: ProjectUnit,
     private readonly options: CompilerOptions,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,10 +20,11 @@ export class Optimizer {
   ) {}
 
   public run(): OptimizerResult {
-    let blocks = this.moduleUnit.blocks;
+    let blocks = this.functionIR.blocks;
     if (this.options.enableConstantPropagationPass) {
       const constantPropagationResult = new ConstantPropagationPass(
-        this.moduleUnit,
+        this.functionIR,
+        this.moduleIR,
         this.projectUnit,
         this.context,
       ).run();

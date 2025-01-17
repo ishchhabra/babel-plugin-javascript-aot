@@ -6,32 +6,34 @@ import {
   LogicalExpressionInstruction,
   makeInstructionId,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildLogicalExpression(
   nodePath: NodePath<t.LogicalExpression>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const leftPath = nodePath.get("left");
-  const leftPlace = buildNode(leftPath, builder);
+  const leftPlace = buildNode(leftPath, functionBuilder, moduleBuilder);
   if (leftPlace === undefined || Array.isArray(leftPlace)) {
     throw new Error("Logical expression left must be a single place");
   }
 
   const rightPath = nodePath.get("right");
-  const rightPlace = buildNode(rightPath, builder);
+  const rightPlace = buildNode(rightPath, functionBuilder, moduleBuilder);
   if (rightPlace === undefined || Array.isArray(rightPlace)) {
     throw new Error("Logical expression right must be a single place");
   }
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
   const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
+    functionBuilder.environment.nextInstructionId++,
   );
 
-  builder.currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new LogicalExpressionInstruction(
       instructionId,
       place,

@@ -2,31 +2,33 @@ import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import {
   createIdentifier,
+  createInstructionId,
   createPlace,
   ImportSpecifierInstruction,
-  makeInstructionId,
   Place,
 } from "../../ir";
-import { HIRBuilder } from "../HIRBuilder";
 import { buildNode } from "./buildNode";
+import { FunctionIRBuilder } from "./FunctionIRBuilder";
+import { ModuleIRBuilder } from "./ModuleIRBuilder";
 
 export function buildImportSpecifier(
   nodePath: NodePath<t.ImportSpecifier>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const importedPath = nodePath.get("imported");
-  const importedPlace = buildNode(importedPath, builder);
+  const importedPlace = buildNode(importedPath, functionBuilder, moduleBuilder);
 
   const localPath = nodePath.get("local");
   const localPlace = localPath.hasNode()
-    ? buildNode(localPath, builder)
+    ? buildNode(localPath, functionBuilder, moduleBuilder)
     : undefined;
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
-  builder.currentBlock.instructions.push(
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  functionBuilder.currentBlock.instructions.push(
     new ImportSpecifierInstruction(
-      makeInstructionId(builder.environment.nextInstructionId++),
+      createInstructionId(functionBuilder.environment),
       place,
       nodePath,
       importedPlace as Place,

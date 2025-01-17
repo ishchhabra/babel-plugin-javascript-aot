@@ -1,5 +1,4 @@
 import { createRequire } from "module";
-import { ModuleUnit } from "../../frontend/ModuleBuilder";
 import { ProjectUnit } from "../../frontend/ProjectBuilder";
 import {
   BaseInstruction,
@@ -15,7 +14,8 @@ import {
   TPrimitiveValue,
   UnaryExpressionInstruction,
 } from "../../ir";
-
+import { FunctionIR } from "../../ir/core/FunctionIR";
+import { ModuleIR } from "../../ir/core/ModuleIR";
 /**
  * A pass that propagates constant values through the program by evaluating expressions
  * with known constant operands at compile time. For example:
@@ -38,7 +38,8 @@ export class ConstantPropagationPass {
   private readonly constants: Map<IdentifierId, TPrimitiveValue>;
 
   constructor(
-    private readonly moduleUnit: ModuleUnit,
+    private readonly functionIR: FunctionIR,
+    private readonly moduleUnit: ModuleIR,
     private readonly projectUnit: ProjectUnit,
     private readonly context: Map<
       string,
@@ -61,11 +62,11 @@ export class ConstantPropagationPass {
   }
 
   public run() {
-    for (const block of this.moduleUnit.blocks.values()) {
+    for (const block of this.functionIR.blocks.values()) {
       this.propagateConstantsInBlock(block);
     }
 
-    return { blocks: this.moduleUnit.blocks };
+    return { blocks: this.functionIR.blocks };
   }
 
   private propagateConstantsInBlock(block: BasicBlock) {

@@ -1,8 +1,9 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Place } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildUnsupportedNode } from "../buildUnsupportedNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 import { buildArrayExpression } from "./buildArrayExpression";
 import { buildAssignmentExpression } from "./buildAssignmentExpression";
 import { buildBinaryExpression } from "./buildBinaryExpression";
@@ -16,46 +17,51 @@ import { buildUpdateExpression } from "./buildUpdateExpression";
 
 export function buildExpression(
   nodePath: NodePath<t.Expression>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ): Place {
   switch (nodePath.type) {
     case "AssignmentExpression":
       nodePath.assertAssignmentExpression();
-      return buildAssignmentExpression(nodePath, builder);
+      return buildAssignmentExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+      );
     case "ArrayExpression":
       nodePath.assertArrayExpression();
-      return buildArrayExpression(nodePath, builder);
+      return buildArrayExpression(nodePath, functionBuilder, moduleBuilder);
     case "BinaryExpression":
       nodePath.assertBinaryExpression();
-      return buildBinaryExpression(nodePath, builder);
+      return buildBinaryExpression(nodePath, functionBuilder, moduleBuilder);
     case "BooleanLiteral":
       nodePath.assertBooleanLiteral();
-      return buildLiteral(nodePath, builder);
+      return buildLiteral(nodePath, functionBuilder);
     case "CallExpression":
       nodePath.assertCallExpression();
-      return buildCallExpression(nodePath, builder);
+      return buildCallExpression(nodePath, functionBuilder, moduleBuilder);
     case "LogicalExpression":
       nodePath.assertLogicalExpression();
-      return buildLogicalExpression(nodePath, builder);
+      return buildLogicalExpression(nodePath, functionBuilder, moduleBuilder);
     case "MemberExpression":
       nodePath.assertMemberExpression();
-      return buildMemberExpression(nodePath, builder);
+      return buildMemberExpression(nodePath, functionBuilder, moduleBuilder);
     case "NumericLiteral":
       nodePath.assertNumericLiteral();
-      return buildLiteral(nodePath, builder);
+      return buildLiteral(nodePath, functionBuilder);
     case "ObjectExpression":
       nodePath.assertObjectExpression();
-      return buildObjectExpression(nodePath, builder);
+      return buildObjectExpression(nodePath, functionBuilder, moduleBuilder);
     case "StringLiteral":
       nodePath.assertStringLiteral();
-      return buildLiteral(nodePath, builder);
+      return buildLiteral(nodePath, functionBuilder);
     case "UnaryExpression":
       nodePath.assertUnaryExpression();
-      return buildUnaryExpression(nodePath, builder);
+      return buildUnaryExpression(nodePath, functionBuilder, moduleBuilder);
     case "UpdateExpression":
       nodePath.assertUpdateExpression();
-      return buildUpdateExpression(nodePath, builder);
+      return buildUpdateExpression(nodePath, functionBuilder, moduleBuilder);
     default:
-      return buildUnsupportedNode(nodePath, builder);
+      return buildUnsupportedNode(nodePath, functionBuilder);
   }
 }

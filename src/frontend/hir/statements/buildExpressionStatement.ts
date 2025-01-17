@@ -2,28 +2,35 @@ import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import {
   createIdentifier,
+  createInstructionId,
   createPlace,
   ExpressionStatementInstruction,
-  makeInstructionId,
   Place,
   StoreLocalInstruction,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 import { buildNode } from "../buildNode";
 
 export function buildExpressionStatement(
   nodePath: NodePath<t.ExpressionStatement>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ): Place | undefined {
   const expressionPath = nodePath.get("expression");
-  const expressionPlace = buildNode(expressionPath, builder);
+  const expressionPlace = buildNode(
+    expressionPath,
+    functionBuilder,
+    moduleBuilder,
+  );
   if (expressionPlace === undefined || Array.isArray(expressionPlace)) {
     throw new Error("Expression statement expression must be a single place");
   }
 
   // For assignments, since we convert them to a memory instruction,
   // we do not need to emit an expression statement instruction.
-  const expressionInstruction = builder.currentBlock.instructions.at(-1);
+  const expressionInstruction =
+    functionBuilder.currentBlock.instructions.at(-1);
   if (
     expressionInstruction instanceof StoreLocalInstruction &&
     expressionInstruction.place === expressionPlace
@@ -31,12 +38,10 @@ export function buildExpressionStatement(
     return;
   }
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
-  const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
-  );
-  builder.currentBlock.instructions.push(
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  const instructionId = createInstructionId(functionBuilder.environment);
+  functionBuilder.currentBlock.instructions.push(
     new ExpressionStatementInstruction(
       instructionId,
       place,

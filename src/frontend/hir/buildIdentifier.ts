@@ -9,7 +9,7 @@ import {
   makeInstructionId,
   Place,
 } from "../../ir";
-import { HIRBuilder } from "../HIRBuilder";
+import { FunctionIRBuilder } from "./FunctionIRBuilder";
 
 /**
  * Builds a place for an identifier. If the identifier is not a variable declarator,
@@ -17,7 +17,7 @@ import { HIRBuilder } from "../HIRBuilder";
  */
 export function buildIdentifier(
   nodePath: NodePath<t.Identifier>,
-  builder: HIRBuilder,
+  builder: FunctionIRBuilder,
 ) {
   if (nodePath.isReferencedIdentifier()) {
     return buildReferencedIdentifier(nodePath, builder);
@@ -28,7 +28,7 @@ export function buildIdentifier(
 
 function buildBindingIdentifier(
   nodePath: NodePath<t.Identifier>,
-  builder: HIRBuilder,
+  builder: FunctionIRBuilder,
 ) {
   const name = nodePath.node.name;
 
@@ -59,7 +59,7 @@ function buildBindingIdentifier(
 
 function buildReferencedIdentifier(
   nodePath: NodePath<t.Identifier>,
-  builder: HIRBuilder,
+  builder: FunctionIRBuilder,
 ) {
   const name = nodePath.node.name;
   const declarationId = builder.getDeclarationId(name, nodePath);

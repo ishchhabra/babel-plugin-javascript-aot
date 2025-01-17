@@ -14,6 +14,7 @@ import {
   UnsupportedNodeInstruction,
   ValueInstruction,
 } from "../../../ir";
+import { FunctionIR } from "../../../ir/core/FunctionIR";
 import { CodeGenerator } from "../../CodeGenerator";
 import { generateUnsupportedNode } from "../generateUnsupportedNode";
 import { generateDeclarationInstruction } from "./declaration/generateDeclaration";
@@ -27,13 +28,18 @@ import { generateValueInstruction } from "./value/generateValue";
 
 export function generateInstruction(
   instruction: BaseInstruction,
+  functionIR: FunctionIR,
   generator: CodeGenerator,
 ): Array<t.Statement> {
   if (instruction instanceof BindingIdentifierInstruction) {
     generateBindingIdentifierInstruction(instruction, generator);
     return [];
   } else if (instruction instanceof DeclarationInstruction) {
-    const statement = generateDeclarationInstruction(instruction, generator);
+    const statement = generateDeclarationInstruction(
+      instruction,
+      functionIR,
+      generator,
+    );
     return [statement];
   } else if (instruction instanceof ExpressionStatementInstruction) {
     const statement = generateExpressionStatementInstruction(
@@ -70,7 +76,7 @@ export function generateInstruction(
     generateSpreadElementInstruction(instruction, generator);
     return [];
   } else if (instruction instanceof ValueInstruction) {
-    generateValueInstruction(instruction, generator);
+    generateValueInstruction(instruction, functionIR, generator);
     return [];
   } else if (instruction instanceof UnsupportedNodeInstruction) {
     generateUnsupportedNode(instruction, generator);

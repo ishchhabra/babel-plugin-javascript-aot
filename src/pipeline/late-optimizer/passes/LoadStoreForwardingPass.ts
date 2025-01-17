@@ -42,7 +42,7 @@ export class LoadStoreForwardingPass extends BaseOptimizationPass {
   protected step(): OptimizationResult {
     let changed = false;
 
-    for (const block of this.moduleUnit.blocks.values()) {
+    for (const block of this.functionIR.blocks.values()) {
       const blockChanged = this.propagateStoreLoadStore(block);
       if (blockChanged) {
         changed = true;

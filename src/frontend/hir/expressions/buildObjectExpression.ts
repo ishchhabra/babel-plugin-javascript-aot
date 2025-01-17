@@ -2,20 +2,26 @@ import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import {
   createIdentifier,
+  createInstructionId,
   createPlace,
-  makeInstructionId,
   ObjectExpressionInstruction,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildObjectExpression(
   nodePath: NodePath<t.ObjectExpression>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const propertiesPath = nodePath.get("properties");
   const propertyPlaces = propertiesPath.map((propertyPath) => {
-    const propertyPlace = buildNode(propertyPath, builder);
+    const propertyPlace = buildNode(
+      propertyPath,
+      functionBuilder,
+      moduleBuilder,
+    );
     if (propertyPlace === undefined || Array.isArray(propertyPlace)) {
       throw new Error("Object expression property must be a single place");
     }
@@ -23,13 +29,11 @@ export function buildObjectExpression(
     return propertyPlace;
   });
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
-  const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
-  );
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  const instructionId = createInstructionId(functionBuilder.environment);
 
-  builder.currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new ObjectExpressionInstruction(
       instructionId,
       place,

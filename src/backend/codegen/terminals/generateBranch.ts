@@ -1,15 +1,21 @@
 import * as t from "@babel/types";
 import { BranchTerminal } from "../../../ir";
+import { FunctionIR } from "../../../ir/core/FunctionIR";
 import { CodeGenerator } from "../../CodeGenerator";
 import { generateBlock } from "../generateBlock";
 
 export function generateBranchTerminal(
   terminal: BranchTerminal,
+  functionIR: FunctionIR,
   generator: CodeGenerator,
 ): Array<t.Statement> {
   // Generate the fallthrough block first so that we do not rebuild it
   // if the alternate block is the same as the fallthrough block.
-  const fallthrough = generateBlock(terminal.fallthrough, generator);
+  const fallthrough = generateBlock(
+    terminal.fallthrough,
+    functionIR,
+    generator,
+  );
 
   const test = generator.places.get(terminal.test.id);
   if (test === undefined) {
@@ -18,10 +24,10 @@ export function generateBranchTerminal(
 
   t.assertExpression(test);
 
-  const consequent = generateBlock(terminal.consequent, generator);
+  const consequent = generateBlock(terminal.consequent, functionIR, generator);
   let alternate;
   if (terminal.alternate !== terminal.fallthrough) {
-    alternate = generateBlock(terminal.alternate, generator);
+    alternate = generateBlock(terminal.alternate, functionIR, generator);
   }
 
   const node = t.ifStatement(

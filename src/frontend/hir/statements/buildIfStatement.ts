@@ -4,40 +4,42 @@ import {
   BasicBlock,
   BranchTerminal,
   createBlock,
+  createInstructionId,
   JumpTerminal,
-  makeInstructionId,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildIfStatement(
   nodePath: NodePath<t.IfStatement>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const testPath = nodePath.get("test");
-  const testPlace = buildNode(testPath, builder);
+  const testPlace = buildNode(testPath, functionBuilder, moduleBuilder);
   if (testPlace === undefined || Array.isArray(testPlace)) {
     throw new Error("If statement test must be a single place");
   }
 
-  const currentBlock = builder.currentBlock;
+  const currentBlock = functionBuilder.currentBlock;
 
   // Create the join block.
-  const joinBlock = createBlock(builder.environment);
-  builder.blocks.set(joinBlock.id, joinBlock);
+  const joinBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(joinBlock.id, joinBlock);
 
   // Build the consequent block
   const consequentPath = nodePath.get("consequent");
-  const consequentBlock = createBlock(builder.environment);
-  builder.blocks.set(consequentBlock.id, consequentBlock);
+  const consequentBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(consequentBlock.id, consequentBlock);
 
-  builder.currentBlock = consequentBlock;
-  buildNode(consequentPath, builder);
+  functionBuilder.currentBlock = consequentBlock;
+  buildNode(consequentPath, functionBuilder, moduleBuilder);
 
   // After building the consequent block, we need to set the terminal
   // from the last block to the join block.
-  builder.currentBlock.terminal = new JumpTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+  functionBuilder.currentBlock.terminal = new JumpTerminal(
+    createInstructionId(functionBuilder.environment),
     joinBlock.id,
   );
 
@@ -45,29 +47,29 @@ export function buildIfStatement(
   const alternatePath = nodePath.get("alternate");
   let alternateBlock: BasicBlock | undefined = currentBlock;
   if (alternatePath.hasNode()) {
-    alternateBlock = createBlock(builder.environment);
-    builder.blocks.set(alternateBlock.id, alternateBlock);
+    alternateBlock = createBlock(functionBuilder.environment);
+    functionBuilder.blocks.set(alternateBlock.id, alternateBlock);
 
-    builder.currentBlock = alternateBlock;
-    buildNode(alternatePath, builder);
+    functionBuilder.currentBlock = alternateBlock;
+    buildNode(alternatePath, functionBuilder, moduleBuilder);
   }
 
   // After building the alternate block, we need to set the terminal
   // from the last block to the join block.
-  builder.currentBlock.terminal = new JumpTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+  functionBuilder.currentBlock.terminal = new JumpTerminal(
+    createInstructionId(functionBuilder.environment),
     joinBlock.id,
   );
 
   // Set branch terminal for the current block.
   currentBlock.terminal = new BranchTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    createInstructionId(functionBuilder.environment),
     testPlace,
     consequentBlock.id,
     alternateBlock.id,
     joinBlock.id,
   );
 
-  builder.currentBlock = joinBlock;
+  functionBuilder.currentBlock = joinBlock;
   return undefined;
 }

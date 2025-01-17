@@ -1,10 +1,12 @@
 import * as t from "@babel/types";
 import { ObjectMethodInstruction } from "../../../../ir";
+import { FunctionIR } from "../../../../ir/core/FunctionIR";
 import { CodeGenerator } from "../../../CodeGenerator";
 import { generateBlock } from "../../generateBlock";
 
 export function generateObjectMethodInstruction(
   instruction: ObjectMethodInstruction,
+  functionIR: FunctionIR,
   generator: CodeGenerator,
 ): t.ObjectMethod {
   const key = generator.places.get(instruction.key.id);
@@ -22,7 +24,7 @@ export function generateObjectMethodInstruction(
     return identifier;
   });
 
-  const body = generateBlock(instruction.body, generator);
+  const body = generateBlock(instruction.body, functionIR, generator);
   const node = t.objectMethod(
     instruction.kind,
     key,

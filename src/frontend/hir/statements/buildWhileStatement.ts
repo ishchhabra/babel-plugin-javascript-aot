@@ -3,46 +3,48 @@ import * as t from "@babel/types";
 import {
   BranchTerminal,
   createBlock,
+  createInstructionId,
   JumpTerminal,
-  makeInstructionId,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildWhileStatement(
   nodePath: NodePath<t.WhileStatement>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
-  const currentBlock = builder.currentBlock;
+  const currentBlock = functionBuilder.currentBlock;
 
   // Build the test block.
   const testPath = nodePath.get("test");
-  const testBlock = createBlock(builder.environment);
-  builder.blocks.set(testBlock.id, testBlock);
+  const testBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(testBlock.id, testBlock);
 
-  builder.currentBlock = testBlock;
-  const testPlace = buildNode(testPath, builder);
+  functionBuilder.currentBlock = testBlock;
+  const testPlace = buildNode(testPath, functionBuilder, moduleBuilder);
   if (testPlace === undefined || Array.isArray(testPlace)) {
     throw new Error("While statement test must be a single place");
   }
-  const testBlockTerminus = builder.currentBlock;
+  const testBlockTerminus = functionBuilder.currentBlock;
 
   // Build the body block.
   const bodyPath = nodePath.get("body");
-  const bodyBlock = createBlock(builder.environment);
-  builder.blocks.set(bodyBlock.id, bodyBlock);
+  const bodyBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(bodyBlock.id, bodyBlock);
 
-  builder.currentBlock = bodyBlock;
-  buildNode(bodyPath, builder);
-  const bodyBlockTerminus = builder.currentBlock;
+  functionBuilder.currentBlock = bodyBlock;
+  buildNode(bodyPath, functionBuilder, moduleBuilder);
+  const bodyBlockTerminus = functionBuilder.currentBlock;
 
   // Build the exit block.
-  const exitBlock = createBlock(builder.environment);
-  builder.blocks.set(exitBlock.id, exitBlock);
+  const exitBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(exitBlock.id, exitBlock);
 
   // Set the branch terminal for the test block.
   testBlockTerminus.terminal = new BranchTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    createInstructionId(functionBuilder.environment),
     testPlace,
     bodyBlock.id,
     exitBlock.id,
@@ -51,16 +53,16 @@ export function buildWhileStatement(
 
   // Set the jump terminal for body block to create a back edge.
   bodyBlockTerminus.terminal = new JumpTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    createInstructionId(functionBuilder.environment),
     testBlock.id,
   );
 
   // Set the jump terminal for the current block.
   currentBlock.terminal = new JumpTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    createInstructionId(functionBuilder.environment),
     testBlock.id,
   );
 
-  builder.currentBlock = exitBlock;
+  functionBuilder.currentBlock = exitBlock;
   return undefined;
 }

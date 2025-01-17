@@ -3,24 +3,33 @@ import * as t from "@babel/types";
 import { createRequire } from "module";
 import {
   createIdentifier,
+  createInstructionId,
   createPlace,
   ImportDeclarationInstruction,
-  makeInstructionId,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildImportDeclaration(
   nodePath: NodePath<t.ImportDeclaration>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const sourcePath = nodePath.get("source");
   const sourceValue = sourcePath.node.value;
-  const resolvedSourceValue = resolveModulePath(sourceValue, builder.path);
+  const resolvedSourceValue = resolveModulePath(
+    sourceValue,
+    moduleBuilder.path,
+  );
 
   const specifiersPath = nodePath.get("specifiers");
   const specifierPlaces = specifiersPath.map((specifierPath) => {
-    const importSpecifierPlace = buildNode(specifierPath, builder);
+    const importSpecifierPlace = buildNode(
+      specifierPath,
+      functionBuilder,
+      moduleBuilder,
+    );
     if (
       importSpecifierPlace === undefined ||
       Array.isArray(importSpecifierPlace)
@@ -30,20 +39,18 @@ export function buildImportDeclaration(
     return importSpecifierPlace;
   });
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
-  builder.currentBlock.instructions.push(
-    new ImportDeclarationInstruction(
-      makeInstructionId(builder.environment.nextInstructionId++),
-      place,
-      nodePath,
-      sourceValue,
-      resolvedSourceValue,
-      specifierPlaces,
-    ),
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  const instruction = new ImportDeclarationInstruction(
+    createInstructionId(functionBuilder.environment),
+    place,
+    nodePath,
+    sourceValue,
+    resolvedSourceValue,
+    specifierPlaces,
   );
-
-  builder.importToPlaces.set(resolvedSourceValue, place);
+  functionBuilder.currentBlock.instructions.push(instruction);
+  moduleBuilder.importToInstructions.set(resolvedSourceValue, instruction);
   return place;
 }
 

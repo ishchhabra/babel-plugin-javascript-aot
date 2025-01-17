@@ -6,11 +6,11 @@ import {
   LiteralInstruction,
   makeInstructionId,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
 
 export function buildLiteral(
   expressionPath: NodePath<t.Literal>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
 ) {
   if (
     !t.isNumericLiteral(expressionPath.node) &&
@@ -20,13 +20,13 @@ export function buildLiteral(
     throw new Error(`Unsupported literal type: ${expressionPath.type}`);
   }
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
   const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
+    functionBuilder.environment.nextInstructionId++,
   );
 
-  builder.currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new LiteralInstruction(
       instructionId,
       place,

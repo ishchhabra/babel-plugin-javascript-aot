@@ -2,24 +2,22 @@ import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import {
   createIdentifier,
+  createInstructionId,
   createPlace,
-  makeInstructionId,
   Place,
   UnsupportedNodeInstruction,
 } from "../../ir";
-import { HIRBuilder } from "../HIRBuilder";
+import { FunctionIRBuilder } from "./FunctionIRBuilder";
 
 export function buildUnsupportedNode(
   nodePath: NodePath<t.Node>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
 ): Place {
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
-  const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
-  );
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  const instructionId = createInstructionId(functionBuilder.environment);
 
-  builder.currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new UnsupportedNodeInstruction(
       instructionId,
       place,

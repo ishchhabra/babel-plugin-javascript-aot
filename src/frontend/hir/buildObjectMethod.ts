@@ -9,29 +9,31 @@ import {
   ObjectMethodInstruction,
   Place,
 } from "../../ir";
-import { HIRBuilder } from "../HIRBuilder";
 import { buildBindings } from "./bindings/buildBindings";
 import { buildNode } from "./buildNode";
+import { FunctionIRBuilder } from "./FunctionIRBuilder";
+import { ModuleIRBuilder } from "./ModuleIRBuilder";
 
 export function buildObjectMethod(
   nodePath: NodePath<t.ObjectMethod>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ): Place {
-  const currentBlock = builder.currentBlock;
+  const currentBlock = functionBuilder.currentBlock;
 
   // Build the key place
   const keyPath = nodePath.get("key");
-  const keyPlace = buildNode(keyPath, builder);
+  const keyPlace = buildNode(keyPath, functionBuilder, moduleBuilder);
   if (keyPlace === undefined) {
     throw new Error(`Unable to build key place for ${nodePath.type}`);
   }
 
   // Build the body block.
-  const bodyBlock = createBlock(builder.environment);
-  builder.blocks.set(bodyBlock.id, bodyBlock);
+  const bodyBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(bodyBlock.id, bodyBlock);
 
-  builder.currentBlock = bodyBlock;
-  buildBindings(nodePath, builder);
+  functionBuilder.currentBlock = bodyBlock;
+  buildBindings(nodePath, functionBuilder);
 
   const params = nodePath.get("params");
   const paramPlaces = params.map((param) => {
@@ -39,14 +41,17 @@ export function buildObjectMethod(
       throw new Error(`Unsupported parameter type: ${param.type}`);
     }
 
-    const declarationId = builder.getDeclarationId(param.node.name, nodePath);
+    const declarationId = functionBuilder.getDeclarationId(
+      param.node.name,
+      nodePath,
+    );
     if (declarationId === undefined) {
       throw new Error(
         `Variable accessed before declaration: ${param.node.name}`,
       );
     }
 
-    const place = builder.getLatestDeclarationPlace(declarationId);
+    const place = functionBuilder.getLatestDeclarationPlace(declarationId);
     if (place === undefined) {
       throw new Error(`Unable to find the place for ${param.node.name}`);
     }
@@ -55,13 +60,16 @@ export function buildObjectMethod(
   });
 
   const bodyPath = nodePath.get("body");
-  builder.currentBlock = bodyBlock;
-  buildNode(bodyPath, builder);
+  functionBuilder.currentBlock = bodyBlock;
+  buildNode(bodyPath, functionBuilder, moduleBuilder);
 
-  const methodIdentifier = createIdentifier(builder.environment);
-  const methodPlace = createPlace(methodIdentifier, builder.environment);
+  const methodIdentifier = createIdentifier(functionBuilder.environment);
+  const methodPlace = createPlace(
+    methodIdentifier,
+    functionBuilder.environment,
+  );
   const methodInstructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
+    functionBuilder.environment.nextInstructionId++,
   );
 
   currentBlock.instructions.push(
@@ -81,10 +89,10 @@ export function buildObjectMethod(
 
   // Set the terminal for the current block.
   currentBlock.terminal = new JumpTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    makeInstructionId(functionBuilder.environment.nextInstructionId++),
     bodyBlock.id,
   );
 
-  builder.currentBlock = currentBlock;
+  functionBuilder.currentBlock = currentBlock;
   return methodPlace;
 }

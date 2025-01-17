@@ -1,13 +1,14 @@
 import { Environment } from "../environment";
-import { ModuleBuilder, ModuleUnit } from "./ModuleBuilder";
+import { ModuleIR } from "../ir/core/ModuleIR";
+import { ModuleIRBuilder } from "./hir/ModuleIRBuilder";
 
 export interface ProjectUnit {
-  modules: Map<string, ModuleUnit>;
+  modules: Map<string, ModuleIR>;
   postOrder: string[];
 }
 
 export class ProjectBuilder {
-  private readonly modules: Map<string, ModuleUnit> = new Map();
+  private readonly modules: Map<string, ModuleIR> = new Map();
 
   constructor() {}
 
@@ -17,41 +18,41 @@ export class ProjectBuilder {
     return { modules: this.modules, postOrder };
   }
 
-  private buildModule(path: string): ModuleUnit {
+  private buildModule(path: string): ModuleIR {
     if (this.modules.has(path)) {
       return this.modules.get(path)!;
     }
 
     const environment = new Environment();
-    const moduleUnit = new ModuleBuilder(path, environment).build();
-    this.modules.set(path, moduleUnit);
+    const moduleIR = new ModuleIRBuilder(path, environment).build();
+    this.modules.set(path, moduleIR);
 
-    const importToPlaces = moduleUnit.importToPlaces;
-    for (const [source] of importToPlaces) {
+    const importToInstructions = moduleIR.importToInstructions;
+    for (const [source] of importToInstructions) {
       this.buildModule(source);
     }
 
-    return moduleUnit;
+    return moduleIR;
   }
 
-  private getPostOrder(moduleUnit: ModuleUnit) {
+  private getPostOrder(moduleIR: ModuleIR) {
     const visited = new Set<string>();
     const result: string[] = [];
 
-    const visit = (moduleUnit: ModuleUnit) => {
-      if (visited.has(moduleUnit.path)) {
+    const visit = (moduleIR: ModuleIR) => {
+      if (visited.has(moduleIR.path)) {
         return;
       }
 
-      visited.add(moduleUnit.path);
-      result.push(moduleUnit.path);
+      visited.add(moduleIR.path);
+      result.push(moduleIR.path);
 
-      for (const [source] of moduleUnit.importToPlaces) {
+      for (const [source] of moduleIR.importToInstructions) {
         visit(this.modules.get(source)!);
       }
     };
 
-    visit(moduleUnit);
+    visit(moduleIR);
     return result;
   }
 }

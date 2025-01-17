@@ -1,29 +1,31 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { createBlock, JumpTerminal, makeInstructionId } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildBindings } from "../bindings/buildBindings";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildBlockStatement(
   nodePath: NodePath<t.BlockStatement>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
-  const currentBlock = builder.currentBlock;
+  const currentBlock = functionBuilder.currentBlock;
 
-  const block = createBlock(builder.environment);
-  builder.blocks.set(block.id, block);
-  builder.currentBlock = block;
+  const block = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(block.id, block);
+  functionBuilder.currentBlock = block;
 
-  buildBindings(nodePath, builder);
+  buildBindings(nodePath, functionBuilder);
 
   const body = nodePath.get("body");
   for (const statementPath of body) {
-    buildNode(statementPath, builder);
+    buildNode(statementPath, functionBuilder, moduleBuilder);
   }
 
   currentBlock.terminal = new JumpTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    makeInstructionId(functionBuilder.environment.nextInstructionId++),
     block.id,
   );
   return undefined;

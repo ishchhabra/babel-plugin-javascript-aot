@@ -6,6 +6,7 @@ export class Environment {
   declToPlaces: Map<DeclarationId, Array<{ blockId: BlockId; place: Place }>> =
     new Map();
 
+  nextFunctionId = 0;
   nextBlockId = 0;
   nextDeclarationId = 0;
   nextIdentifierId = 0;

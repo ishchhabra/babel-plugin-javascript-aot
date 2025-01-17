@@ -2,20 +2,22 @@ import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import {
   createIdentifier,
+  createInstructionId,
   createPlace,
   ExportSpecifierInstruction,
-  makeInstructionId,
   Place,
 } from "../../ir";
-import { HIRBuilder } from "../HIRBuilder";
+import { FunctionIRBuilder } from "./FunctionIRBuilder";
+import { ModuleIRBuilder } from "./ModuleIRBuilder";
 import { buildNode } from "./buildNode";
 
 export function buildExportSpecifier(
   nodePath: NodePath<t.ExportSpecifier>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ): Place {
   const localPath = nodePath.get("local");
-  const localPlace = buildNode(localPath, builder);
+  const localPlace = buildNode(localPath, functionBuilder, moduleBuilder);
   if (localPlace === undefined || Array.isArray(localPlace)) {
     throw new Error("Export specifier local must be a single place");
   }
@@ -28,11 +30,9 @@ export function buildExportSpecifier(
     exportedName = exportedPath.node.value;
   }
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
-  const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
-  );
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  const instructionId = createInstructionId(functionBuilder.environment);
   const instruction = new ExportSpecifierInstruction(
     instructionId,
     place,
@@ -41,7 +41,7 @@ export function buildExportSpecifier(
     exportedName!,
   );
 
-  builder.currentBlock.instructions.push(instruction);
-  builder.exportToInstructions.set(exportedName!, instruction);
+  functionBuilder.currentBlock.instructions.push(instruction);
+  moduleBuilder.exportToInstructions.set(exportedName!, instruction);
   return place;
 }

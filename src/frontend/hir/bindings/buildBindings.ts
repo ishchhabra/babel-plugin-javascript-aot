@@ -1,19 +1,22 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
-import { HIRBuilder } from "../../HIRBuilder";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { buildFunctionDeclarationBindings } from "./buildFunctionDeclarationBindings";
 import {
   buildParameterBindings,
   buildVariableDeclarationBindings,
 } from "./buildVariableDeclarationBindings";
 
-export function buildBindings(bindingsPath: NodePath, builder: HIRBuilder) {
+export function buildBindings(
+  bindingsPath: NodePath,
+  functionBuilder: FunctionIRBuilder,
+) {
   bindingsPath.traverse({
     FunctionDeclaration: (path: NodePath<t.FunctionDeclaration>) => {
-      buildFunctionDeclarationBindings(bindingsPath, path, builder);
+      buildFunctionDeclarationBindings(bindingsPath, path, functionBuilder);
     },
     VariableDeclaration: (path: NodePath<t.VariableDeclaration>) => {
-      buildVariableDeclarationBindings(bindingsPath, path, builder);
+      buildVariableDeclarationBindings(bindingsPath, path, functionBuilder);
     },
   });
 
@@ -33,7 +36,7 @@ export function buildBindings(bindingsPath: NodePath, builder: HIRBuilder) {
         throw new Error(`Unsupported parameter type: ${paramPath.type}`);
       }
 
-      buildParameterBindings(bindingsPath, paramPath, builder);
+      buildParameterBindings(bindingsPath, paramPath, functionBuilder);
     }
   }
 }

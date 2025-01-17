@@ -2,23 +2,25 @@ import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import {
   createIdentifier,
+  createInstructionId,
   createPlace,
-  makeInstructionId,
   StoreLocalInstruction,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 import { buildBinaryExpression } from "./buildBinaryExpression";
 
 export function buildUpdateExpression(
   nodePath: NodePath<t.UpdateExpression>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const argumentPath = nodePath.get("argument");
   if (!argumentPath.isIdentifier()) {
     throw new Error(`Unsupported argument type: ${argumentPath.type}`);
   }
 
-  const declarationId = builder.getDeclarationId(
+  const declarationId = functionBuilder.getDeclarationId(
     argumentPath.node.name,
     nodePath,
   );
@@ -28,15 +30,19 @@ export function buildUpdateExpression(
     );
   }
 
-  const originalPlace = builder.getLatestDeclarationPlace(declarationId);
+  const originalPlace =
+    functionBuilder.getLatestDeclarationPlace(declarationId);
   if (originalPlace === undefined) {
     throw new Error(
       `Unable to find the place for ${argumentPath.node.name} (${declarationId})`,
     );
   }
 
-  const lvalIdentifier = createIdentifier(builder.environment, declarationId);
-  const lvalPlace = createPlace(lvalIdentifier, builder.environment);
+  const lvalIdentifier = createIdentifier(
+    functionBuilder.environment,
+    declarationId,
+  );
+  const lvalPlace = createPlace(lvalIdentifier, functionBuilder.environment);
 
   const rightLiteral = t.numericLiteral(1);
   const isIncrement = nodePath.node.operator === "++";
@@ -50,20 +56,22 @@ export function buildUpdateExpression(
     binaryExpression,
   );
 
-  const valuePlace = buildBinaryExpression(binaryExpressionPath, builder);
+  const valuePlace = buildBinaryExpression(
+    binaryExpressionPath,
+    functionBuilder,
+    moduleBuilder,
+  );
   if (valuePlace === undefined || Array.isArray(valuePlace)) {
     throw new Error("Update expression value must be a single place");
   }
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
-  const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
-  );
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  const instructionId = createInstructionId(functionBuilder.environment);
 
-  builder.registerDeclarationPlace(declarationId, lvalPlace);
+  functionBuilder.registerDeclarationPlace(declarationId, lvalPlace);
 
-  builder.currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new StoreLocalInstruction(
       instructionId,
       place,

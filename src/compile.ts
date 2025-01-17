@@ -24,6 +24,6 @@ export type CompilerOptions = z.infer<typeof CompilerOptionsSchema>;
 export function compile(entryPoint: string, options: CompilerOptions) {
   const projectUnit = new ProjectBuilder().build(entryPoint);
   new Pipeline(projectUnit, options).run();
-  const code = new CodeGenerator(projectUnit, entryPoint).generate();
+  const code = new CodeGenerator(entryPoint, projectUnit).generate();
   return code;
 }

@@ -6,19 +6,25 @@ import {
   ExportNamedDeclarationInstruction,
   makeInstructionId,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildExportNamedDeclaration(
   nodePath: NodePath<t.ExportNamedDeclaration>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const declarationPath = nodePath.get("declaration");
   const specifiersPath = nodePath.get("specifiers");
 
   // An export can have either declaration or specifiers, but not both.
   if (declarationPath.hasNode()) {
-    let declarationPlace = buildNode(declarationPath, builder);
+    let declarationPlace = buildNode(
+      declarationPath,
+      functionBuilder,
+      moduleBuilder,
+    );
     if (Array.isArray(declarationPlace)) {
       // TODO: Iterate over all declaration places to split them into multiple instructions.
       // Example:
@@ -29,21 +35,25 @@ export function buildExportNamedDeclaration(
       declarationPlace = declarationPlace[0];
     }
 
-    const identifier = createIdentifier(builder.environment);
-    const place = createPlace(identifier, builder.environment);
+    const identifier = createIdentifier(functionBuilder.environment);
+    const place = createPlace(identifier, functionBuilder.environment);
     const instruction = new ExportNamedDeclarationInstruction(
-      makeInstructionId(builder.environment.nextInstructionId++),
+      makeInstructionId(functionBuilder.environment.nextInstructionId++),
       place,
       nodePath,
       [],
       declarationPlace!,
     );
-    builder.currentBlock.instructions.push(instruction);
-    builder.exportToInstructions.set(identifier.name, instruction);
+    functionBuilder.currentBlock.instructions.push(instruction);
+    moduleBuilder.exportToInstructions.set(identifier.name, instruction);
     return place;
   } else {
     const exportSpecifierPlaces = specifiersPath.map((specifierPath) => {
-      const exportSpecifierPlace = buildNode(specifierPath, builder);
+      const exportSpecifierPlace = buildNode(
+        specifierPath,
+        functionBuilder,
+        moduleBuilder,
+      );
       if (
         exportSpecifierPlace === undefined ||
         Array.isArray(exportSpecifierPlace)
@@ -53,17 +63,17 @@ export function buildExportNamedDeclaration(
       return exportSpecifierPlace;
     });
 
-    const identifier = createIdentifier(builder.environment);
-    const place = createPlace(identifier, builder.environment);
+    const identifier = createIdentifier(functionBuilder.environment);
+    const place = createPlace(identifier, functionBuilder.environment);
     const instruction = new ExportNamedDeclarationInstruction(
-      makeInstructionId(builder.environment.nextInstructionId++),
+      makeInstructionId(functionBuilder.environment.nextInstructionId++),
       place,
       nodePath,
       exportSpecifierPlaces,
       undefined,
     );
-    builder.currentBlock.instructions.push(instruction);
-    builder.exportToInstructions.set(identifier.name, instruction);
+    functionBuilder.currentBlock.instructions.push(instruction);
+    moduleBuilder.exportToInstructions.set(identifier.name, instruction);
     return place;
   }
 }

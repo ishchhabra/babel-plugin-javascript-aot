@@ -2,12 +2,12 @@ import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { getFunctionName } from "../../../babel-utils";
 import { createIdentifier, createPlace } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
 
 export function buildFunctionDeclarationBindings(
   bindingsPath: NodePath<t.Node>,
   nodePath: NodePath<t.FunctionDeclaration>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
 ) {
   // For function declarations, we only want direct children
   // of the binding path. The nested function declarations
@@ -22,8 +22,8 @@ export function buildFunctionDeclarationBindings(
     return;
   }
 
-  const identifier = createIdentifier(builder.environment);
-  builder.registerDeclarationName(
+  const identifier = createIdentifier(functionBuilder.environment);
+  functionBuilder.registerDeclarationName(
     functionName.node.name,
     identifier.declarationId,
     bindingsPath,
@@ -31,12 +31,12 @@ export function buildFunctionDeclarationBindings(
 
   // Rename the variable name in the scope to the temporary place.
   bindingsPath.scope.rename(functionName.node.name, identifier.name);
-  builder.registerDeclarationName(
+  functionBuilder.registerDeclarationName(
     identifier.name,
     identifier.declarationId,
     bindingsPath,
   );
 
-  const place = createPlace(identifier, builder.environment);
-  builder.registerDeclarationPlace(identifier.declarationId, place);
+  const place = createPlace(identifier, functionBuilder.environment);
+  functionBuilder.registerDeclarationPlace(identifier.declarationId, place);
 }

@@ -1,12 +1,12 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { createIdentifier, createPlace } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
 
 export function buildVariableDeclarationBindings(
   bindingsPath: NodePath<t.Node>,
   nodePath: NodePath<t.VariableDeclaration>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
 ) {
   const isHoistable =
     bindingsPath.isFunctionDeclaration() && nodePath.node.kind === "var";
@@ -22,31 +22,31 @@ export function buildVariableDeclarationBindings(
   const declarationPaths = nodePath.get("declarations");
   for (const declarationPath of declarationPaths) {
     const id = declarationPath.get("id");
-    buildLValBindings(bindingsPath, id, builder);
+    buildLValBindings(bindingsPath, id, functionBuilder);
   }
 }
 
 function buildLValBindings(
   bindingsPath: NodePath,
   nodePath: NodePath<t.LVal>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
 ) {
   switch (nodePath.type) {
     case "Identifier":
       nodePath.assertIdentifier();
-      buildIdentifierBindings(bindingsPath, nodePath, builder);
+      buildIdentifierBindings(bindingsPath, nodePath, functionBuilder);
       break;
     case "ArrayPattern":
       nodePath.assertArrayPattern();
-      buildArrayPatternBindings(bindingsPath, nodePath, builder);
+      buildArrayPatternBindings(bindingsPath, nodePath, functionBuilder);
       break;
     case "ObjectPattern":
       nodePath.assertObjectPattern();
-      buildObjectPatternBindings(bindingsPath, nodePath, builder);
+      buildObjectPatternBindings(bindingsPath, nodePath, functionBuilder);
       break;
     case "RestElement":
       nodePath.assertRestElement();
-      buildRestElementBindings(bindingsPath, nodePath, builder);
+      buildRestElementBindings(bindingsPath, nodePath, functionBuilder);
       break;
     default:
       throw new Error(`Unsupported LVal type: ${nodePath.type}`);
@@ -56,10 +56,10 @@ function buildLValBindings(
 function buildIdentifierBindings(
   bindingsPath: NodePath,
   nodePath: NodePath<t.Identifier>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
 ) {
-  const identifier = createIdentifier(builder.environment);
-  builder.registerDeclarationName(
+  const identifier = createIdentifier(functionBuilder.environment);
+  functionBuilder.registerDeclarationName(
     nodePath.node.name,
     identifier.declarationId,
     bindingsPath,
@@ -67,33 +67,33 @@ function buildIdentifierBindings(
 
   // Rename the variable name in the scope to the temporary place.
   bindingsPath.scope.rename(nodePath.node.name, identifier.name);
-  builder.registerDeclarationName(
+  functionBuilder.registerDeclarationName(
     identifier.name,
     identifier.declarationId,
     bindingsPath,
   );
 
-  const place = createPlace(identifier, builder.environment);
-  builder.registerDeclarationPlace(identifier.declarationId, place);
+  const place = createPlace(identifier, functionBuilder.environment);
+  functionBuilder.registerDeclarationPlace(identifier.declarationId, place);
 }
 
 function buildArrayPatternBindings(
   bindingsPath: NodePath,
   nodePath: NodePath<t.ArrayPattern>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
 ) {
   const elementsPath: NodePath<t.ArrayPattern["elements"][number]>[] =
     nodePath.get("elements");
   for (const elementPath of elementsPath) {
     elementPath.assertLVal();
-    buildLValBindings(bindingsPath, elementPath, builder);
+    buildLValBindings(bindingsPath, elementPath, functionBuilder);
   }
 }
 
 function buildObjectPatternBindings(
   bindingsPath: NodePath,
   nodePath: NodePath<t.ObjectPattern>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
 ) {
   const propertiesPath = nodePath.get("properties");
   for (const propertyPath of propertiesPath) {
@@ -101,32 +101,32 @@ function buildObjectPatternBindings(
       throw new Error(`Unsupported property type: ${propertyPath.type}`);
     }
 
-    buildLValBindings(bindingsPath, propertyPath, builder);
+    buildLValBindings(bindingsPath, propertyPath, functionBuilder);
   }
 }
 
 function buildRestElementBindings(
   bindingsPath: NodePath,
   nodePath: NodePath<t.RestElement>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
 ) {
   const elementPath = nodePath.get("argument");
-  buildLValBindings(bindingsPath, elementPath, builder);
+  buildLValBindings(bindingsPath, elementPath, functionBuilder);
 }
 
 export function buildParameterBindings(
   bindingsPath: NodePath,
   nodePath: NodePath<t.Identifier | t.RestElement | t.Pattern>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
 ) {
   switch (nodePath.type) {
     case "Identifier":
       nodePath.assertIdentifier();
-      buildIdentifierBindings(bindingsPath, nodePath, builder);
+      buildIdentifierBindings(bindingsPath, nodePath, functionBuilder);
       break;
     case "RestElement":
       nodePath.assertRestElement();
-      buildRestElementBindings(bindingsPath, nodePath, builder);
+      buildRestElementBindings(bindingsPath, nodePath, functionBuilder);
       break;
     default:
       throw new Error(`Unsupported parameter type: ${nodePath.type}`);

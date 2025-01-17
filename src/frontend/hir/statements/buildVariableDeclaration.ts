@@ -2,22 +2,24 @@ import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import {
   createIdentifier,
+  createInstructionId,
   createPlace,
-  makeInstructionId,
   Place,
   StoreLocalInstruction,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildVariableDeclaration(
   nodePath: NodePath<t.VariableDeclaration>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ): Place | Place[] | undefined {
   const declarations = nodePath.get("declarations");
   const declarationPlaces = declarations.map((declaration) => {
     const id = declaration.get("id");
-    const lvalPlace = buildNode(id, builder);
+    const lvalPlace = buildNode(id, functionBuilder, moduleBuilder);
     if (lvalPlace === undefined || Array.isArray(lvalPlace)) {
       throw new Error("Lval place must be a single place");
     }
@@ -28,21 +30,18 @@ export function buildVariableDeclaration(
     if (!init.hasNode()) {
       init.replaceWith(t.identifier("undefined"));
       init.assertIdentifier({ name: "undefined" });
-      valuePlace = buildNode(init, builder);
+      valuePlace = buildNode(init, functionBuilder, moduleBuilder);
     } else {
-      valuePlace = buildNode(init, builder);
+      valuePlace = buildNode(init, functionBuilder, moduleBuilder);
     }
     if (valuePlace === undefined || Array.isArray(valuePlace)) {
       throw new Error("Value place must be a single place");
     }
 
-    const identifier = createIdentifier(builder.environment);
-    const place = createPlace(identifier, builder.environment);
-
-    const instructionId = makeInstructionId(
-      builder.environment.nextInstructionId++,
-    );
-    builder.currentBlock.instructions.push(
+    const identifier = createIdentifier(functionBuilder.environment);
+    const place = createPlace(identifier, functionBuilder.environment);
+    const instructionId = createInstructionId(functionBuilder.environment);
+    functionBuilder.currentBlock.instructions.push(
       new StoreLocalInstruction(
         instructionId,
         place,

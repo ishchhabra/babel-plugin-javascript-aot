@@ -6,43 +6,54 @@ import {
   makeInstructionId,
   StoreLocalInstruction,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildAssignmentExpression(
   nodePath: NodePath<t.AssignmentExpression>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
   const leftPath: NodePath<t.OptionalMemberExpression | t.LVal> =
     nodePath.get("left");
   leftPath.assertIdentifier();
 
-  const declarationId = builder.getDeclarationId(leftPath.node.name, nodePath);
+  const declarationId = functionBuilder.getDeclarationId(
+    leftPath.node.name,
+    nodePath,
+  );
   if (declarationId === undefined) {
     throw new Error(
       `Variable accessed before declaration: ${leftPath.node.name}`,
     );
   }
 
-  const lvalIdentifier = createIdentifier(builder.environment, declarationId);
-  const lvalPlace = createPlace(lvalIdentifier, builder.environment);
+  const lvalIdentifier = createIdentifier(
+    functionBuilder.environment,
+    declarationId,
+  );
+  const lvalPlace = createPlace(lvalIdentifier, functionBuilder.environment);
 
   const rightPath = nodePath.get("right");
-  const rightPlace = buildNode(rightPath, builder);
+  const rightPlace = buildNode(rightPath, functionBuilder, moduleBuilder);
   if (rightPlace === undefined || Array.isArray(rightPlace)) {
     throw new Error("Assignment expression right must be a single place");
   }
 
   // Create a new place for this assignment using the same declarationId
-  const identifier = createIdentifier(builder.environment, declarationId);
-  const place = createPlace(identifier, builder.environment);
+  const identifier = createIdentifier(
+    functionBuilder.environment,
+    declarationId,
+  );
+  const place = createPlace(identifier, functionBuilder.environment);
   const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
+    functionBuilder.environment.nextInstructionId++,
   );
 
-  builder.registerDeclarationPlace(declarationId, lvalPlace);
+  functionBuilder.registerDeclarationPlace(declarationId, lvalPlace);
 
-  builder.currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new StoreLocalInstruction(
       instructionId,
       place,

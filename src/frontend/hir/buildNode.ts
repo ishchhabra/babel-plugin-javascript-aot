@@ -1,7 +1,6 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Place } from "../../ir";
-import { HIRBuilder } from "../HIRBuilder";
 import { buildExportSpecifier } from "./buildExportSpecifier";
 import { buildIdentifier } from "./buildIdentifier";
 import { buildImportSpecifier } from "./buildImportSpecifier";
@@ -11,56 +10,59 @@ import { buildSpreadElement } from "./buildSpreadElement";
 import { buildUnsupportedNode } from "./buildUnsupportedNode";
 import { buildHole } from "./expressions";
 import { buildExpression } from "./expressions/buildExpression";
+import { FunctionIRBuilder } from "./FunctionIRBuilder";
+import { ModuleIRBuilder } from "./ModuleIRBuilder";
 import { buildPattern } from "./patterns/buildPattern";
 import { buildStatement } from "./statements/buildStatement";
 
 export function buildNode(
   nodePath: NodePath<t.Node | null>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ): Place | Place[] | undefined {
   if (nodePath.node === null) {
     assertNull(nodePath);
-    return buildHole(nodePath, builder);
+    return buildHole(nodePath, functionBuilder);
   }
 
   assertNonNull(nodePath);
   if (nodePath.isIdentifier()) {
-    return buildIdentifier(nodePath, builder);
+    return buildIdentifier(nodePath, functionBuilder);
   }
 
   if (nodePath.isObjectMethod()) {
-    return buildObjectMethod(nodePath, builder);
+    return buildObjectMethod(nodePath, functionBuilder, moduleBuilder);
   }
 
   if (nodePath.isObjectProperty()) {
-    return buildObjectProperty(nodePath, builder);
+    return buildObjectProperty(nodePath, functionBuilder, moduleBuilder);
   }
 
   if (nodePath.isExpression()) {
-    return buildExpression(nodePath, builder);
+    return buildExpression(nodePath, functionBuilder, moduleBuilder);
   }
 
   if (nodePath.isStatement()) {
-    return buildStatement(nodePath, builder);
+    return buildStatement(nodePath, functionBuilder, moduleBuilder);
   }
 
   if (nodePath.isSpreadElement()) {
-    return buildSpreadElement(nodePath, builder);
+    return buildSpreadElement(nodePath, functionBuilder, moduleBuilder);
   }
 
   if (nodePath.isPattern()) {
-    return buildPattern(nodePath, builder);
+    return buildPattern(nodePath, functionBuilder, moduleBuilder);
   }
 
   if (nodePath.isImportSpecifier()) {
-    return buildImportSpecifier(nodePath, builder);
+    return buildImportSpecifier(nodePath, functionBuilder, moduleBuilder);
   }
 
   if (nodePath.isExportSpecifier()) {
-    return buildExportSpecifier(nodePath, builder);
+    return buildExportSpecifier(nodePath, functionBuilder, moduleBuilder);
   }
 
-  return buildUnsupportedNode(nodePath, builder);
+  return buildUnsupportedNode(nodePath, functionBuilder);
 }
 
 function assertNull<T extends t.Node>(

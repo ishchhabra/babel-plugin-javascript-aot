@@ -3,26 +3,28 @@ import * as t from "@babel/types";
 import { getFunctionName } from "../../../babel-utils";
 import {
   createBlock,
+  createInstructionId,
   FunctionDeclarationInstruction,
   JumpTerminal,
-  makeInstructionId,
 } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildBindings } from "../bindings/buildBindings";
 import { buildNode } from "../buildNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildFunctionDeclaration(
   nodePath: NodePath<t.FunctionDeclaration>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ) {
-  const currentBlock = builder.currentBlock;
+  const currentBlock = functionBuilder.currentBlock;
 
   // Build the body block.
-  const bodyBlock = createBlock(builder.environment);
-  builder.blocks.set(bodyBlock.id, bodyBlock);
+  const bodyBlock = createBlock(functionBuilder.environment);
+  functionBuilder.blocks.set(bodyBlock.id, bodyBlock);
 
-  builder.currentBlock = bodyBlock;
-  buildBindings(nodePath, builder);
+  functionBuilder.currentBlock = bodyBlock;
+  buildBindings(nodePath, functionBuilder);
 
   const params = nodePath.get("params");
   const paramPlaces = params.map((param) => {
@@ -30,14 +32,17 @@ export function buildFunctionDeclaration(
       throw new Error(`Unsupported parameter type: ${param.type}`);
     }
 
-    const declarationId = builder.getDeclarationId(param.node.name, nodePath);
+    const declarationId = functionBuilder.getDeclarationId(
+      param.node.name,
+      nodePath,
+    );
     if (declarationId === undefined) {
       throw new Error(
         `Variable accessed before declaration: ${param.node.name}`,
       );
     }
 
-    const place = builder.getLatestDeclarationPlace(declarationId);
+    const place = functionBuilder.getLatestDeclarationPlace(declarationId);
     if (place === undefined) {
       throw new Error(`Unable to find the place for ${param.node.name}`);
     }
@@ -46,15 +51,15 @@ export function buildFunctionDeclaration(
   });
 
   const bodyPath = nodePath.get("body");
-  builder.currentBlock = bodyBlock;
-  buildNode(bodyPath, builder);
+  functionBuilder.currentBlock = bodyBlock;
+  buildNode(bodyPath, functionBuilder, moduleBuilder);
 
   const functionName = getFunctionName(nodePath);
   if (functionName === null) {
     throw new Error("Invalid function declaration");
   }
 
-  const declarationId = builder.getDeclarationId(
+  const declarationId = functionBuilder.getDeclarationId(
     functionName.node.name,
     nodePath,
   );
@@ -64,7 +69,8 @@ export function buildFunctionDeclaration(
     );
   }
 
-  const functionPlace = builder.getLatestDeclarationPlace(declarationId);
+  const functionPlace =
+    functionBuilder.getLatestDeclarationPlace(declarationId);
   if (functionPlace === undefined) {
     throw new Error(
       `Unable to find the place for ${functionName.node.name} (${declarationId})`,
@@ -73,7 +79,7 @@ export function buildFunctionDeclaration(
 
   currentBlock.instructions.push(
     new FunctionDeclarationInstruction(
-      makeInstructionId(builder.environment.nextInstructionId++),
+      createInstructionId(functionBuilder.environment),
       functionPlace,
       nodePath,
       paramPlaces,
@@ -85,10 +91,10 @@ export function buildFunctionDeclaration(
 
   // Set the terminal for the current block.
   currentBlock.terminal = new JumpTerminal(
-    makeInstructionId(builder.environment.nextInstructionId++),
+    createInstructionId(functionBuilder.environment),
     bodyBlock.id,
   );
 
-  builder.currentBlock = currentBlock;
+  functionBuilder.currentBlock = currentBlock;
   return functionPlace;
 }

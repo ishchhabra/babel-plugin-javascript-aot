@@ -1,5 +1,6 @@
-import { ModuleUnit } from "../../frontend/ModuleBuilder";
 import { BlockId, createPlace } from "../../ir";
+import { FunctionIR } from "../../ir/core/FunctionIR";
+import { ModuleIR } from "../../ir/core/ModuleIR";
 import { Phi } from "./Phi";
 import { createPhiIdentifier } from "./utils";
 
@@ -11,13 +12,16 @@ interface SSA {
  * Computes the phis for the HIR.
  */
 export class SSABuilder {
-  constructor(private readonly moduleUnit: ModuleUnit) {}
+  constructor(
+    private readonly functionIR: FunctionIR,
+    private readonly moduleIR: ModuleIR,
+  ) {}
 
   public build(): SSA {
     const phis = new Set<Phi>();
 
     // Compute phis.
-    for (const [declarationId, places] of this.moduleUnit.environment
+    for (const [declarationId, places] of this.moduleIR.environment
       .declToPlaces) {
       const definitionBlocks = places.map((p) => p.blockId);
       if (definitionBlocks.length <= 1) {
@@ -28,7 +32,7 @@ export class SSABuilder {
       const hasPhi = new Set<BlockId>();
       while (workList.length > 0) {
         const definitionBlock = workList.pop()!;
-        const frontier = this.moduleUnit.dominanceFrontier.get(definitionBlock);
+        const frontier = this.functionIR.dominanceFrontier.get(definitionBlock);
         if (frontier === undefined) {
           continue;
         }
@@ -39,13 +43,13 @@ export class SSABuilder {
           }
 
           // Insert phi node for declarationId in block y.
-          const identifier = createPhiIdentifier(this.moduleUnit.environment);
-          const place = createPlace(identifier, this.moduleUnit.environment);
+          const identifier = createPhiIdentifier(this.moduleIR.environment);
+          const place = createPlace(identifier, this.moduleIR.environment);
           phis.add(new Phi(blockId, place, new Map(), declarationId));
           hasPhi.add(blockId);
 
           // Register the phi node declaration.
-          this.moduleUnit.environment.declToPlaces.set(declarationId, [
+          this.moduleIR.environment.declToPlaces.set(declarationId, [
             ...places,
             { blockId, place },
           ]);
@@ -61,8 +65,8 @@ export class SSABuilder {
 
     // After collecting all phis, populate their operands.
     for (const phi of phis) {
-      const predecessors = [...this.moduleUnit.predecessors.get(phi.blockId)!];
-      const places = this.moduleUnit.environment.declToPlaces.get(
+      const predecessors = [...this.functionIR.predecessors.get(phi.blockId)!];
+      const places = this.moduleIR.environment.declToPlaces.get(
         phi.declarationId,
       );
 

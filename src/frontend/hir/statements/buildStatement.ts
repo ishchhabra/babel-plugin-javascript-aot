@@ -1,8 +1,9 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Place } from "../../../ir";
-import { HIRBuilder } from "../../HIRBuilder";
 import { buildUnsupportedNode } from "../buildUnsupportedNode";
+import { FunctionIRBuilder } from "../FunctionIRBuilder";
+import { ModuleIRBuilder } from "../ModuleIRBuilder";
 import { buildBlockStatement } from "./buildBlockStatement";
 import { buildExportDefaultDeclaration } from "./buildExportDefaultDeclaration";
 import { buildExportNamedDeclaration } from "./buildExportNamedDeclaration";
@@ -17,43 +18,52 @@ import { buildWhileStatement } from "./buildWhileStatement";
 
 export function buildStatement(
   nodePath: NodePath<t.Statement>,
-  builder: HIRBuilder,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
 ): Place | Place[] | undefined {
   switch (nodePath.type) {
     case "BlockStatement":
       nodePath.assertBlockStatement();
-      return buildBlockStatement(nodePath, builder);
+      return buildBlockStatement(nodePath, functionBuilder, moduleBuilder);
     case "ExportDefaultDeclaration":
       nodePath.assertExportDefaultDeclaration();
-      return buildExportDefaultDeclaration(nodePath, builder);
+      return buildExportDefaultDeclaration(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+      );
     case "ExportNamedDeclaration":
       nodePath.assertExportNamedDeclaration();
-      return buildExportNamedDeclaration(nodePath, builder);
+      return buildExportNamedDeclaration(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+      );
     case "ForStatement":
       nodePath.assertForStatement();
-      return buildForStatement(nodePath, builder);
+      return buildForStatement(nodePath, functionBuilder, moduleBuilder);
     case "IfStatement":
       nodePath.assertIfStatement();
-      return buildIfStatement(nodePath, builder);
+      return buildIfStatement(nodePath, functionBuilder, moduleBuilder);
     case "ImportDeclaration":
       nodePath.assertImportDeclaration();
-      return buildImportDeclaration(nodePath, builder);
+      return buildImportDeclaration(nodePath, functionBuilder, moduleBuilder);
     case "ExpressionStatement":
       nodePath.assertExpressionStatement();
-      return buildExpressionStatement(nodePath, builder);
+      return buildExpressionStatement(nodePath, functionBuilder, moduleBuilder);
     case "FunctionDeclaration":
       nodePath.assertFunctionDeclaration();
-      return buildFunctionDeclaration(nodePath, builder);
+      return buildFunctionDeclaration(nodePath, functionBuilder, moduleBuilder);
     case "ReturnStatement":
       nodePath.assertReturnStatement();
-      return buildReturnStatement(nodePath, builder);
+      return buildReturnStatement(nodePath, functionBuilder, moduleBuilder);
     case "VariableDeclaration":
       nodePath.assertVariableDeclaration();
-      return buildVariableDeclaration(nodePath, builder);
+      return buildVariableDeclaration(nodePath, functionBuilder, moduleBuilder);
     case "WhileStatement":
       nodePath.assertWhileStatement();
-      return buildWhileStatement(nodePath, builder);
+      return buildWhileStatement(nodePath, functionBuilder, moduleBuilder);
     default:
-      return buildUnsupportedNode(nodePath, builder);
+      return buildUnsupportedNode(nodePath, functionBuilder);
   }
 }
