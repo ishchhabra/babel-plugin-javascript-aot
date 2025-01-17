@@ -1,7 +1,8 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
-import { BlockId, Identifier, Place } from "../../core";
+import { Identifier, Place } from "../../core";
+import { FunctionIR } from "../../core/FunctionIR";
 
 /**
  * Represents an object method in the IR.
@@ -16,7 +17,7 @@ export class ObjectMethodInstruction extends ValueInstruction {
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly key: Place,
     public readonly params: Place[],
-    public readonly body: BlockId,
+    public readonly body: FunctionIR,
     public readonly computed: boolean,
     public readonly generator: boolean,
     public readonly async: boolean,

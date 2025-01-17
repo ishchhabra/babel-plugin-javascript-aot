@@ -49,7 +49,7 @@ export function generateValueInstruction(
   } else if (instruction instanceof ObjectExpressionInstruction) {
     return generateObjectExpressionInstruction(instruction, generator);
   } else if (instruction instanceof ObjectMethodInstruction) {
-    return generateObjectMethodInstruction(instruction, functionIR, generator);
+    return generateObjectMethodInstruction(instruction, generator);
   } else if (instruction instanceof ObjectPropertyInstruction) {
     return generateObjectPropertyInstruction(instruction, generator);
   } else if (instruction instanceof UnaryExpressionInstruction) {

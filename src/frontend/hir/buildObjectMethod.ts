@@ -1,10 +1,8 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import {
-  createBlock,
   createIdentifier,
   createPlace,
-  JumpTerminal,
   makeInstructionId,
   ObjectMethodInstruction,
   Place,
@@ -19,8 +17,6 @@ export function buildObjectMethod(
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
 ): Place {
-  const currentBlock = functionBuilder.currentBlock;
-
   // Build the key place
   const keyPath = nodePath.get("key");
   const keyPlace = buildNode(keyPath, functionBuilder, moduleBuilder);
@@ -28,11 +24,6 @@ export function buildObjectMethod(
     throw new Error(`Unable to build key place for ${nodePath.type}`);
   }
 
-  // Build the body block.
-  const bodyBlock = createBlock(functionBuilder.environment);
-  functionBuilder.blocks.set(bodyBlock.id, bodyBlock);
-
-  functionBuilder.currentBlock = bodyBlock;
   buildBindings(nodePath, functionBuilder);
 
   const params = nodePath.get("params");
@@ -60,8 +51,11 @@ export function buildObjectMethod(
   });
 
   const bodyPath = nodePath.get("body");
-  functionBuilder.currentBlock = bodyBlock;
-  buildNode(bodyPath, functionBuilder, moduleBuilder);
+  const bodyIR = new FunctionIRBuilder(
+    bodyPath,
+    functionBuilder.environment,
+    moduleBuilder,
+  ).build();
 
   const methodIdentifier = createIdentifier(functionBuilder.environment);
   const methodPlace = createPlace(
@@ -72,14 +66,14 @@ export function buildObjectMethod(
     functionBuilder.environment.nextInstructionId++,
   );
 
-  currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new ObjectMethodInstruction(
       methodInstructionId,
       methodPlace,
       nodePath,
       keyPlace as Place,
       paramPlaces,
-      bodyBlock.id,
+      bodyIR,
       nodePath.node.computed,
       nodePath.node.generator,
       nodePath.node.async,
@@ -87,12 +81,5 @@ export function buildObjectMethod(
     ),
   );
 
-  // Set the terminal for the current block.
-  currentBlock.terminal = new JumpTerminal(
-    makeInstructionId(functionBuilder.environment.nextInstructionId++),
-    bodyBlock.id,
-  );
-
-  functionBuilder.currentBlock = currentBlock;
   return methodPlace;
 }
