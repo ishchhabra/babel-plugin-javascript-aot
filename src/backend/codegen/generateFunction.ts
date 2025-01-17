@@ -1,13 +1,13 @@
 import * as t from "@babel/types";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { CodeGenerator } from "../CodeGenerator";
-import { generateBasicBlock } from "./generateBlock";
+import { generateBlock } from "./generateBlock";
 
 export function generateFunction(
   functionIR: FunctionIR,
   generator: CodeGenerator,
 ): Array<t.Statement> {
-  const entryBlock = functionIR.blocks.keys().next().value!;
-  const statements = generateBasicBlock(entryBlock, functionIR, generator);
+  const entryBlock = functionIR.entryBlockId;
+  const statements = generateBlock(entryBlock, functionIR, generator);
   return statements;
 }

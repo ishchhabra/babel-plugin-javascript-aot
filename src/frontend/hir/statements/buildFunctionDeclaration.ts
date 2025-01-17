@@ -2,13 +2,11 @@ import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { getFunctionName } from "../../../babel-utils";
 import {
-  createBlock,
   createInstructionId,
   FunctionDeclarationInstruction,
-  JumpTerminal,
 } from "../../../ir";
 import { buildBindings } from "../bindings/buildBindings";
-import { buildNode } from "../buildNode";
+import { buildIdentifier } from "../buildIdentifier";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
@@ -17,14 +15,14 @@ export function buildFunctionDeclaration(
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
 ) {
-  const currentBlock = functionBuilder.currentBlock;
-
-  // Build the body block.
-  const bodyBlock = createBlock(functionBuilder.environment);
-  functionBuilder.blocks.set(bodyBlock.id, bodyBlock);
-
-  functionBuilder.currentBlock = bodyBlock;
   buildBindings(nodePath, functionBuilder);
+
+  const idPath = nodePath.get("id");
+  if (!idPath.isIdentifier()) {
+    throw new Error("Invalid function declaration");
+  }
+
+  const identifierPlace = buildIdentifier(idPath, functionBuilder);
 
   const params = nodePath.get("params");
   const paramPlaces = params.map((param) => {
@@ -51,8 +49,11 @@ export function buildFunctionDeclaration(
   });
 
   const bodyPath = nodePath.get("body");
-  functionBuilder.currentBlock = bodyBlock;
-  buildNode(bodyPath, functionBuilder, moduleBuilder);
+  const functionIR = new FunctionIRBuilder(
+    bodyPath,
+    functionBuilder.environment,
+    moduleBuilder,
+  ).build();
 
   const functionName = getFunctionName(nodePath);
   if (functionName === null) {
@@ -77,24 +78,18 @@ export function buildFunctionDeclaration(
     );
   }
 
-  currentBlock.instructions.push(
+  functionBuilder.currentBlock.instructions.push(
     new FunctionDeclarationInstruction(
       createInstructionId(functionBuilder.environment),
       functionPlace,
       nodePath,
+      identifierPlace,
       paramPlaces,
-      bodyBlock.id,
+      functionIR,
       nodePath.node.generator,
       nodePath.node.async,
     ),
   );
 
-  // Set the terminal for the current block.
-  currentBlock.terminal = new JumpTerminal(
-    createInstructionId(functionBuilder.environment),
-    bodyBlock.id,
-  );
-
-  functionBuilder.currentBlock = currentBlock;
   return functionPlace;
 }

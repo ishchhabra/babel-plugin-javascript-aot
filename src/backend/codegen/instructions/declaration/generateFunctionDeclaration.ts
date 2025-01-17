@@ -1,12 +1,10 @@
 import * as t from "@babel/types";
 import { FunctionDeclarationInstruction } from "../../../../ir";
-import { FunctionIR } from "../../../../ir/core/FunctionIR";
 import { CodeGenerator } from "../../../CodeGenerator";
-import { generateBlock } from "../../generateBlock";
+import { generateFunction } from "../../generateFunction";
 
 export function generateFunctionDeclarationInstruction(
   instruction: FunctionDeclarationInstruction,
-  functionIR: FunctionIR,
   generator: CodeGenerator,
 ): t.FunctionDeclaration {
   // Since this is the first time we're using param, it does not exist in the
@@ -17,12 +15,10 @@ export function generateFunctionDeclarationInstruction(
     return identifier;
   });
 
-  // Since this is the first time we're using the function name, it does not
-  // exist in the places map. We need to create a new identifier for it.
-  const idNode = t.identifier(instruction.place.identifier.name);
-  generator.places.set(instruction.place.id, idNode);
+  const idNode = generator.places.get(instruction.place.id)!;
+  t.assertIdentifier(idNode);
 
-  const body = generateBlock(instruction.body, functionIR, generator);
+  const body = generateFunction(instruction.functionIR, generator);
   const node = t.functionDeclaration(
     idNode,
     paramNodes,
@@ -30,5 +26,6 @@ export function generateFunctionDeclarationInstruction(
     instruction.generator,
     instruction.async,
   );
+  generator.places.set(instruction.place.id, node);
   return node;
 }

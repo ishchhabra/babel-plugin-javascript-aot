@@ -28,6 +28,7 @@ export class FunctionIRBuilder {
   }
 
   public build(): FunctionIR {
+    const functionId = makeFunctionIRId(this.environment.nextFunctionId++);
     buildBindings(this.nodePath, this);
 
     const bodyPath = this.nodePath.get("body");
@@ -35,10 +36,9 @@ export class FunctionIRBuilder {
       buildNode(statementPath, this, this.moduleBuilder);
     }
 
-    return new FunctionIR(
-      makeFunctionIRId(this.environment.nextFunctionId++),
-      this.blocks,
-    );
+    const functionIR = new FunctionIR(functionId, this.blocks);
+    this.moduleBuilder.functions.set(functionIR.id, functionIR);
+    return functionIR;
   }
 
   public registerDeclarationName(

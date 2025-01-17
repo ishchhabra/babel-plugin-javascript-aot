@@ -5,7 +5,7 @@ import {
   getDominators,
   getImmediateDominators,
 } from "../../pipeline/ssa/dominator-utils";
-import { BasicBlock, BlockId, makeBlockId } from "./Block";
+import { BasicBlock, BlockId } from "./Block";
 
 /**
  * Simulated opaque type for FunctionIR to prevent using normal numbers as ids
@@ -25,12 +25,16 @@ export class FunctionIR {
   public dominanceFrontier: Map<BlockId, Set<BlockId>>;
   public backEdges: Map<BlockId, Set<BlockId>>;
 
+  get entryBlockId(): BlockId {
+    return this.blocks.keys().next().value!;
+  }
+
   constructor(
     public readonly id: FunctionIRId,
     public blocks: Map<BlockId, BasicBlock>,
   ) {
     this.predecessors = getPredecessors(blocks);
-    this.dominators = getDominators(this.predecessors, makeBlockId(0));
+    this.dominators = getDominators(this.predecessors, this.entryBlockId);
     this.immediateDominators = getImmediateDominators(this.dominators);
     this.dominanceFrontier = getDominanceFrontier(
       this.predecessors,
@@ -41,7 +45,7 @@ export class FunctionIR {
 
   public recomputeCFG() {
     this.predecessors = getPredecessors(this.blocks);
-    this.dominators = getDominators(this.predecessors, makeBlockId(0));
+    this.dominators = getDominators(this.predecessors, this.entryBlockId);
     this.immediateDominators = getImmediateDominators(this.dominators);
     this.dominanceFrontier = getDominanceFrontier(
       this.predecessors,

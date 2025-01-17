@@ -35,11 +35,7 @@ export function generateInstruction(
     generateBindingIdentifierInstruction(instruction, generator);
     return [];
   } else if (instruction instanceof DeclarationInstruction) {
-    const statement = generateDeclarationInstruction(
-      instruction,
-      functionIR,
-      generator,
-    );
+    const statement = generateDeclarationInstruction(instruction, generator);
     return [statement];
   } else if (instruction instanceof ExpressionStatementInstruction) {
     const statement = generateExpressionStatementInstruction(

@@ -2,6 +2,7 @@ import _generate from "@babel/generator";
 import * as t from "@babel/types";
 import { ProjectUnit } from "../frontend/ProjectBuilder";
 import { BlockId, PlaceId } from "../ir";
+import { FunctionIR, makeFunctionIRId } from "../ir/core/FunctionIR";
 import { generateFunction } from "./codegen/generateFunction";
 
 const generate = (_generate as unknown as { default: typeof _generate })
@@ -21,10 +22,13 @@ export class CodeGenerator {
     public readonly projectUnit: ProjectUnit,
   ) {}
 
-  generate(): string {
+  public get entryFunction(): FunctionIR {
     const moduleIR = this.projectUnit.modules.get(this.path)!;
-    const functionIR = moduleIR.functions.values().next().value!;
-    const statements = generateFunction(functionIR, this);
+    return moduleIR.functions.get(makeFunctionIRId(0))!;
+  }
+
+  generate(): string {
+    const statements = generateFunction(this.entryFunction, this);
     const program = t.program(statements);
     return generate(program).code;
   }

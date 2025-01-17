@@ -5,15 +5,17 @@ import {
   DeclarationInstruction,
   InstructionId,
 } from "../../base";
-import { BlockId, Identifier, Place } from "../../core";
+import { Identifier, Place } from "../../core";
+import { FunctionIR } from "../../core/FunctionIR";
 
 export class FunctionDeclarationInstruction extends DeclarationInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly identifier: Place,
     public readonly params: Place[],
-    public readonly body: BlockId,
+    public readonly functionIR: FunctionIR,
     public readonly generator: boolean,
     public readonly async: boolean,
   ) {
@@ -25,8 +27,9 @@ export class FunctionDeclarationInstruction extends DeclarationInstruction {
       this.id,
       this.place,
       this.nodePath,
+      values.get(this.identifier.identifier) ?? this.identifier,
       this.params.map((param) => values.get(param.identifier) ?? param),
-      this.body,
+      this.functionIR,
       this.generator,
       this.async,
     );
