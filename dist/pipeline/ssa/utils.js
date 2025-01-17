@@ -1,0 +1,11 @@
+import { makeDeclarationId, makeIdentifierId, Identifier } from '../../ir/core/Identifier.js';
+import 'lodash-es';
+
+function createPhiIdentifier(environment, declarationId) {
+    declarationId ??= makeDeclarationId(environment.nextDeclarationId++);
+    const identifierId = makeIdentifierId(environment.nextPhiId++);
+    return new Identifier(identifierId, `phi_${identifierId}`, declarationId);
+}
+
+export { createPhiIdentifier };
+//# sourceMappingURL=utils.js.map
