@@ -1,3 +1,4 @@
+import { getSuccessors } from "../../frontend/cfg/getSuccessors";
 import { getBackEdges } from "../../pipeline/getBackEdges";
 import { getPredecessors } from "../../pipeline/getPredecessors";
 import {
@@ -19,11 +20,12 @@ export function makeFunctionIRId(id: number): FunctionIRId {
 }
 
 export class FunctionIR {
-  public predecessors: Map<BlockId, Set<BlockId>>;
-  public dominators: Map<BlockId, Set<BlockId>>;
-  public immediateDominators: Map<BlockId, BlockId | undefined>;
-  public dominanceFrontier: Map<BlockId, Set<BlockId>>;
-  public backEdges: Map<BlockId, Set<BlockId>>;
+  public predecessors!: Map<BlockId, Set<BlockId>>;
+  public successors!: Map<BlockId, Set<BlockId>>;
+  public dominators!: Map<BlockId, Set<BlockId>>;
+  public immediateDominators!: Map<BlockId, BlockId | undefined>;
+  public dominanceFrontier!: Map<BlockId, Set<BlockId>>;
+  public backEdges!: Map<BlockId, Set<BlockId>>;
 
   get entryBlockId(): BlockId {
     return this.blocks.keys().next().value!;
@@ -33,18 +35,12 @@ export class FunctionIR {
     public readonly id: FunctionIRId,
     public blocks: Map<BlockId, BasicBlock>,
   ) {
-    this.predecessors = getPredecessors(blocks);
-    this.dominators = getDominators(this.predecessors, this.entryBlockId);
-    this.immediateDominators = getImmediateDominators(this.dominators);
-    this.dominanceFrontier = getDominanceFrontier(
-      this.predecessors,
-      this.immediateDominators,
-    );
-    this.backEdges = getBackEdges(blocks, this.dominators, this.predecessors);
+    this.computeCFG();
   }
 
-  public recomputeCFG() {
+  private computeCFG() {
     this.predecessors = getPredecessors(this.blocks);
+    this.successors = getSuccessors(this.predecessors);
     this.dominators = getDominators(this.predecessors, this.entryBlockId);
     this.immediateDominators = getImmediateDominators(this.dominators);
     this.dominanceFrontier = getDominanceFrontier(
@@ -56,5 +52,9 @@ export class FunctionIR {
       this.dominators,
       this.predecessors,
     );
+  }
+
+  public recomputeCFG() {
+    this.computeCFG();
   }
 }

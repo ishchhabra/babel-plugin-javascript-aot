@@ -2,6 +2,7 @@ import { CompilerOptions } from "../compile";
 import { ProjectUnit } from "../frontend/ProjectBuilder";
 import { BasicBlock, BlockId } from "../ir";
 import { LateOptimizer } from "./late-optimizer/LateOptimizer";
+import { MergeConsecutiveBlocksPass } from "./MergeConsecutiveBlocksPass";
 import { Optimizer } from "./optimizer/Optimizer";
 import { SSABuilder } from "./ssa/SSABuilder";
 import { SSAEliminator } from "./ssa/SSAEliminator";
@@ -23,6 +24,8 @@ export class Pipeline {
     for (const moduleName of this.projectUnit.postOrder.toReversed()) {
       const moduleIR = this.projectUnit.modules.get(moduleName)!;
       for (const functionIR of moduleIR.functions.values()) {
+        new MergeConsecutiveBlocksPass(functionIR, moduleIR).run();
+
         const ssaBuilderResult = new SSABuilder(functionIR, moduleIR).build();
 
         if (this.options.enableOptimizer) {
