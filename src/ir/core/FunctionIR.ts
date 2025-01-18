@@ -1,11 +1,11 @@
-import { getBackEdges } from "../../frontend/cfg/getBackEdges";
-import { getPredecessors } from "../../frontend/cfg/getPredecessors";
-import { getSuccessors } from "../../frontend/cfg/getSuccessors";
 import {
+  getBackEdges,
   getDominanceFrontier,
   getDominators,
   getImmediateDominators,
-} from "../../pipeline/ssa/dominator-utils";
+  getPredecessors,
+  getSuccessors,
+} from "../../frontend/cfg";
 import { BasicBlock, BlockId } from "./Block";
 
 /**
