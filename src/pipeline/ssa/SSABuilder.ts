@@ -49,10 +49,7 @@ export class SSABuilder {
           hasPhi.add(blockId);
 
           // Register the phi node declaration.
-          this.moduleIR.environment.declToPlaces.set(declarationId, [
-            ...places,
-            { blockId, place },
-          ]);
+          places.push({ blockId, place });
 
           // If y is not already a definition block for declarationId, add it to
           // the work list.
