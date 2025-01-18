@@ -6,10 +6,12 @@ import {
   MemoryInstruction,
   StoreLocalInstruction,
 } from "../../../../ir";
+import { LoadPhiInstruction } from "../../../../ir/instructions/memory/LoadPhiInstruction";
 import { CodeGenerator } from "../../../CodeGenerator";
 import { generateCopyInstruction } from "./generateCopy";
 import { generateLoadGlobalInstruction } from "./generateLoadGlobal";
 import { generateLoadLocalInstruction } from "./generateLoadLocal";
+import { generateLoadPhiInstruction } from "./generateLoadPhi";
 import { generateStoreLocalInstruction } from "./generateStoreLocal";
 
 export function generateMemoryInstruction(
@@ -22,6 +24,8 @@ export function generateMemoryInstruction(
     return generateLoadGlobalInstruction(instruction, generator);
   } else if (instruction instanceof LoadLocalInstruction) {
     return generateLoadLocalInstruction(instruction, generator);
+  } else if (instruction instanceof LoadPhiInstruction) {
+    return generateLoadPhiInstruction();
   } else if (instruction instanceof StoreLocalInstruction) {
     return generateStoreLocalInstruction(instruction, generator);
   }
