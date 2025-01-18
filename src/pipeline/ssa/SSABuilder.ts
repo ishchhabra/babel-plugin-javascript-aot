@@ -13,7 +13,7 @@ import { LoadPhiInstruction } from "../../ir/instructions/memory/LoadPhiInstruct
 import { Phi } from "./Phi";
 import { createPhiIdentifier } from "./utils";
 
-interface SSA {
+export interface SSA {
   phis: Set<Phi>;
 }
 
@@ -162,7 +162,7 @@ export class SSABuilder {
   ): T | LoadPhiInstruction {
     if (
       instruction instanceof LoadLocalInstruction &&
-      values.has(instruction.place.identifier)
+      values.has(instruction.value.identifier)
     ) {
       return new LoadPhiInstruction(
         instruction.id,
