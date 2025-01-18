@@ -32,6 +32,7 @@ export class Pipeline {
           const optimizerResult = new Optimizer(
             functionIR,
             moduleIR,
+            ssaBuilderResult,
             this.projectUnit,
             this.options,
             context,

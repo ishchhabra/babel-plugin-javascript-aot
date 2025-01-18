@@ -4,9 +4,11 @@ import {
   BaseInstruction,
   BasicBlock,
   BinaryExpressionInstruction,
+  BranchTerminal,
   ExportNamedDeclarationInstruction,
   ExportSpecifierInstruction,
   IdentifierId,
+  JumpTerminal,
   LiteralInstruction,
   LoadGlobalInstruction,
   LoadLocalInstruction,
@@ -16,6 +18,9 @@ import {
 } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
+import { LoadPhiInstruction } from "../../ir/instructions/memory/LoadPhiInstruction";
+import { Phi } from "../ssa/Phi";
+import { SSA } from "../ssa/SSABuilder";
 /**
  * A pass that propagates constant values through the program by evaluating expressions
  * with known constant operands at compile time. For example:
@@ -41,6 +46,7 @@ export class ConstantPropagationPass {
     private readonly functionIR: FunctionIR,
     private readonly moduleUnit: ModuleIR,
     private readonly projectUnit: ProjectUnit,
+    private readonly ssa: SSA,
     private readonly context: Map<
       string,
       Map<string, Map<IdentifierId, TPrimitiveValue>>
@@ -76,6 +82,71 @@ export class ConstantPropagationPass {
         block.instructions[index] = result;
       }
     }
+
+    if (block.terminal instanceof BranchTerminal) {
+      this.propagateConstantsInBranchTerminal(block);
+    }
+  }
+
+  private propagateConstantsInBranchTerminal(block: BasicBlock) {
+    const terminal = block.terminal;
+    if (!(terminal instanceof BranchTerminal)) {
+      throw new Error("Terminal is not a branch terminal");
+    }
+
+    const test = this.constants.get(terminal.test.identifier.id);
+    if (test === undefined) {
+      return false;
+    }
+
+    const targetBlockId = test ? terminal.consequent : terminal.alternate;
+    block.terminal = new JumpTerminal(terminal.id, targetBlockId);
+
+    const deadBlockId = test ? terminal.alternate : terminal.consequent;
+    for (const phi of this.ssa.phis) {
+      // If the phi *lives* in the dead block => remove the entire phi
+      // We do not need to remove the load phi instructions, as they are
+      // never going to be visited since the block is dead.
+      if (phi.blockId === deadBlockId) {
+        this.ssa.phis.delete(phi);
+        continue;
+      }
+
+      // If a phi operand references the dead block as a predecessor => remove that operand
+      for (const [operandBlockId] of phi.operands) {
+        const dominators = this.functionIR.dominators.get(operandBlockId)!;
+        if (dominators.has(deadBlockId)) {
+          phi.operands.delete(operandBlockId);
+        }
+
+        if (phi.operands.size === 1) {
+          this.degradeSingleOperandPhi(phi);
+        }
+      }
+    }
+  }
+
+  private degradeSingleOperandPhi(phi: Phi) {
+    const [[, singleOperandPlace]] = phi.operands.entries();
+    const phiBlock = this.functionIR.blocks.get(phi.blockId);
+    if (phiBlock === undefined) {
+      throw new Error(`Block ${phi.blockId} not found`);
+    }
+
+    phiBlock.instructions = phiBlock.instructions.map((instr) => {
+      if (
+        instr instanceof LoadPhiInstruction &&
+        phi.place.id === instr.value.id
+      ) {
+        return new LoadLocalInstruction(
+          instr.id,
+          instr.place,
+          instr.nodePath,
+          singleOperandPlace,
+        );
+      }
+      return instr;
+    });
   }
 
   private evaluateInstruction(instruction: BaseInstruction) {

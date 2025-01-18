@@ -4,6 +4,7 @@ import { BasicBlock, BlockId } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
 import { ConstantPropagationPass } from "../passes/ConstantPropagationPass";
+import { SSA } from "../ssa/SSABuilder";
 
 interface OptimizerResult {
   blocks: Map<BlockId, BasicBlock>;
@@ -13,6 +14,7 @@ export class Optimizer {
   constructor(
     private readonly functionIR: FunctionIR,
     private readonly moduleIR: ModuleIR,
+    private readonly ssa: SSA,
     private readonly projectUnit: ProjectUnit,
     private readonly options: CompilerOptions,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,6 +28,7 @@ export class Optimizer {
         this.functionIR,
         this.moduleIR,
         this.projectUnit,
+        this.ssa,
         this.context,
       ).run();
       blocks = constantPropagationResult.blocks;
