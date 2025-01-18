@@ -25,7 +25,7 @@ export function generateMemoryInstruction(
   } else if (instruction instanceof LoadLocalInstruction) {
     return generateLoadLocalInstruction(instruction, generator);
   } else if (instruction instanceof LoadPhiInstruction) {
-    return generateLoadPhiInstruction();
+    return generateLoadPhiInstruction(instruction, generator);
   } else if (instruction instanceof StoreLocalInstruction) {
     return generateStoreLocalInstruction(instruction, generator);
   }
