@@ -19,6 +19,7 @@ import {
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
 import { LoadPhiInstruction } from "../../ir/instructions/memory/LoadPhiInstruction";
+import { BaseOptimizationPass } from "../late-optimizer/OptimizationPass";
 import { Phi } from "../ssa/Phi";
 import { SSA } from "../ssa/SSABuilder";
 /**
@@ -39,11 +40,11 @@ import { SSA } from "../ssa/SSABuilder";
  * const c = 8;        // Computed at compile time!
  * ```
  */
-export class ConstantPropagationPass {
+export class ConstantPropagationPass extends BaseOptimizationPass {
   private readonly constants: Map<IdentifierId, TPrimitiveValue>;
 
   constructor(
-    private readonly functionIR: FunctionIR,
+    protected readonly functionIR: FunctionIR,
     private readonly moduleUnit: ModuleIR,
     private readonly projectUnit: ProjectUnit,
     private readonly ssa: SSA,
@@ -52,6 +53,8 @@ export class ConstantPropagationPass {
       Map<string, Map<IdentifierId, TPrimitiveValue>>
     >,
   ) {
+    super(functionIR);
+
     let globalConstants = this.context.get("constants");
     if (globalConstants === undefined) {
       globalConstants = new Map<string, Map<IdentifierId, TPrimitiveValue>>();
@@ -67,28 +70,66 @@ export class ConstantPropagationPass {
     this.constants = constants;
   }
 
-  public run() {
-    for (const block of this.functionIR.blocks.values()) {
-      this.propagateConstantsInBlock(block);
+  public step() {
+    let changed = false;
+
+    for (const phi of this.ssa.phis) {
+      this.evaluatePhi(phi);
     }
 
-    return { blocks: this.functionIR.blocks };
+    for (const block of this.functionIR.blocks.values()) {
+      changed ||= this.propagateConstantsInBlock(block);
+    }
+
+    return { changed };
   }
 
-  private propagateConstantsInBlock(block: BasicBlock) {
-    for (const [index, instruction] of block.instructions.entries()) {
-      const result = this.evaluateInstruction(instruction);
-      if (result !== undefined) {
-        block.instructions[index] = result;
+  private evaluatePhi(phi: Phi) {
+    let value: TPrimitiveValue | undefined = undefined;
+    for (const [, operand] of phi.operands) {
+      if (!this.constants.has(operand.identifier.id)) {
+        return undefined;
+      }
+
+      const operandValue = this.constants.get(operand.identifier.id);
+      if (value === undefined) {
+        value = operandValue;
+        continue;
+      }
+
+      if (operandValue !== value) {
+        return undefined;
       }
     }
 
-    if (block.terminal instanceof BranchTerminal) {
-      this.propagateConstantsInBranchTerminal(block);
-    }
+    this.constants.set(phi.place.identifier.id, value);
   }
 
-  private propagateConstantsInBranchTerminal(block: BasicBlock) {
+  private propagateConstantsInBlock(block: BasicBlock): boolean {
+    let changed = false;
+    for (const [index, instruction] of block.instructions.entries()) {
+      const result = this.evaluateInstruction(instruction);
+      if (result === undefined) {
+        continue;
+      }
+
+      if (result === null) {
+        changed = true;
+        continue;
+      }
+
+      block.instructions[index] = result;
+      changed = true;
+    }
+
+    if (block.terminal instanceof BranchTerminal) {
+      changed ||= this.propagateConstantsInBranchTerminal(block);
+    }
+
+    return changed;
+  }
+
+  private propagateConstantsInBranchTerminal(block: BasicBlock): boolean {
     const terminal = block.terminal;
     if (!(terminal instanceof BranchTerminal)) {
       throw new Error("Terminal is not a branch terminal");
@@ -124,6 +165,8 @@ export class ConstantPropagationPass {
         }
       }
     }
+
+    return true;
   }
 
   private degradeSingleOperandPhi(phi: Phi) {
@@ -149,6 +192,14 @@ export class ConstantPropagationPass {
     });
   }
 
+  /**
+   * Evaluates the instruction and returns the new instruction if the instruction
+   * was changed, null if the constant map was updated but the instruction remains unchanged,
+   * or undefined if no changes were made at all.
+   *
+   * @returns The new instruction if the instruction was changed, null if partial propagation occurred,
+   *          or undefined if no changes were made.
+   */
   private evaluateInstruction(instruction: BaseInstruction) {
     if (instruction instanceof LiteralInstruction) {
       return this.evaluateLiteralInstruction(instruction);
@@ -162,6 +213,8 @@ export class ConstantPropagationPass {
       return this.evaluateStoreLocalInstruction(instruction);
     } else if (instruction instanceof LoadLocalInstruction) {
       return this.evaluateLoadLocalInstruction(instruction);
+    } else if (instruction instanceof LoadPhiInstruction) {
+      return this.evaluateLoadPhiInstruction(instruction);
     } else if (instruction instanceof ExportSpecifierInstruction) {
       return this.evaluateExportSpecifierInstruction(instruction);
     } else if (instruction instanceof ExportNamedDeclarationInstruction) {
@@ -172,7 +225,15 @@ export class ConstantPropagationPass {
   }
 
   private evaluateLiteralInstruction(instruction: LiteralInstruction) {
+    if (this.constants.has(instruction.place.identifier.id)) {
+      return undefined;
+    }
+
+    if (instruction.value === undefined) {
+      throw new Error("Literal value is undefined");
+    }
     this.constants.set(instruction.place.identifier.id, instruction.value);
+    return null;
   }
 
   private evaluateBinaryExpressionInstruction(
@@ -296,13 +357,17 @@ export class ConstantPropagationPass {
   }
 
   private evaluateStoreLocalInstruction(instruction: StoreLocalInstruction) {
+    if (this.constants.has(instruction.lval.identifier.id)) {
+      return undefined;
+    }
+
     if (!this.constants.has(instruction.value.identifier.id)) {
       return undefined;
     }
 
     const value = this.constants.get(instruction.value.identifier.id);
     this.constants.set(instruction.lval.identifier.id, value);
-    return undefined;
+    return null;
   }
 
   private evaluateLoadLocalInstruction(instruction: LoadLocalInstruction) {
@@ -314,21 +379,47 @@ export class ConstantPropagationPass {
     this.constants.set(instruction.place.identifier.id, value);
   }
 
+  private evaluateLoadPhiInstruction(instruction: LoadPhiInstruction) {
+    if (!this.constants.has(instruction.value.identifier.id)) {
+      return undefined;
+    }
+
+    const value = this.constants.get(instruction.value.identifier.id);
+    if (value === undefined) {
+      throw new Error("Literal value is undefined");
+    }
+    this.constants.set(instruction.place.identifier.id, value);
+    return new LiteralInstruction(
+      instruction.id,
+      instruction.place,
+      instruction.nodePath,
+      value,
+    );
+  }
+
   private evaluateExportSpecifierInstruction(
     instruction: ExportSpecifierInstruction,
   ) {
+    if (this.constants.has(instruction.place.identifier.id)) {
+      return undefined;
+    }
+
     if (!this.constants.has(instruction.local.identifier.id)) {
       return undefined;
     }
 
     const value = this.constants.get(instruction.local.identifier.id);
     this.constants.set(instruction.place.identifier.id, value);
-    return undefined;
+    return null;
   }
 
   private evaluateExportNamedDeclarationInstruction(
     instruction: ExportNamedDeclarationInstruction,
   ) {
+    if (this.constants.has(instruction.place.identifier.id)) {
+      return undefined;
+    }
+
     const declaration = instruction.declaration;
     // For specifiers, they are already evaluated by handling the export specifier instruction.
     if (declaration === undefined) {
@@ -341,7 +432,7 @@ export class ConstantPropagationPass {
 
     const value = this.constants.get(declaration.identifier.id);
     this.constants.set(instruction.place.identifier.id, value);
-    return undefined;
+    return null;
   }
 
   private evaluateLoadGlobalInstruction(instruction: LoadGlobalInstruction) {
