@@ -1,4 +1,4 @@
-import { BasicBlock, BlockId } from "../ir";
+import { BasicBlock, BlockId } from "../../ir";
 
 export function getBackEdges(
   blocks: Map<BlockId, BasicBlock>,

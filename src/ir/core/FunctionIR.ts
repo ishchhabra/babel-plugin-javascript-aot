@@ -1,6 +1,6 @@
+import { getBackEdges } from "../../frontend/cfg/getBackEdges";
+import { getPredecessors } from "../../frontend/cfg/getPredecessors";
 import { getSuccessors } from "../../frontend/cfg/getSuccessors";
-import { getBackEdges } from "../../pipeline/getBackEdges";
-import { getPredecessors } from "../../pipeline/getPredecessors";
 import {
   getDominanceFrontier,
   getDominators,
