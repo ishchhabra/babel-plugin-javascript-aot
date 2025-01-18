@@ -1,5 +1,5 @@
 import * as t from "@babel/types";
-import { LoadPhiInstruction } from "../../../../ir/instructions/memory/LoadPhiInstruction";
+import { LoadPhiInstruction } from "../../../../ir";
 import { CodeGenerator } from "../../../CodeGenerator";
 
 export function generateLoadPhiInstruction(

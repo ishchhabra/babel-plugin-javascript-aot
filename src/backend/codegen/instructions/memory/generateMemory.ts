@@ -3,10 +3,10 @@ import {
   CopyInstruction,
   LoadGlobalInstruction,
   LoadLocalInstruction,
+  LoadPhiInstruction,
   MemoryInstruction,
   StoreLocalInstruction,
 } from "../../../../ir";
-import { LoadPhiInstruction } from "../../../../ir/instructions/memory/LoadPhiInstruction";
 import { CodeGenerator } from "../../../CodeGenerator";
 import { generateCopyInstruction } from "./generateCopy";
 import { generateLoadGlobalInstruction } from "./generateLoadGlobal";

@@ -12,13 +12,13 @@ import {
   LiteralInstruction,
   LoadGlobalInstruction,
   LoadLocalInstruction,
+  LoadPhiInstruction,
   StoreLocalInstruction,
   TPrimitiveValue,
   UnaryExpressionInstruction,
 } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
-import { LoadPhiInstruction } from "../../ir/instructions/memory/LoadPhiInstruction";
 import { BaseOptimizationPass } from "../late-optimizer/OptimizationPass";
 import { Phi } from "../ssa/Phi";
 import { SSA } from "../ssa/SSABuilder";

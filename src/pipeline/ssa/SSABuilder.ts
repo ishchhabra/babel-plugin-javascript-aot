@@ -5,11 +5,11 @@ import {
   DeclarationId,
   Identifier,
   LoadLocalInstruction,
+  LoadPhiInstruction,
   Place,
 } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
-import { LoadPhiInstruction } from "../../ir/instructions/memory/LoadPhiInstruction";
 import { Phi } from "./Phi";
 import { createPhiIdentifier } from "./utils";
 
