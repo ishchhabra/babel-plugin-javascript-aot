@@ -14,7 +14,7 @@ export function generateObjectMethodInstruction(
 
   t.assertExpression(key);
 
-  const params = instruction.params.map((param) => {
+  const params = instruction.body.params.map((param) => {
     // Since this is the first time we're using param, it does not exist in the
     // places map. We need to create a new identifier for it.
     const identifier = t.identifier(param.identifier.name);

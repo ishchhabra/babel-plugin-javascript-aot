@@ -48,6 +48,7 @@ export class ModuleIRBuilder {
       programPath,
       this.environment,
       this,
+      [],
     ).build();
     this.functions.set(functionIR.id, functionIR);
 

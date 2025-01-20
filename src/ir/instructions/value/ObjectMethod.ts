@@ -16,7 +16,6 @@ export class ObjectMethodInstruction extends ValueInstruction {
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly key: Place,
-    public readonly params: Place[],
     public readonly body: FunctionIR,
     public readonly computed: boolean,
     public readonly generator: boolean,
@@ -32,7 +31,6 @@ export class ObjectMethodInstruction extends ValueInstruction {
       this.place,
       this.nodePath,
       values.get(this.key.identifier) ?? this.key,
-      this.params.map((param) => values.get(param.identifier) ?? param),
       this.body,
       this.computed,
       this.generator,
@@ -42,6 +40,6 @@ export class ObjectMethodInstruction extends ValueInstruction {
   }
 
   getReadPlaces(): Place[] {
-    return [this.key, ...this.params];
+    return [this.key];
   }
 }

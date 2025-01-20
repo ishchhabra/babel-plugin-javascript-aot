@@ -20,7 +20,7 @@ export function buildObjectMethod(
   // Build the key place
   const keyPath = nodePath.get("key");
   const keyPlace = buildNode(keyPath, functionBuilder, moduleBuilder);
-  if (keyPlace === undefined) {
+  if (keyPlace === undefined || Array.isArray(keyPlace)) {
     throw new Error(`Unable to build key place for ${nodePath.type}`);
   }
 
@@ -55,6 +55,7 @@ export function buildObjectMethod(
     bodyPath,
     functionBuilder.environment,
     moduleBuilder,
+    paramPlaces,
   ).build();
 
   const methodIdentifier = createIdentifier(functionBuilder.environment);
@@ -71,8 +72,7 @@ export function buildObjectMethod(
       methodInstructionId,
       methodPlace,
       nodePath,
-      keyPlace as Place,
-      paramPlaces,
+      keyPlace,
       bodyIR,
       nodePath.node.computed,
       nodePath.node.generator,

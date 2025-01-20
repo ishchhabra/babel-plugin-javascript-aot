@@ -14,7 +14,6 @@ export class FunctionDeclarationInstruction extends DeclarationInstruction {
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly identifier: Place,
-    public readonly params: Place[],
     public readonly functionIR: FunctionIR,
     public readonly generator: boolean,
     public readonly async: boolean,
@@ -28,7 +27,6 @@ export class FunctionDeclarationInstruction extends DeclarationInstruction {
       this.place,
       this.nodePath,
       values.get(this.identifier.identifier) ?? this.identifier,
-      this.params.map((param) => values.get(param.identifier) ?? param),
       this.functionIR,
       this.generator,
       this.async,
@@ -36,7 +34,7 @@ export class FunctionDeclarationInstruction extends DeclarationInstruction {
   }
 
   getReadPlaces(): Place[] {
-    return this.params;
+    return [this.identifier];
   }
 
   public get isPure(): boolean {

@@ -21,6 +21,7 @@ export class FunctionIRBuilder {
     public readonly nodePath: NodePath<t.Program | t.BlockStatement>,
     public readonly environment: Environment,
     public readonly moduleBuilder: ModuleIRBuilder,
+    public readonly params: Place[],
   ) {
     const entryBlock = createBlock(environment);
     this.blocks.set(entryBlock.id, entryBlock);
@@ -36,7 +37,7 @@ export class FunctionIRBuilder {
       buildNode(statementPath, this, this.moduleBuilder);
     }
 
-    const functionIR = new FunctionIR(functionId, this.blocks);
+    const functionIR = new FunctionIR(functionId, this.params, this.blocks);
     this.moduleBuilder.functions.set(functionIR.id, functionIR);
     return functionIR;
   }

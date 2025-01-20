@@ -9,7 +9,7 @@ export function generateFunctionDeclarationInstruction(
 ): t.FunctionDeclaration {
   // Since this is the first time we're using param, it does not exist in the
   // places map. We need to create a new identifier for it.
-  const paramNodes = instruction.params.map((param) => {
+  const paramNodes = instruction.functionIR.params.map((param) => {
     const identifier = t.identifier(param.identifier.name);
     generator.places.set(param.id, identifier);
     return identifier;

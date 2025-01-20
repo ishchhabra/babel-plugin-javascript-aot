@@ -7,6 +7,7 @@ import {
   getSuccessors,
 } from "../../frontend/cfg";
 import { BasicBlock, BlockId } from "./Block";
+import { Place } from "./Place";
 
 /**
  * Simulated opaque type for FunctionIR to prevent using normal numbers as ids
@@ -33,6 +34,7 @@ export class FunctionIR {
 
   constructor(
     public readonly id: FunctionIRId,
+    public readonly params: Place[],
     public blocks: Map<BlockId, BasicBlock>,
   ) {
     this.computeCFG();

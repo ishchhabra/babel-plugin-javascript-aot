@@ -53,6 +53,7 @@ export function buildFunctionDeclaration(
     bodyPath,
     functionBuilder.environment,
     moduleBuilder,
+    paramPlaces,
   ).build();
 
   const functionName = getFunctionName(nodePath);
@@ -84,7 +85,6 @@ export function buildFunctionDeclaration(
       functionPlace,
       nodePath,
       identifierPlace,
-      paramPlaces,
       functionIR,
       nodePath.node.generator,
       nodePath.node.async,
