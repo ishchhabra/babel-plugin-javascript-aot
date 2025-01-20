@@ -8,6 +8,8 @@ export const CompilerOptionsSchema = z.object({
   enableOptimizer: z.boolean().default(true),
   /** Whether to enable the constant propagation pass */
   enableConstantPropagationPass: z.boolean().default(true),
+  /** Whether to enable the function inlining pass */
+  enableFunctionInliningPass: z.boolean().default(true),
 
   /** Whether to enable the late optimizer */
   enableLateOptimizer: z.boolean().default(true),

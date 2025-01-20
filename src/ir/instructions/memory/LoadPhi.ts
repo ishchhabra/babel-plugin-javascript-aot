@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 export class LoadPhiInstruction extends MemoryInstruction {
   constructor(
@@ -11,6 +17,18 @@ export class LoadPhiInstruction extends MemoryInstruction {
     public readonly value: Place,
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): LoadPhiInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new LoadPhiInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.value,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): LoadPhiInstruction {

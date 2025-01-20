@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 /**
  * Represents a unary expression.
@@ -19,6 +25,19 @@ export class UnaryExpressionInstruction extends ValueInstruction {
     public readonly argument: Place,
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): UnaryExpressionInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new UnaryExpressionInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.operator,
+      this.argument,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {

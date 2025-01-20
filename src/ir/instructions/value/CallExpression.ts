@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 /**
  * Represents a call expression.
@@ -13,12 +19,25 @@ export class CallExpressionInstruction extends ValueInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,
-    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly nodePath: NodePath<t.CallExpression> | undefined,
     public readonly callee: Place,
     // Using args instead of arguments since arguments is a reserved word
     public readonly args: Place[],
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): CallExpressionInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new CallExpressionInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.callee,
+      this.args,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {

@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 /**
  * Represents a memory instruction that copies the value of one place to another.
@@ -17,6 +23,19 @@ export class CopyInstruction extends MemoryInstruction {
     public readonly value: Place,
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): CopyInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new CopyInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.lval,
+      this.value,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): CopyInstruction {

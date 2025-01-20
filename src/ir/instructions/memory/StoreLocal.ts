@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 /**
  * Represents a memory instruction that stores a value at a given place.
@@ -21,6 +27,20 @@ export class StoreLocalInstruction extends MemoryInstruction {
     public readonly type: "let" | "const" | "var",
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): StoreLocalInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new StoreLocalInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.lval,
+      this.value,
+      this.type,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): StoreLocalInstruction {

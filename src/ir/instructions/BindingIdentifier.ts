@@ -1,7 +1,9 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../environment";
 import { BaseInstruction, InstructionId } from "../base";
 import { Place } from "../core";
+import { createIdentifier, createInstructionId, createPlace } from "../utils";
 
 /**
  * Represents a binding identifier in the IR.
@@ -22,6 +24,18 @@ export class BindingIdentifierInstruction extends BaseInstruction {
     public readonly name: string,
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): BindingIdentifierInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new BindingIdentifierInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.name,
+    );
   }
 
   rewriteInstruction(): BaseInstruction {

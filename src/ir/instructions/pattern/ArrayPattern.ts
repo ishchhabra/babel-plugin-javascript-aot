@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, PatternInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 /**
  * Represents an array pattern in the IR.
@@ -17,6 +23,18 @@ export class ArrayPatternInstruction extends PatternInstruction {
     public readonly elements: Place[],
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): ArrayPatternInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new ArrayPatternInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.elements,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {

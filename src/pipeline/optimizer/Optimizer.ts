@@ -3,7 +3,9 @@ import { ProjectUnit } from "../../frontend/ProjectBuilder";
 import { BasicBlock, BlockId } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
+import { CallGraph } from "../analysis/CallGraph";
 import { ConstantPropagationPass } from "../passes/ConstantPropagationPass";
+import { FunctionInliningPass } from "../passes/FunctionInliningPass";
 import { SSA } from "../ssa/SSABuilder";
 
 interface OptimizerResult {
@@ -14,6 +16,7 @@ export class Optimizer {
   constructor(
     private readonly functionIR: FunctionIR,
     private readonly moduleIR: ModuleIR,
+    private readonly callGraph: CallGraph,
     private readonly ssa: SSA,
     private readonly projectUnit: ProjectUnit,
     private readonly options: CompilerOptions,
@@ -32,6 +35,15 @@ export class Optimizer {
         this.context,
       ).run();
       blocks = constantPropagationResult.blocks;
+    }
+
+    if (this.options.enableFunctionInliningPass) {
+      const functionInliningResult = new FunctionInliningPass(
+        this.functionIR,
+        this.moduleIR,
+        this.callGraph,
+      ).run();
+      blocks = functionInliningResult.blocks;
     }
 
     return { blocks };

@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ModuleInstruction } from "../../base";
 import { Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 /**
  * Represents an export default declaration.
@@ -17,6 +23,18 @@ export class ExportDefaultDeclarationInstruction extends ModuleInstruction {
     public readonly declaration: Place,
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): ExportDefaultDeclarationInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new ExportDefaultDeclarationInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.declaration,
+    );
   }
 
   rewriteInstruction(): BaseInstruction {

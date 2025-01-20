@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 /**
  * Represents an instruction that loads a value from one place to another place.
@@ -18,6 +24,18 @@ export class LoadLocalInstruction extends MemoryInstruction {
     public readonly value: Place,
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): LoadLocalInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new LoadLocalInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.value,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {

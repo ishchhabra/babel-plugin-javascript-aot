@@ -1,6 +1,7 @@
 import { CompilerOptions } from "../compile";
 import { ProjectUnit } from "../frontend/ProjectBuilder";
 import { BasicBlock, BlockId } from "../ir";
+import { CallGraphBuilder } from "./analysis/CallGraph";
 import { LateOptimizer } from "./late-optimizer/LateOptimizer";
 import { MergeConsecutiveBlocksPass } from "./MergeConsecutiveBlocksPass";
 import { Optimizer } from "./optimizer/Optimizer";
@@ -23,6 +24,7 @@ export class Pipeline {
 
     for (const moduleName of this.projectUnit.postOrder.toReversed()) {
       const moduleIR = this.projectUnit.modules.get(moduleName)!;
+      const callGraph = new CallGraphBuilder(moduleIR).build();
       for (const functionIR of moduleIR.functions.values()) {
         new MergeConsecutiveBlocksPass(functionIR, moduleIR).run();
 
@@ -32,6 +34,7 @@ export class Pipeline {
           const optimizerResult = new Optimizer(
             functionIR,
             moduleIR,
+            callGraph,
             ssaBuilderResult,
             this.projectUnit,
             this.options,

@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 /**
  * Represents an array expression.
@@ -17,6 +23,18 @@ export class ArrayExpressionInstruction extends ValueInstruction {
     public readonly elements: Place[],
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): ArrayExpressionInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new ArrayExpressionInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.elements,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {

@@ -1,9 +1,9 @@
-import { BaseInstruction } from "../base";
-
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
-import { InstructionId } from "../base";
+import { Environment } from "../../environment";
+import { BaseInstruction, InstructionId } from "../base";
 import { Identifier, Place } from "../core";
+import { createIdentifier, createInstructionId, createPlace } from "../utils";
 
 /**
  * Represents a node that is not supported by the IR. This is used to bail out
@@ -20,6 +20,18 @@ export class UnsupportedNodeInstruction extends BaseInstruction {
     public readonly node: t.Node,
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): UnsupportedNodeInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new UnsupportedNodeInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.node,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {

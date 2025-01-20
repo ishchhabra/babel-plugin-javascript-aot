@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 /**
  * Represents a member expression.
@@ -20,6 +26,20 @@ export class MemberExpressionInstruction extends ValueInstruction {
     public readonly computed: boolean,
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): MemberExpressionInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new MemberExpressionInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.object,
+      this.property,
+      this.computed,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {

@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, JSXInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 /**
  * Represents a JSX element in the IR.
@@ -20,6 +26,20 @@ export class JSXElementInstruction extends JSXInstruction {
     public readonly children: Place[],
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): JSXElementInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new JSXElementInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.openingElement,
+      this.closingElement,
+      this.children,
+    );
   }
 
   rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {

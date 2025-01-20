@@ -1,7 +1,13 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Place } from "../../core";
+import {
+  createIdentifier,
+  createInstructionId,
+  createPlace,
+} from "../../utils";
 
 export type TPrimitiveValue =
   | string
@@ -28,6 +34,18 @@ export class LiteralInstruction extends ValueInstruction {
     public readonly value: TPrimitiveValue,
   ) {
     super(id, place, nodePath);
+  }
+
+  public clone(environment: Environment): LiteralInstruction {
+    const identifier = createIdentifier(environment);
+    const place = createPlace(identifier, environment);
+    const instructionId = createInstructionId(environment);
+    return new LiteralInstruction(
+      instructionId,
+      place,
+      this.nodePath,
+      this.value,
+    );
   }
 
   rewriteInstruction(): BaseInstruction {

@@ -1,5 +1,6 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../environment";
 import { type Place } from "../core";
 import { type Identifier } from "../core/Identifier";
 
@@ -26,6 +27,11 @@ export abstract class BaseInstruction {
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node | null> | undefined,
   ) {}
+
+  /**
+   * Clones the instruction with a new place.
+   */
+  abstract clone(environment: Environment): BaseInstruction;
 
   /**
    * Rewrites the instruction to use values.
