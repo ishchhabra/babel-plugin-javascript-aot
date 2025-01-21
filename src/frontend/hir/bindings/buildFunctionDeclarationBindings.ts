@@ -13,7 +13,7 @@ export function buildFunctionDeclarationBindings(
   // of the binding path. The nested function declarations
   // are not in the scope of the current path.
   const parentPath = nodePath.parentPath;
-  if (!parentPath.isExportDefaultDeclaration() && parentPath !== bindingsPath) {
+  if (!parentPath.isExportDeclaration() && parentPath !== bindingsPath) {
     return;
   }
 
