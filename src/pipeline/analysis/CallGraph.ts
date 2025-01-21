@@ -1,85 +1,170 @@
-import { DeclarationId } from "../../ir";
-import { FunctionIRId } from "../../ir/core/FunctionIR";
+import { ProjectUnit } from "../../frontend/ProjectBuilder";
+import {
+  CallExpressionInstruction,
+  DeclarationId,
+  FunctionDeclarationInstruction,
+} from "../../ir";
+import { FunctionIR, FunctionIRId } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
-import { FunctionDeclarationInstruction } from "../../ir/instructions/declaration/Function";
-import { CallExpressionInstruction } from "../../ir/instructions/value/CallExpression";
 
-export interface CallGraph {
+/**
+ * A project-wide call graph that stores:
+ *  - Forward edges (calls): (modulePath) => (functionId => set of callees)
+ *  - Reverse edges (callers): (modulePath) => (functionId => set of callers)
+ *  - Declarations: (modulePath) => (declarationId => functionId)
+ */
+export class CallGraph {
   /**
-   * Maps a function ID (the caller) to the set of function IDs it calls (the callees).
+   * For each module path => a map of:
+   *   FunctionIRId => Set of {modulePath, functionIRId} it calls
    */
-  calls: Map<FunctionIRId, Set<FunctionIRId>>;
+  public readonly calls: Map<
+    string, // module path
+    Map<FunctionIRId, Set<{ modulePath: string; functionIRId: FunctionIRId }>>
+  > = new Map();
 
   /**
-   * Maps a function declaration ID to the function ID that declares it.
+   * The reverse of `calls`:
+   *   For each module path => a map of FunctionIRId => who calls it
    */
-  declarations: Map<DeclarationId, FunctionIRId>;
-}
+  public readonly callers: Map<
+    string,
+    Map<FunctionIRId, Set<{ modulePath: string; functionIRId: FunctionIRId }>>
+  > = new Map();
 
-export class CallGraphBuilder {
-  constructor(private readonly moduleIR: ModuleIR) {}
+  /**
+   * For each module path => a map of:
+   *   DeclarationId => FunctionIRId
+   * representing which function declares each variable ID.
+   */
+  private readonly declarations: Map<string, Map<DeclarationId, FunctionIRId>> =
+    new Map();
 
-  public build(): CallGraph {
-    const declarations = this.getFunctionDeclarations();
-    const calls = this.getCalls(declarations);
-    return { calls, declarations };
+  constructor(private readonly projectUnit: ProjectUnit) {
+    // Initialize empty maps for each module.
+    for (const modulePath of this.projectUnit.postOrder.toReversed()) {
+      this.calls.set(modulePath, new Map());
+      this.callers.set(modulePath, new Map());
+      this.declarations.set(modulePath, new Map());
+    }
+
+    // Gather all declarations for each module (so we can resolve calls that reference them).
+    for (const modulePath of this.projectUnit.postOrder.toReversed()) {
+      const moduleIR = this.projectUnit.modules.get(modulePath)!;
+      this.gatherDeclarations(moduleIR);
+    }
+
+    // Gather all calls (forward & reverse edges) for each module.
+    for (const modulePath of this.projectUnit.postOrder.toReversed()) {
+      const moduleIR = this.projectUnit.modules.get(modulePath)!;
+      this.gatherCalls(moduleIR);
+    }
   }
 
-  private getFunctionDeclarations(): Map<DeclarationId, FunctionIRId> {
-    const declarations = new Map<DeclarationId, FunctionIRId>();
-    for (const [, funcIR] of this.moduleIR.functions) {
+  /**
+   * Walks each function in the module, locates CallExpressionInstructions,
+   * and fills in both forward (calls) and reverse (callers) edges.
+   */
+  private gatherDeclarations(moduleIR: ModuleIR): void {
+    const moduleDecls = this.declarations.get(moduleIR.path)!;
+
+    for (const [, funcIR] of moduleIR.functions) {
       for (const block of funcIR.blocks.values()) {
         for (const instr of block.instructions) {
-          if (instr instanceof FunctionDeclarationInstruction) {
-            declarations.set(
-              instr.identifier.identifier.declarationId,
-              instr.functionIR.id,
-            );
+          if (!(instr instanceof FunctionDeclarationInstruction)) {
+            continue;
           }
+          moduleDecls.set(
+            instr.identifier.identifier.declarationId,
+            instr.functionIR.id,
+          );
         }
       }
     }
-
-    return declarations;
   }
 
-  private getCalls(
-    declarations: Map<DeclarationId, FunctionIRId>,
-  ): Map<FunctionIRId, Set<FunctionIRId>> {
-    const calls = new Map<FunctionIRId, Set<FunctionIRId>>();
+  /**
+   * Step 3 helper: walk through each function in `moduleIR` to find
+   * call instructions, then fill in the forward calls and reverse callers.
+   */
+  private gatherCalls(moduleIR: ModuleIR): void {
+    const moduleCalls = this.calls.get(moduleIR.path)!;
 
-    // Initialize calls[...] = empty Set for every function
-    for (const [funcId] of this.moduleIR.functions) {
-      calls.set(funcId, new Set<FunctionIRId>());
-    }
-
-    // Look for CallExpressionInstruction in each function’s blocks.
-    // Check if the callee corresponds to a known function from Step 1.
-    for (const [funcId, funcIR] of this.moduleIR.functions) {
-      for (const block of funcIR.blocks.values()) {
-        for (const instr of block.instructions) {
-          if (instr instanceof CallExpressionInstruction) {
-            const calleeFuncId = CallGraphBuilder.resolveFunctionIRId(
-              instr,
-              declarations,
-            );
-            if (calleeFuncId !== undefined) {
-              calls.get(funcId)!.add(calleeFuncId);
-            }
-          }
-        }
+    // Ensure each function has an entry in the forward calls and reverse callers,
+    // so we don't end up with undefined in the map.
+    for (const [, funcIR] of moduleIR.functions) {
+      if (!moduleCalls.has(funcIR.id)) {
+        moduleCalls.set(funcIR.id, new Set());
+      }
+      const moduleCallers = this.callers.get(moduleIR.path)!;
+      if (!moduleCallers.has(funcIR.id)) {
+        moduleCallers.set(funcIR.id, new Set());
       }
     }
 
-    return calls;
+    // Now find actual call instructions
+    for (const [, funcIR] of moduleIR.functions) {
+      for (const block of funcIR.blocks.values()) {
+        for (const instr of block.instructions) {
+          if (!(instr instanceof CallExpressionInstruction)) {
+            continue;
+          }
+
+          const calleeIR = this.resolveFunctionFromCallExpression(
+            moduleIR.path,
+            instr,
+          );
+          if (calleeIR === undefined) {
+            continue;
+          }
+
+          this.addCall(moduleIR.path, funcIR.id, moduleIR.path, calleeIR.id);
+        }
+      }
+    }
   }
 
-  public static resolveFunctionIRId(
-    instruction: CallExpressionInstruction,
-    declarations: Map<DeclarationId, FunctionIRId>,
-  ): FunctionIRId | undefined {
-    const nodePath = instruction.nodePath;
-    if (nodePath === undefined) {
+  /**
+   * Inserts a forward edge (caller->callee) into 'calls' and a reverse edge
+   * (callee->caller) into 'callers'.
+   */
+  private addCall(
+    callerModulePath: string,
+    callerId: FunctionIRId,
+    calleeModulePath: string,
+    calleeId: FunctionIRId,
+  ): void {
+    // 1) Forward edge
+    const forwardMap = this.calls.get(callerModulePath)!;
+    if (!forwardMap.has(callerId)) {
+      forwardMap.set(callerId, new Set());
+    }
+    forwardMap
+      .get(callerId)!
+      .add({ modulePath: calleeModulePath, functionIRId: calleeId });
+
+    // 2) Reverse edge
+    const reverseMap = this.callers.get(calleeModulePath)!;
+    if (!reverseMap.has(calleeId)) {
+      reverseMap.set(calleeId, new Set());
+    }
+    reverseMap
+      .get(calleeId)!
+      .add({ modulePath: callerModulePath, functionIRId: callerId });
+  }
+
+  /**
+   * Resolves the callee's FunctionIR for a given call expression in `modulePath`.
+   * Currently, it only looks up declarations within the *same* module.
+   *
+   * If the callee is found, returns that FunctionIR; otherwise, undefined.
+   */
+  public resolveFunctionFromCallExpression(
+    modulePath: string,
+    callExpression: CallExpressionInstruction,
+  ): FunctionIR | undefined {
+    const nodePath = callExpression.nodePath;
+    if (!nodePath) {
       return undefined;
     }
 
@@ -88,11 +173,41 @@ export class CallGraphBuilder {
       return undefined;
     }
 
-    const declarationId = nodePath.scope.getData(calleePath.node.name);
+    const declarationId = calleePath.scope.getData(calleePath.node.name);
     if (declarationId === undefined) {
       return undefined;
     }
 
-    return declarations.get(declarationId);
+    const declMap = this.declarations.get(modulePath);
+    if (!declMap) {
+      return undefined;
+    }
+
+    const funcIRId = declMap.get(declarationId);
+    if (funcIRId === undefined) {
+      return undefined;
+    }
+
+    return this.projectUnit.modules.get(modulePath)?.functions.get(funcIRId);
+  }
+
+  /**
+   * Forward lookup: "Given (modulePath, functionId), which functions does it call?"
+   */
+  public getCallees(
+    modulePath: string,
+    functionId: FunctionIRId,
+  ): Set<{ modulePath: string; functionIRId: FunctionIRId }> {
+    return this.calls.get(modulePath)?.get(functionId) ?? new Set();
+  }
+
+  /**
+   * Reverse lookup: "Given (modulePath, functionId), who calls it?"
+   */
+  public getCallers(
+    modulePath: string,
+    functionId: FunctionIRId,
+  ): Set<{ modulePath: string; functionIRId: FunctionIRId }> {
+    return this.callers.get(modulePath)?.get(functionId) ?? new Set();
   }
 }

@@ -1,7 +1,7 @@
 import { CompilerOptions } from "../compile";
 import { ProjectUnit } from "../frontend/ProjectBuilder";
 import { BasicBlock, BlockId } from "../ir";
-import { CallGraphBuilder } from "./analysis/CallGraph";
+import { CallGraph } from "./analysis/CallGraph";
 import { LateOptimizer } from "./late-optimizer/LateOptimizer";
 import { MergeConsecutiveBlocksPass } from "./MergeConsecutiveBlocksPass";
 import { Optimizer } from "./optimizer/Optimizer";
@@ -21,10 +21,9 @@ export class Pipeline {
   public run() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const context = new Map<string, any>();
-
+    const callGraph = new CallGraph(this.projectUnit);
     for (const moduleName of this.projectUnit.postOrder.toReversed()) {
       const moduleIR = this.projectUnit.modules.get(moduleName)!;
-      const callGraph = new CallGraphBuilder(moduleIR).build();
       for (const functionIR of moduleIR.functions.values()) {
         new MergeConsecutiveBlocksPass(functionIR, moduleIR).run();
 

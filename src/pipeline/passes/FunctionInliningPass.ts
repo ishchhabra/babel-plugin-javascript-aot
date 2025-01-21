@@ -4,7 +4,7 @@ import { Identifier } from "../../ir/core/Identifier";
 import { ModuleIR } from "../../ir/core/ModuleIR";
 import { Place } from "../../ir/core/Place";
 import { CallExpressionInstruction } from "../../ir/instructions/value/CallExpression";
-import { CallGraph, CallGraphBuilder } from "../analysis/CallGraph";
+import { CallGraph } from "../analysis/CallGraph";
 import { BaseOptimizationPass } from "../late-optimizer/OptimizationPass";
 
 /**
@@ -47,15 +47,10 @@ export class FunctionInliningPass extends BaseOptimizationPass {
           continue;
         }
 
-        const functionIRId = CallGraphBuilder.resolveFunctionIRId(
+        const functionIR = this.callGraph.resolveFunctionFromCallExpression(
+          this.moduleIR.path,
           instr,
-          this.callGraph.declarations,
         );
-        if (functionIRId === undefined) {
-          continue;
-        }
-
-        const functionIR = this.moduleIR.functions.get(functionIRId);
         if (functionIR === undefined) {
           continue;
         }
@@ -91,7 +86,7 @@ export class FunctionInliningPass extends BaseOptimizationPass {
 
   /**
    * Checks if `funcIR` is part of a recursion cycle (direct or indirect).
-   * We do an inlined depth-first search on the call graph from `funcIR.id`,
+   * We do a depth-first search on the call graph from `funcIR.id`,
    * returning `true` if we revisit the start function via any call chain.
    *
    * @param funcIR - The FunctionIR we want to test for recursion
@@ -114,9 +109,10 @@ export class FunctionInliningPass extends BaseOptimizationPass {
       visited.add(current);
       stack.add(current);
 
-      const neighbors = this.callGraph.calls.get(current) ?? new Set();
+      const neighbors =
+        this.callGraph.calls.get(this.moduleIR.path)?.get(current) ?? new Set();
       for (const neighbor of neighbors) {
-        if (dfs(neighbor)) {
+        if (dfs(neighbor.functionIRId)) {
           return true;
         }
       }
