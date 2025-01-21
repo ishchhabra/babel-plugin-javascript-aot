@@ -46,7 +46,7 @@ export function buildCallExpression(
     functionBuilder.environment.nextInstructionId++,
   );
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new CallExpressionInstruction(
       instructionId,
       place,

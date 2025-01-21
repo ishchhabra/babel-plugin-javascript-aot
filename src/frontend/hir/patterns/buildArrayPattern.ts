@@ -30,7 +30,7 @@ export function buildArrayPattern(
   const place = createPlace(identifier, functionBuilder.environment);
   const instructionId = createInstructionId(functionBuilder.environment);
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new ArrayPatternInstruction(instructionId, place, nodePath, elementPlaces),
   );
 

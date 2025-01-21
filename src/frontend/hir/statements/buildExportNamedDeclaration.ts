@@ -44,7 +44,7 @@ export function buildExportNamedDeclaration(
       [],
       declarationPlace!,
     );
-    functionBuilder.currentBlock.instructions.push(instruction);
+    functionBuilder.addInstruction(instruction);
     moduleBuilder.exportToInstructions.set(identifier.name, instruction);
     return place;
   } else {
@@ -72,7 +72,7 @@ export function buildExportNamedDeclaration(
       exportSpecifierPlaces,
       undefined,
     );
-    functionBuilder.currentBlock.instructions.push(instruction);
+    functionBuilder.addInstruction(instruction);
     moduleBuilder.exportToInstructions.set(identifier.name, instruction);
     return place;
   }

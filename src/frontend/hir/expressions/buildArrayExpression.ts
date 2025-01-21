@@ -31,7 +31,7 @@ export function buildArrayExpression(
     functionBuilder.environment.nextInstructionId++,
   );
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new ArrayExpressionInstruction(
       instructionId,
       place,

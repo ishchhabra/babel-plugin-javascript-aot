@@ -2,6 +2,7 @@ import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../environment";
 import {
+  BaseInstruction,
   BasicBlock,
   BlockId,
   createBlock,
@@ -40,6 +41,11 @@ export class FunctionIRBuilder {
     const functionIR = new FunctionIR(functionId, this.params, this.blocks);
     this.moduleBuilder.functions.set(functionIR.id, functionIR);
     return functionIR;
+  }
+
+  public addInstruction<T extends BaseInstruction>(instruction: T) {
+    this.currentBlock.instructions.push(instruction);
+    this.environment.placeToInstruction.set(instruction.place.id, instruction);
   }
 
   public registerDeclarationName(

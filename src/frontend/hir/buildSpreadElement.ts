@@ -26,7 +26,7 @@ export function buildSpreadElement(
   const place = createPlace(identifier, functionBuilder.environment);
   const instructionId = createInstructionId(functionBuilder.environment);
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new SpreadElementInstruction(instructionId, place, nodePath, argumentPlace),
   );
 

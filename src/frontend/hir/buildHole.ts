@@ -18,7 +18,7 @@ export function buildHole(
     builder.environment.nextInstructionId++,
   );
 
-  builder.currentBlock.instructions.push(
+  builder.addInstruction(
     new HoleInstruction(instructionId, place, expressionPath),
   );
 

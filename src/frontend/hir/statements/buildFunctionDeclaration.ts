@@ -79,7 +79,7 @@ export function buildFunctionDeclaration(
     );
   }
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new FunctionDeclarationInstruction(
       createInstructionId(functionBuilder.environment),
       functionPlace,

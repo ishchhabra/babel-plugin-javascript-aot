@@ -33,7 +33,7 @@ export function buildObjectExpression(
   const place = createPlace(identifier, functionBuilder.environment);
   const instructionId = createInstructionId(functionBuilder.environment);
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new ObjectExpressionInstruction(
       instructionId,
       place,

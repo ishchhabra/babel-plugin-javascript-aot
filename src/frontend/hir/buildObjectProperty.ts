@@ -30,7 +30,7 @@ export function buildObjectProperty(
   const identifier = createIdentifier(functionBuilder.environment);
   const place = createPlace(identifier, functionBuilder.environment);
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new ObjectPropertyInstruction(
       makeInstructionId(functionBuilder.environment.nextInstructionId++),
       place,

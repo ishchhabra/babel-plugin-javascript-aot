@@ -34,7 +34,7 @@ export function buildBinaryExpression(
     functionBuilder.environment.nextInstructionId++,
   );
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new BinaryExpressionInstruction(
       instructionId,
       place,

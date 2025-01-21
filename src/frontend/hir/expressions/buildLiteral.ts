@@ -26,7 +26,7 @@ export function buildLiteral(
     functionBuilder.environment.nextInstructionId++,
   );
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new LiteralInstruction(
       instructionId,
       place,

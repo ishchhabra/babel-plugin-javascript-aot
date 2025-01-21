@@ -53,7 +53,7 @@ export function buildAssignmentExpression(
 
   functionBuilder.registerDeclarationPlace(declarationId, lvalPlace);
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new StoreLocalInstruction(
       instructionId,
       place,

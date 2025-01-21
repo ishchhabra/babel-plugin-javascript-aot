@@ -49,7 +49,7 @@ export function buildImportDeclaration(
     resolvedSourceValue,
     specifierPlaces,
   );
-  functionBuilder.currentBlock.instructions.push(instruction);
+  functionBuilder.addInstruction(instruction);
   moduleBuilder.importToInstructions.set(resolvedSourceValue, instruction);
   return place;
 }

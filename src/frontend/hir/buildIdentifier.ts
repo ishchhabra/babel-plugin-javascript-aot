@@ -50,7 +50,7 @@ function buildBindingIdentifier(
     builder.environment.nextInstructionId++,
   );
 
-  builder.currentBlock.instructions.push(
+  builder.addInstruction(
     new BindingIdentifierInstruction(instructionId, place, nodePath, name),
   );
 
@@ -72,7 +72,7 @@ function buildReferencedIdentifier(
 
   if (declarationId === undefined) {
     const binding = nodePath.scope.getBinding(name);
-    builder.currentBlock.instructions.push(
+    builder.addInstruction(
       new LoadGlobalInstruction(
         instructionId,
         place,
@@ -97,7 +97,7 @@ function buildReferencedIdentifier(
       );
     }
 
-    builder.currentBlock.instructions.push(
+    builder.addInstruction(
       new LoadLocalInstruction(
         instructionId,
         place,

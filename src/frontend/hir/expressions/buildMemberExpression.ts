@@ -31,7 +31,7 @@ export function buildMemberExpression(
   const place = createPlace(identifier, functionBuilder.environment);
   const instructionId = createInstructionId(functionBuilder.environment);
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new MemberExpressionInstruction(
       instructionId,
       place,

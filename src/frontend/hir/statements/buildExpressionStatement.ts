@@ -41,7 +41,7 @@ export function buildExpressionStatement(
   const identifier = createIdentifier(functionBuilder.environment);
   const place = createPlace(identifier, functionBuilder.environment);
   const instructionId = createInstructionId(functionBuilder.environment);
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new ExpressionStatementInstruction(
       instructionId,
       place,

@@ -67,7 +67,7 @@ export function buildObjectMethod(
     functionBuilder.environment.nextInstructionId++,
   );
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new ObjectMethodInstruction(
       methodInstructionId,
       methodPlace,

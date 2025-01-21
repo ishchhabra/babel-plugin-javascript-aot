@@ -41,7 +41,7 @@ export function buildExportSpecifier(
     exportedName!,
   );
 
-  functionBuilder.currentBlock.instructions.push(instruction);
+  functionBuilder.addInstruction(instruction);
   moduleBuilder.exportToInstructions.set(exportedName!, instruction);
   return place;
 }

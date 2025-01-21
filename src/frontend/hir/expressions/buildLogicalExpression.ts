@@ -33,7 +33,7 @@ export function buildLogicalExpression(
     functionBuilder.environment.nextInstructionId++,
   );
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new LogicalExpressionInstruction(
       instructionId,
       place,

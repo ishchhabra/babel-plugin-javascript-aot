@@ -37,7 +37,7 @@ export function buildExportDefaultDeclaration(
     nodePath,
     declarationPlace,
   );
-  functionBuilder.currentBlock.instructions.push(instruction);
+  functionBuilder.addInstruction(instruction);
   moduleBuilder.exportToInstructions.set("default", instruction);
   return place;
 }

@@ -71,7 +71,7 @@ export function buildUpdateExpression(
 
   functionBuilder.registerDeclarationPlace(declarationId, lvalPlace);
 
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new StoreLocalInstruction(
       instructionId,
       place,

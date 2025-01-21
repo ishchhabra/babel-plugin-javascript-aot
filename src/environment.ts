@@ -1,10 +1,11 @@
-import { BlockId } from "./ir";
+import { BaseInstruction, BlockId } from "./ir";
 import { DeclarationId } from "./ir/core/Identifier";
-import { Place } from "./ir/core/Place";
+import { Place, PlaceId } from "./ir/core/Place";
 
 export class Environment {
   declToPlaces: Map<DeclarationId, Array<{ blockId: BlockId; place: Place }>> =
     new Map();
+  placeToInstruction: Map<PlaceId, BaseInstruction> = new Map();
 
   nextFunctionId = 0;
   nextBlockId = 0;

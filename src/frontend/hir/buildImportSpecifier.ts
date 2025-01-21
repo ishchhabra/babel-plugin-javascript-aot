@@ -26,7 +26,7 @@ export function buildImportSpecifier(
 
   const identifier = createIdentifier(functionBuilder.environment);
   const place = createPlace(identifier, functionBuilder.environment);
-  functionBuilder.currentBlock.instructions.push(
+  functionBuilder.addInstruction(
     new ImportSpecifierInstruction(
       createInstructionId(functionBuilder.environment),
       place,
