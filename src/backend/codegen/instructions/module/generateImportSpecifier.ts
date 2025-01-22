@@ -6,7 +6,6 @@ export function generateImportSpecifierInstruction(
   instruction: ImportSpecifierInstruction,
   generator: CodeGenerator,
 ): t.ImportSpecifier | t.ImportDefaultSpecifier | t.ImportNamespaceSpecifier {
-  console.log(`imported: ${instruction.imported}, local: ${instruction.local}`);
   if (instruction.imported === "default") {
     return generateImportDefaultSpecifier(instruction, generator);
   } else if (instruction.imported === "*") {
