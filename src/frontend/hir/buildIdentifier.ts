@@ -71,18 +71,8 @@ function buildReferencedIdentifier(
   );
 
   if (declarationId === undefined) {
-    const binding = nodePath.scope.getBinding(name);
     builder.addInstruction(
-      new LoadGlobalInstruction(
-        instructionId,
-        place,
-        nodePath,
-        name,
-        binding?.kind === "module" ? "import" : "builtin",
-        binding?.kind === "module"
-          ? (binding.path.parent as t.ImportDeclaration).source.value
-          : undefined,
-      ),
+      new LoadGlobalInstruction(instructionId, place, nodePath, name),
     );
   } else {
     const declarationId = builder.getDeclarationId(name, nodePath);

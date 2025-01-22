@@ -1,28 +1,23 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { createRequire } from "module";
 import {
   createIdentifier,
   createInstructionId,
   createPlace,
   ImportSpecifierInstruction,
-  Place,
 } from "../../ir";
-import { buildNode } from "./buildNode";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
 
 export function buildImportSpecifier(
-  nodePath: NodePath<t.ImportSpecifier>,
+  specifierNodePath: NodePath<t.ImportSpecifier | t.ImportDefaultSpecifier>,
+  declarationNodePath: NodePath<t.ImportDeclaration>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
 ) {
-  const importedPath = nodePath.get("imported");
-  const importedPlace = buildNode(importedPath, functionBuilder, moduleBuilder);
-
-  const localPath = nodePath.get("local");
-  const localPlace = localPath.hasNode()
-    ? buildNode(localPath, functionBuilder, moduleBuilder)
-    : undefined;
+  const localName = getLocalName(specifierNodePath);
+  const importedName = getImportedName(specifierNodePath);
 
   const identifier = createIdentifier(functionBuilder.environment);
   const place = createPlace(identifier, functionBuilder.environment);
@@ -30,11 +25,49 @@ export function buildImportSpecifier(
     new ImportSpecifierInstruction(
       createInstructionId(functionBuilder.environment),
       place,
-      nodePath,
-      importedPlace as Place,
-      localPlace as Place,
+      specifierNodePath,
+      localName,
+      importedName,
     ),
   );
 
+  const source = declarationNodePath.node.source.value;
+  moduleBuilder.environment.globals.set(localName, {
+    kind: "import",
+    name: importedName,
+    source: resolveModulePath(source, moduleBuilder.path),
+  });
+
   return place;
+}
+
+function getLocalName(
+  nodePath: NodePath<
+    t.ImportSpecifier | t.ImportDefaultSpecifier | t.ImportNamespaceSpecifier
+  >,
+) {
+  return nodePath.node.local.name;
+}
+
+function getImportedName(
+  nodePath: NodePath<t.ImportSpecifier | t.ImportDefaultSpecifier>,
+) {
+  const node = nodePath.node;
+  if (t.isImportDefaultSpecifier(node)) {
+    return "default";
+  } else if (t.isImportNamespaceSpecifier(node)) {
+    return "*";
+  } else {
+    const importedNode = node.imported;
+    if (t.isIdentifier(importedNode)) {
+      return importedNode.name;
+    }
+
+    return importedNode.value;
+  }
+}
+
+function resolveModulePath(importPath: string, path: string): string {
+  const require = createRequire(path);
+  return require.resolve(importPath);
 }

@@ -7,7 +7,7 @@ import {
   createPlace,
   ImportDeclarationInstruction,
 } from "../../../ir";
-import { buildNode } from "../buildNode";
+import { buildImportSpecifier } from "../buildImportSpecifier";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
@@ -25,8 +25,13 @@ export function buildImportDeclaration(
 
   const specifiersPath = nodePath.get("specifiers");
   const specifierPlaces = specifiersPath.map((specifierPath) => {
-    const importSpecifierPlace = buildNode(
-      specifierPath,
+    if (specifierPath.isImportNamespaceSpecifier()) {
+      throw new Error("Import namespace specifier is not supported");
+    }
+
+    const importSpecifierPlace = buildImportSpecifier(
+      specifierPath as NodePath<t.ImportSpecifier | t.ImportDefaultSpecifier>,
+      nodePath,
       functionBuilder,
       moduleBuilder,
     );

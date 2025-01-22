@@ -5,26 +5,44 @@ import { CodeGenerator } from "../../../CodeGenerator";
 export function generateImportSpecifierInstruction(
   instruction: ImportSpecifierInstruction,
   generator: CodeGenerator,
-): t.ImportSpecifier {
-  const imported = generator.places.get(instruction.imported.id);
-  if (imported === undefined) {
-    throw new Error(`Place ${instruction.imported.id} not found`);
+): t.ImportSpecifier | t.ImportDefaultSpecifier | t.ImportNamespaceSpecifier {
+  console.log(`imported: ${instruction.imported}, local: ${instruction.local}`);
+  if (instruction.imported === "default") {
+    return generateImportDefaultSpecifier(instruction, generator);
+  } else if (instruction.imported === "*") {
+    return generateImportNamespaceSpecifier(instruction, generator);
+  } else {
+    return generateImportSpecifier(instruction, generator);
   }
+}
 
-  t.assertIdentifier(imported);
+function generateImportDefaultSpecifier(
+  instruction: ImportSpecifierInstruction,
+  generator: CodeGenerator,
+) {
+  const local = t.identifier(instruction.local);
+  const node = t.importDefaultSpecifier(local);
+  generator.places.set(instruction.place.id, node);
+  return node;
+}
 
-  // Handle case where local is undefined
-  let local = imported;
-  if (instruction.local) {
-    const localNode = generator.places.get(instruction.local.id);
-    if (localNode === undefined) {
-      throw new Error(`Place ${instruction.local.id} not found`);
-    }
-    t.assertIdentifier(localNode);
-    local = localNode;
-  }
+function generateImportNamespaceSpecifier(
+  instruction: ImportSpecifierInstruction,
+  generator: CodeGenerator,
+) {
+  const local = t.identifier(instruction.local);
+  const node = t.importNamespaceSpecifier(local);
+  generator.places.set(instruction.place.id, node);
+  return node;
+}
 
-  const node = t.importSpecifier(imported, local);
+function generateImportSpecifier(
+  instruction: ImportSpecifierInstruction,
+  generator: CodeGenerator,
+) {
+  const local = t.identifier(instruction.local);
+  const imported = t.identifier(instruction.imported);
+  const node = t.importSpecifier(local, imported);
   generator.places.set(instruction.place.id, node);
   return node;
 }

@@ -13,7 +13,10 @@ export function generateImportDeclarationInstruction(
       throw new Error(`Place ${specifier.id} not found`);
     }
 
-    t.assertImportSpecifier(node);
+    if (!t.isImportSpecifier(node) && !t.isImportDefaultSpecifier(node)) {
+      throw new Error(`Expected ImportSpecifier, got ${node?.type}`);
+    }
+
     return node;
   });
 

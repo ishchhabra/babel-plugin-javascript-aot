@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Place } from "../../ir";
 import { buildExportSpecifier } from "./buildExportSpecifier";
 import { buildIdentifier } from "./buildIdentifier";
-import { buildImportSpecifier } from "./buildImportSpecifier";
 import { buildObjectMethod } from "./buildObjectMethod";
 import { buildObjectProperty } from "./buildObjectProperty";
 import { buildSpreadElement } from "./buildSpreadElement";
@@ -52,10 +51,6 @@ export function buildNode(
 
   if (nodePath.isPattern()) {
     return buildPattern(nodePath, functionBuilder, moduleBuilder);
-  }
-
-  if (nodePath.isImportSpecifier()) {
-    return buildImportSpecifier(nodePath, functionBuilder, moduleBuilder);
   }
 
   if (nodePath.isExportSpecifier()) {

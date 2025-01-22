@@ -21,8 +21,6 @@ export class LoadGlobalInstruction extends MemoryInstruction {
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly name: string,
-    public readonly kind: "builtin" | "import",
-    public readonly source?: string,
   ) {
     super(id, place, nodePath);
   }
@@ -36,8 +34,6 @@ export class LoadGlobalInstruction extends MemoryInstruction {
       place,
       this.nodePath,
       this.name,
-      this.kind,
-      this.source,
     );
   }
 

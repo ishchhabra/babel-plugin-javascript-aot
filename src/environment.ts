@@ -2,10 +2,21 @@ import { BaseInstruction, BlockId } from "./ir";
 import { DeclarationId } from "./ir/core/Identifier";
 import { Place, PlaceId } from "./ir/core/Place";
 
+type ModuleGlobal =
+  | {
+      kind: "import";
+      source: string;
+      name: string;
+    }
+  | {
+      kind: "builtin";
+    };
+
 export class Environment {
   declToPlaces: Map<DeclarationId, Array<{ blockId: BlockId; place: Place }>> =
     new Map();
   placeToInstruction: Map<PlaceId, BaseInstruction> = new Map();
+  globals: Map<string, ModuleGlobal> = new Map();
 
   nextFunctionId = 0;
   nextBlockId = 0;

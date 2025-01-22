@@ -17,7 +17,12 @@ import { generateImportSpecifierInstruction } from "./generateImportSpecifier";
 export function generateModuleInstruction(
   instruction: ModuleInstruction,
   generator: CodeGenerator,
-): t.Statement | t.ExportSpecifier | t.ImportSpecifier {
+):
+  | t.Statement
+  | t.ExportSpecifier
+  | t.ImportSpecifier
+  | t.ImportDefaultSpecifier
+  | t.ImportNamespaceSpecifier {
   if (instruction instanceof ExportDefaultDeclarationInstruction) {
     return generateExportDefaultDeclarationInstruction(instruction, generator);
   } else if (instruction instanceof ExportNamedDeclarationInstruction) {

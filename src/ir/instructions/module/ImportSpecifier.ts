@@ -20,8 +20,8 @@ export class ImportSpecifierInstruction extends ModuleInstruction {
     public readonly id: InstructionId,
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
-    public readonly imported: Place,
-    public readonly local: Place | undefined,
+    public readonly local: string,
+    public readonly imported: string,
   ) {
     super(id, place, nodePath);
   }
@@ -34,8 +34,8 @@ export class ImportSpecifierInstruction extends ModuleInstruction {
       instructionId,
       place,
       this.nodePath,
-      this.imported,
       this.local,
+      this.imported,
     );
   }
 
@@ -44,6 +44,6 @@ export class ImportSpecifierInstruction extends ModuleInstruction {
   }
 
   getReadPlaces(): Place[] {
-    return [this.imported, ...(this.local ? [this.local] : [])];
+    return [];
   }
 }
