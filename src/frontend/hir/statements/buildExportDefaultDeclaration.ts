@@ -38,6 +38,16 @@ export function buildExportDefaultDeclaration(
     declarationPlace,
   );
   functionBuilder.addInstruction(instruction);
-  moduleBuilder.exportToInstructions.set("default", instruction);
+
+  functionBuilder.environment.declToDeclInstrPlace.set(
+    declarationPlace.identifier.declarationId,
+    place.id,
+  );
+  moduleBuilder.exports.set("default", {
+    instruction,
+    declaration: functionBuilder.getDeclarationInstruction(
+      declarationPlace.identifier.declarationId,
+    )!,
+  });
   return place;
 }

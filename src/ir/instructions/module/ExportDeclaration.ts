@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { BaseInstruction, InstructionId, ModuleInstruction } from "../../base";
+import { InstructionId, ModuleInstruction } from "../../base";
 import { Place } from "../../core";
 import {
   createIdentifier,
@@ -10,40 +10,42 @@ import {
 } from "../../utils";
 
 /**
- * Represents an export specifier.
+ * Represents an export declaration.
  *
  * Example:
- * export { x }; // x is the export specifier
+ * export { x };
+ * export const y = 1;
+ * export * as z from "a";
  */
-export class ExportSpecifierInstruction extends ModuleInstruction {
+export class ExportDeclarationInstruction extends ModuleInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
-    public readonly local: string,
-    public readonly exported: string,
+    public readonly specifiers: Place[],
+    public readonly declaration: Place | undefined,
   ) {
     super(id, place, nodePath);
   }
 
-  public clone(environment: Environment): ExportSpecifierInstruction {
+  public clone(environment: Environment): ExportDeclarationInstruction {
     const identifier = createIdentifier(environment);
     const place = createPlace(identifier, environment);
     const instructionId = createInstructionId(environment);
-    return new ExportSpecifierInstruction(
+    return new ExportDeclarationInstruction(
       instructionId,
       place,
       this.nodePath,
-      this.local,
-      this.exported,
+      this.specifiers,
+      this.declaration,
     );
   }
 
-  rewriteInstruction(): BaseInstruction {
+  public rewriteInstruction(): ExportDeclarationInstruction {
     return this;
   }
 
-  getReadPlaces(): Place[] {
-    return [];
+  public getReadPlaces(): Place[] {
+    return this.specifiers;
   }
 }

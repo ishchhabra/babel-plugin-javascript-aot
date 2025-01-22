@@ -407,11 +407,17 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
       return undefined;
     }
 
-    if (!this.constants.has(instruction.local.identifier.id)) {
+    const moduleExport = this.moduleUnit.exports.get(instruction.exported);
+    if (moduleExport === undefined) {
       return undefined;
     }
 
-    const value = this.constants.get(instruction.local.identifier.id);
+    const identifierId = moduleExport.declaration.place.identifier.id;
+    if (!this.constants.has(identifierId)) {
+      return undefined;
+    }
+
+    const value = this.constants.get(identifierId);
     this.constants.set(instruction.place.identifier.id, value);
     return null;
   }
@@ -455,7 +461,7 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
   }
 
   private evaluateLoadGlobalInstruction(instruction: LoadGlobalInstruction) {
-    const global = this.moduleUnit.environment.globals.get(instruction.name);
+    const global = this.moduleUnit.globals.get(instruction.name);
     if (global === undefined || global.kind === "builtin") {
       return undefined;
     }
@@ -466,16 +472,17 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
     const constantsForSource = globalConstants.get(source)!;
 
     const moduleUnit = this.projectUnit.modules.get(source)!;
-    const exportInstruction = moduleUnit.exportToInstructions.get(global.name);
-    if (exportInstruction === undefined) {
+    const moduleExport = moduleUnit.exports.get(global.name);
+    if (moduleExport === undefined) {
       return undefined;
     }
 
-    if (!constantsForSource.has(exportInstruction.place.identifier.id)) {
+    const identifierId = moduleExport.declaration.place.identifier.id;
+    if (!constantsForSource.has(identifierId)) {
       return undefined;
     }
 
-    const value = constantsForSource.get(exportInstruction.place.identifier.id);
+    const value = constantsForSource.get(identifierId);
     this.constants.set(instruction.place.identifier.id, value);
     return new LiteralInstruction(
       instruction.id,

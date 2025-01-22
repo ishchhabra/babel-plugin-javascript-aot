@@ -13,22 +13,39 @@ import { FunctionIRBuilder } from "./FunctionIRBuilder";
 
 /**
  * Builds a place for an identifier. If the identifier is not a variable declarator,
- * a load instruction is created to load the identifier from the scope.
+ * a load instruction is created to load the identifier from the scope. Otherwise,
+ * a binding instruction is created.
+ *
+ * @param nodePath - The Babel NodePath for the identifier
+ * @param builder - The FunctionIRBuilder managing IR state
+ * @param options.declInstrPlace - If provided, the place is recoded in the
+ * environment's `declToDeclInstrPlace` mapping as the "declaration instruction
+ * place" for this identifier's `DeclarationId`. In other words, if `declInstrPlace`
+ * is set, the newly created or updated declaration place for this identifier is
+ * associated with the provided instruction place in the IR, allowing
+ * multi-declaration statements (e.g. `const a=1,b=2`) or subsequent exports
+ * to reference this higher-level statement/instruction.
+ *
+ * @returns The `Place` representing this identifier in the IR
  */
 export function buildIdentifier(
   nodePath: NodePath<t.Identifier>,
   builder: FunctionIRBuilder,
+  { declInstrPlace }: { declInstrPlace?: Place } = {},
 ) {
   if (nodePath.isReferencedIdentifier()) {
     return buildReferencedIdentifier(nodePath, builder);
   } else {
-    return buildBindingIdentifier(nodePath, builder);
+    return buildBindingIdentifier(nodePath, builder, {
+      declInstrPlace,
+    });
   }
 }
 
 function buildBindingIdentifier(
   nodePath: NodePath<t.Identifier>,
   builder: FunctionIRBuilder,
+  { declInstrPlace }: { declInstrPlace?: Place },
 ) {
   const name = nodePath.node.name;
 
@@ -53,6 +70,13 @@ function buildBindingIdentifier(
   builder.addInstruction(
     new BindingIdentifierInstruction(instructionId, place, nodePath, name),
   );
+
+  if (declInstrPlace !== undefined) {
+    builder.environment.declToDeclInstrPlace.set(
+      place.identifier.declarationId,
+      declInstrPlace.id,
+    );
+  }
 
   return place;
 }

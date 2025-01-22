@@ -52,6 +52,11 @@ export function buildVariableDeclaration(
       ),
     );
 
+    functionBuilder.environment.declToDeclInstrPlace.set(
+      lvalPlace.identifier.declarationId,
+      place.id,
+    );
+
     return place;
   });
 

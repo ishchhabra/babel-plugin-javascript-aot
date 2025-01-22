@@ -3,21 +3,16 @@ import _traverse, { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { readFileSync } from "fs";
 import { Environment } from "../../environment";
-import { BaseInstruction, ImportDeclarationInstruction } from "../../ir";
 import { FunctionIR, FunctionIRId } from "../../ir/core/FunctionIR";
-import { ModuleIR } from "../../ir/core/ModuleIR";
+import { ModuleExport, ModuleGlobal, ModuleIR } from "../../ir/core/ModuleIR";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 
 const traverse = (_traverse as unknown as { default: typeof _traverse })
   .default;
 
 export class ModuleIRBuilder {
-  public readonly exportToInstructions: Map<string, BaseInstruction> =
-    new Map();
-  public readonly importToInstructions: Map<
-    string,
-    ImportDeclarationInstruction
-  > = new Map();
+  public readonly globals: Map<string, ModuleGlobal> = new Map();
+  public readonly exports: Map<string, ModuleExport> = new Map();
 
   public readonly functions: Map<FunctionIRId, FunctionIR> = new Map();
 
@@ -56,8 +51,8 @@ export class ModuleIRBuilder {
       environment: this.environment,
       path: this.path,
       functions: this.functions,
-      exportToInstructions: this.exportToInstructions,
-      importToInstructions: this.importToInstructions,
+      globals: this.globals,
+      exports: this.exports,
     };
   }
 }

@@ -32,7 +32,7 @@ export function buildImportSpecifier(
   );
 
   const source = declarationNodePath.node.source.value;
-  moduleBuilder.environment.globals.set(localName, {
+  moduleBuilder.globals.set(localName, {
     kind: "import",
     name: importedName,
     source: resolveModulePath(source, moduleBuilder.path),

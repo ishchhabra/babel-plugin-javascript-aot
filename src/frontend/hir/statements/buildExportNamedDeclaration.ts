@@ -24,7 +24,7 @@ export function buildExportNamedDeclaration(
       declarationPath,
       functionBuilder,
       moduleBuilder,
-    );
+    )!;
     if (Array.isArray(declarationPlace)) {
       // TODO: Iterate over all declaration places to split them into multiple instructions.
       // Example:
@@ -42,10 +42,15 @@ export function buildExportNamedDeclaration(
       place,
       nodePath,
       [],
-      declarationPlace!,
+      declarationPlace,
     );
     functionBuilder.addInstruction(instruction);
-    moduleBuilder.exportToInstructions.set(identifier.name, instruction);
+    moduleBuilder.exports.set(identifier.name, {
+      instruction,
+      declaration: functionBuilder.getDeclarationInstruction(
+        declarationPlace.identifier.declarationId,
+      )!,
+    });
     return place;
   } else {
     const exportSpecifierPlaces = specifiersPath.map((specifierPath) => {
@@ -73,7 +78,6 @@ export function buildExportNamedDeclaration(
       undefined,
     );
     functionBuilder.addInstruction(instruction);
-    moduleBuilder.exportToInstructions.set(identifier.name, instruction);
     return place;
   }
 }

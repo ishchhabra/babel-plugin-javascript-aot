@@ -22,13 +22,8 @@ export function buildExportSpecifier(
     throw new Error("Export specifier local must be a single place");
   }
 
-  const exportedPath = nodePath.get("exported") ?? localPath;
-  let exportedName: string | undefined;
-  if (exportedPath.isIdentifier()) {
-    exportedName = exportedPath.node.name;
-  } else if (exportedPath.isStringLiteral()) {
-    exportedName = exportedPath.node.value;
-  }
+  const localName = getLocalName(nodePath);
+  const exportedName = getExportedName(nodePath);
 
   const identifier = createIdentifier(functionBuilder.environment);
   const place = createPlace(identifier, functionBuilder.environment);
@@ -37,11 +32,29 @@ export function buildExportSpecifier(
     instructionId,
     place,
     nodePath,
-    localPlace,
-    exportedName!,
+    localName,
+    exportedName,
   );
 
   functionBuilder.addInstruction(instruction);
-  moduleBuilder.exportToInstructions.set(exportedName!, instruction);
+
+  const declarationId = functionBuilder.getDeclarationId(localName, nodePath)!;
+  moduleBuilder.exports.set(exportedName, {
+    instruction,
+    declaration: functionBuilder.getDeclarationInstruction(declarationId)!,
+  });
   return place;
+}
+
+function getLocalName(nodePath: NodePath<t.ExportSpecifier>) {
+  return nodePath.node.local.name;
+}
+
+function getExportedName(nodePath: NodePath<t.ExportSpecifier>) {
+  const exportedNode = nodePath.node.exported;
+  if (t.isIdentifier(exportedNode)) {
+    return exportedNode.name;
+  }
+
+  return exportedNode.value;
 }

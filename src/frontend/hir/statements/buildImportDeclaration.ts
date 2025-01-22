@@ -55,7 +55,6 @@ export function buildImportDeclaration(
     specifierPlaces,
   );
   functionBuilder.addInstruction(instruction);
-  moduleBuilder.importToInstructions.set(resolvedSourceValue, instruction);
   return place;
 }
 

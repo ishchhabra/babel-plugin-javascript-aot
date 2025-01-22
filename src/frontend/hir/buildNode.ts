@@ -18,6 +18,7 @@ export function buildNode(
   nodePath: NodePath<t.Node | null>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  { declInstrPlace }: { declInstrPlace?: Place } = {},
 ): Place | Place[] | undefined {
   if (nodePath.node === null) {
     assertNull(nodePath);
@@ -26,7 +27,9 @@ export function buildNode(
 
   assertNonNull(nodePath);
   if (nodePath.isIdentifier()) {
-    return buildIdentifier(nodePath, functionBuilder);
+    return buildIdentifier(nodePath, functionBuilder, {
+      declInstrPlace,
+    });
   }
 
   if (nodePath.isObjectMethod()) {

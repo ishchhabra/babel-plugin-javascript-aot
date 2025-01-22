@@ -1,4 +1,5 @@
 import * as t from "@babel/types";
+import { toIdentifierOrStringLiteral } from "../../../../babel-utils";
 import { ImportSpecifierInstruction } from "../../../../ir";
 import { CodeGenerator } from "../../../CodeGenerator";
 
@@ -40,7 +41,7 @@ function generateImportSpecifier(
   generator: CodeGenerator,
 ) {
   const local = t.identifier(instruction.local);
-  const imported = t.identifier(instruction.imported);
+  const imported = toIdentifierOrStringLiteral(instruction.imported);
   const node = t.importSpecifier(local, imported);
   generator.places.set(instruction.place.id, node);
   return node;

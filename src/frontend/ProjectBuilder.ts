@@ -27,8 +27,10 @@ export class ProjectBuilder {
     const moduleIR = new ModuleIRBuilder(path, environment).build();
     this.modules.set(path, moduleIR);
 
-    const importToInstructions = moduleIR.importToInstructions;
-    for (const [source] of importToInstructions) {
+    const imports = Array.from(moduleIR.globals.values()).filter(
+      (global) => global.kind === "import",
+    );
+    for (const { source } of imports) {
       this.buildModule(source);
     }
 
@@ -47,7 +49,10 @@ export class ProjectBuilder {
       visited.add(moduleIR.path);
       result.push(moduleIR.path);
 
-      for (const [source] of moduleIR.importToInstructions) {
+      const imports = Array.from(moduleIR.globals.values()).filter(
+        (global) => global.kind === "import",
+      );
+      for (const { source } of imports) {
         visit(this.modules.get(source)!);
       }
     };

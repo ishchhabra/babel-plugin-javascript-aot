@@ -44,6 +44,18 @@ export class FunctionIRBuilder {
   }
 
   public addInstruction<T extends BaseInstruction>(instruction: T) {
+    // We only need to register the declaration place if it's not already registered.
+    // For declarations, the registrations are already done in the binding phase.
+    if (
+      !this.environment.declToDeclInstrPlace.has(
+        instruction.place.identifier.declarationId,
+      )
+    ) {
+      this.registerDeclarationPlace(
+        instruction.place.identifier.declarationId,
+        instruction.place,
+      );
+    }
     this.currentBlock.instructions.push(instruction);
     this.environment.placeToInstruction.set(instruction.place.id, instruction);
   }
@@ -74,5 +86,16 @@ export class FunctionIRBuilder {
   ): Place | undefined {
     const places = this.environment.declToPlaces.get(declarationId);
     return places?.at(-1)?.place;
+  }
+
+  public getDeclarationInstruction(
+    declarationId: DeclarationId,
+  ): BaseInstruction | undefined {
+    const declarationPlace = this.getLatestDeclarationPlace(declarationId);
+    if (declarationPlace === undefined) {
+      return undefined;
+    }
+
+    return this.environment.placeToInstruction.get(declarationPlace.id);
   }
 }
