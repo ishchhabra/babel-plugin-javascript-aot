@@ -1,10 +1,10 @@
-import { createRequire } from "module";
 import { ProjectUnit } from "../../frontend/ProjectBuilder";
 import {
   BaseInstruction,
   BasicBlock,
   BinaryExpressionInstruction,
   BranchTerminal,
+  ExportDefaultDeclarationInstruction,
   ExportNamedDeclarationInstruction,
   ExportSpecifierInstruction,
   IdentifierId,
@@ -22,6 +22,7 @@ import { ModuleIR } from "../../ir/core/ModuleIR";
 import { BaseOptimizationPass } from "../late-optimizer/OptimizationPass";
 import { Phi } from "../ssa/Phi";
 import { SSA } from "../ssa/SSABuilder";
+
 /**
  * A pass that propagates constant values through the program by evaluating expressions
  * with known constant operands at compile time. For example:
@@ -215,6 +216,8 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
       return this.evaluateLoadLocalInstruction(instruction);
     } else if (instruction instanceof LoadPhiInstruction) {
       return this.evaluateLoadPhiInstruction(instruction);
+    } else if (instruction instanceof ExportDefaultDeclarationInstruction) {
+      return this.evaluateExportDefaultDeclarationInstruction(instruction);
     } else if (instruction instanceof ExportSpecifierInstruction) {
       return this.evaluateExportSpecifierInstruction(instruction);
     } else if (instruction instanceof ExportNamedDeclarationInstruction) {
@@ -413,6 +416,22 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
     return null;
   }
 
+  private evaluateExportDefaultDeclarationInstruction(
+    instruction: ExportDefaultDeclarationInstruction,
+  ) {
+    if (this.constants.has(instruction.place.identifier.id)) {
+      return undefined;
+    }
+
+    if (!this.constants.has(instruction.declaration.identifier.id)) {
+      return undefined;
+    }
+
+    const value = this.constants.get(instruction.declaration.identifier.id);
+    this.constants.set(instruction.place.identifier.id, value);
+    return null;
+  }
+
   private evaluateExportNamedDeclarationInstruction(
     instruction: ExportNamedDeclarationInstruction,
   ) {
@@ -436,20 +455,18 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
   }
 
   private evaluateLoadGlobalInstruction(instruction: LoadGlobalInstruction) {
-    if (instruction.kind === "builtin") {
+    const global = this.moduleUnit.environment.globals.get(instruction.name);
+    if (global === undefined || global.kind === "builtin") {
       return undefined;
     }
 
-    const source = instruction.source!;
-    const resolvedSource = resolveModulePath(source, this.moduleUnit.path);
+    const source = global.source;
 
     const globalConstants = this.context.get("constants")!;
-    const constantsForSource = globalConstants.get(resolvedSource)!;
+    const constantsForSource = globalConstants.get(source)!;
 
-    const moduleUnit = this.projectUnit.modules.get(resolvedSource)!;
-    const exportInstruction = moduleUnit.exportToInstructions.get(
-      instruction.name,
-    );
+    const moduleUnit = this.projectUnit.modules.get(source)!;
+    const exportInstruction = moduleUnit.exportToInstructions.get(global.name);
     if (exportInstruction === undefined) {
       return undefined;
     }
@@ -467,9 +484,4 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
       value,
     );
   }
-}
-
-function resolveModulePath(importPath: string, path: string): string {
-  const require = createRequire(path);
-  return require.resolve(importPath);
 }
