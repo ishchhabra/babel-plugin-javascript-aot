@@ -42,6 +42,7 @@ export class Optimizer {
         this.functionIR,
         this.moduleIR,
         this.callGraph,
+        this.projectUnit,
       ).run();
       blocks = functionInliningResult.blocks;
     }

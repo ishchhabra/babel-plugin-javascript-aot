@@ -1,3 +1,5 @@
+import { Environment } from "../../environment";
+import { ProjectUnit } from "../../frontend/ProjectBuilder";
 import { BasicBlock, ReturnTerminal } from "../../ir";
 import { FunctionIR, FunctionIRId } from "../../ir/core/FunctionIR";
 import { Identifier } from "../../ir/core/Identifier";
@@ -34,6 +36,7 @@ export class FunctionInliningPass extends BaseOptimizationPass {
     protected readonly functionIR: FunctionIR,
     private readonly moduleIR: ModuleIR,
     private readonly callGraph: CallGraph,
+    private readonly projectUnit: ProjectUnit,
   ) {
     super(functionIR);
   }
@@ -47,11 +50,22 @@ export class FunctionInliningPass extends BaseOptimizationPass {
           continue;
         }
 
-        const functionIR = this.callGraph.resolveFunctionFromCallExpression(
-          this.moduleIR.path,
+        const calleeIR = this.callGraph.resolveFunctionFromCallExpression(
+          this.moduleIR,
           instr,
         );
-        if (functionIR === undefined) {
+        if (calleeIR === undefined) {
+          continue;
+        }
+
+        const { modulePath, functionIRId } = calleeIR;
+        const moduleIR = this.projectUnit.modules.get(modulePath);
+        if (!moduleIR) {
+          continue;
+        }
+
+        const functionIR = moduleIR.functions.get(functionIRId);
+        if (!functionIR) {
           continue;
         }
 
@@ -59,7 +73,12 @@ export class FunctionInliningPass extends BaseOptimizationPass {
           continue;
         }
 
-        this.inlineFunctionIR(index, block, functionIR, this.moduleIR);
+        this.inlineFunctionIR(
+          index,
+          block,
+          functionIR,
+          this.moduleIR.environment,
+        );
       }
     }
 
@@ -130,7 +149,7 @@ export class FunctionInliningPass extends BaseOptimizationPass {
     index: number,
     callExpressionBlock: BasicBlock,
     funcIR: FunctionIR,
-    moduleIR: ModuleIR,
+    environment: Environment,
   ) {
     if (funcIR.blocks.size > 1) {
       throw new Error("Function has multiple blocks");
@@ -149,7 +168,7 @@ export class FunctionInliningPass extends BaseOptimizationPass {
     const instrs = [];
     const block = funcIR.blocks.values().next().value!;
     for (const instr of block.instructions) {
-      const clonedInstr = instr.clone(moduleIR.environment);
+      const clonedInstr = instr.clone(environment);
       rewriteMap.set(instr.place.identifier, clonedInstr.place);
       instrs.push(clonedInstr.rewriteInstruction(rewriteMap));
     }

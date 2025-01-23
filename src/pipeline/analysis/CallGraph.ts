@@ -3,9 +3,10 @@ import {
   CallExpressionInstruction,
   DeclarationId,
   FunctionDeclarationInstruction,
+  LoadGlobalInstruction,
 } from "../../ir";
-import { FunctionIR, FunctionIRId } from "../../ir/core/FunctionIR";
-import { ModuleIR } from "../../ir/core/ModuleIR";
+import { FunctionIRId } from "../../ir/core/FunctionIR";
+import { ModuleGlobal, ModuleIR } from "../../ir/core/ModuleIR";
 
 /**
  * A project-wide call graph that stores:
@@ -111,14 +112,26 @@ export class CallGraph {
           }
 
           const calleeIR = this.resolveFunctionFromCallExpression(
-            moduleIR.path,
+            moduleIR,
             instr,
           );
           if (calleeIR === undefined) {
             continue;
           }
 
-          this.addCall(moduleIR.path, funcIR.id, moduleIR.path, calleeIR.id);
+          const calleeInstruction = moduleIR.environment.placeToInstruction.get(
+            instr.callee.id,
+          );
+          if (calleeInstruction === undefined) {
+            continue;
+          }
+
+          this.addCall(
+            moduleIR.path,
+            funcIR.id,
+            calleeIR.modulePath,
+            calleeIR.functionIRId,
+          );
         }
       }
     }
@@ -160,9 +173,9 @@ export class CallGraph {
    * If the callee is found, returns that FunctionIR; otherwise, undefined.
    */
   public resolveFunctionFromCallExpression(
-    modulePath: string,
+    moduleIR: ModuleIR,
     callExpression: CallExpressionInstruction,
-  ): FunctionIR | undefined {
+  ): { modulePath: string; functionIRId: FunctionIRId } | undefined {
     const nodePath = callExpression.nodePath;
     if (!nodePath) {
       return undefined;
@@ -173,12 +186,26 @@ export class CallGraph {
       return undefined;
     }
 
+    const name = calleePath.node.name;
+    const loadInstr = moduleIR.environment.placeToInstruction.get(
+      callExpression.callee.id,
+    );
+
+    if (loadInstr instanceof LoadGlobalInstruction) {
+      const global = moduleIR.globals.get(name);
+      if (global === undefined) {
+        return undefined;
+      }
+
+      return this.resolveGlobalFunctionCall(global);
+    }
+
     const declarationId = calleePath.scope.getData(calleePath.node.name);
     if (declarationId === undefined) {
       return undefined;
     }
 
-    const declMap = this.declarations.get(modulePath);
+    const declMap = this.declarations.get(moduleIR.path);
     if (!declMap) {
       return undefined;
     }
@@ -188,7 +215,39 @@ export class CallGraph {
       return undefined;
     }
 
-    return this.projectUnit.modules.get(modulePath)?.functions.get(funcIRId);
+    return {
+      modulePath: moduleIR.path,
+      functionIRId: funcIRId,
+    };
+  }
+
+  public resolveGlobalFunctionCall(global: ModuleGlobal) {
+    if (global.kind !== "import") {
+      return undefined;
+    }
+
+    const { name, source } = global;
+    const moduleIR = this.projectUnit.modules.get(source);
+    if (moduleIR === undefined) {
+      return undefined;
+    }
+
+    const exportPlace = moduleIR.exports.get(name);
+    if (exportPlace === undefined) {
+      return undefined;
+    }
+
+    const funcDeclInstr = moduleIR.environment.placeToInstruction.get(
+      exportPlace.declaration.place.id,
+    );
+    if (!(funcDeclInstr instanceof FunctionDeclarationInstruction)) {
+      return undefined;
+    }
+
+    return {
+      modulePath: source,
+      functionIRId: funcDeclInstr.functionIR.id,
+    };
   }
 
   /**
