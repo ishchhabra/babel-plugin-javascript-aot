@@ -9,10 +9,12 @@ import {
   createPlace,
   ExpressionStatementInstruction,
   LoadLocalInstruction,
+  ObjectPropertyInstruction,
   Place,
   StoreLocalInstruction,
 } from "../../../ir";
 import { StorePropertyInstruction } from "../../../ir/instructions/memory/StoreProperty";
+import { ObjectPatternInstruction } from "../../../ir/instructions/pattern/ObjectPattern";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -138,6 +140,7 @@ function buildDestructuringAssignment(
 
   const leftPath: NodePath<t.AssignmentExpression["left"]> =
     nodePath.get("left");
+  leftPath.assertLVal();
   const { place: leftPlace, instructions } = buildAssignmentLeft(
     leftPath,
     nodePath,
@@ -166,7 +169,7 @@ function buildDestructuringAssignment(
 }
 
 function buildAssignmentLeft(
-  leftPath: NodePath<t.AssignmentExpression["left"] | null>,
+  leftPath: NodePath<t.LVal | null>,
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
@@ -182,6 +185,13 @@ function buildAssignmentLeft(
     );
   } else if (leftPath.isArrayPattern()) {
     return buildArrayPatternAssignmentLeft(
+      leftPath,
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+    );
+  } else if (leftPath.isObjectPattern()) {
+    return buildObjectPatternAssignmentLeft(
       leftPath,
       nodePath,
       functionBuilder,
@@ -331,5 +341,65 @@ function buildArrayPatternAssignmentLeft(
       elementPlaces,
     ),
   );
+  return { place, instructions };
+}
+
+function buildObjectPatternAssignmentLeft(
+  leftPath: NodePath<t.ObjectPattern>,
+  nodePath: NodePath<t.AssignmentExpression>,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
+): { place: Place; instructions: BaseInstruction[] } {
+  const instructions: BaseInstruction[] = [];
+
+  const propertyPaths = leftPath.get("properties");
+  const propertyPlaces = propertyPaths.map((propertyPath) => {
+    if (propertyPath.isObjectProperty()) {
+      const keyPath = propertyPath.get("key");
+      const keyPlace = buildNode(keyPath, functionBuilder, moduleBuilder);
+      if (keyPlace === undefined || Array.isArray(keyPlace)) {
+        throw new Error("Object pattern key must be a single place");
+      }
+
+      const valuePath = propertyPath.get("value");
+      const { place: valuePlace, instructions: valueInstructions } =
+        buildAssignmentLeft(
+          valuePath as NodePath<t.LVal>,
+          nodePath,
+          functionBuilder,
+          moduleBuilder,
+        );
+      instructions.push(...valueInstructions);
+
+      const identifier = createIdentifier(functionBuilder.environment);
+      const place = createPlace(identifier, functionBuilder.environment);
+      functionBuilder.addInstruction(
+        new ObjectPropertyInstruction(
+          createInstructionId(functionBuilder.environment),
+          place,
+          nodePath,
+          keyPlace,
+          valuePlace,
+          propertyPath.node.computed,
+          propertyPath.node.shorthand,
+        ),
+      );
+      return place;
+    }
+
+    throw new Error("Unsupported object pattern property");
+  });
+
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  functionBuilder.addInstruction(
+    new ObjectPatternInstruction(
+      createInstructionId(functionBuilder.environment),
+      place,
+      leftPath,
+      propertyPlaces,
+    ),
+  );
+
   return { place, instructions };
 }
