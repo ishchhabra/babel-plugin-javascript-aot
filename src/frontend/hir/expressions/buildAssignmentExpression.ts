@@ -7,6 +7,8 @@ import {
   createIdentifier,
   createInstructionId,
   createPlace,
+  ExpressionStatementInstruction,
+  LoadLocalInstruction,
   Place,
   StoreLocalInstruction,
 } from "../../../ir";
@@ -171,6 +173,13 @@ function buildAssignmentLeft(
 ): { place: Place; instructions: BaseInstruction[] } {
   if (leftPath.isIdentifier()) {
     return buildIdentifierAssignmentLeft(leftPath, nodePath, functionBuilder);
+  } else if (leftPath.isMemberExpression()) {
+    return buildMemberExpressionAssignmentLeft(
+      leftPath,
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+    );
   } else if (leftPath.isArrayPattern()) {
     return buildArrayPatternAssignmentLeft(
       leftPath,
@@ -213,6 +222,80 @@ function buildIdentifierAssignmentLeft(
   );
   functionBuilder.registerDeclarationPlace(declarationId, place);
   return { place, instructions: [] };
+}
+
+function buildMemberExpressionAssignmentLeft(
+  leftPath: NodePath<t.MemberExpression>,
+  nodePath: NodePath<t.AssignmentExpression>,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
+): { place: Place; instructions: BaseInstruction[] } {
+  const identifier = createIdentifier(functionBuilder.environment);
+  const place = createPlace(identifier, functionBuilder.environment);
+  functionBuilder.addInstruction(
+    new BindingIdentifierInstruction(
+      createInstructionId(functionBuilder.environment),
+      place,
+      nodePath,
+      identifier.name,
+    ),
+  );
+  functionBuilder.registerDeclarationPlace(identifier.declarationId, place);
+
+  const loadLocalPlace = createPlace(
+    createIdentifier(functionBuilder.environment),
+    functionBuilder.environment,
+  );
+  const loadLocalInstruction = new LoadLocalInstruction(
+    createInstructionId(functionBuilder.environment),
+    loadLocalPlace,
+    nodePath,
+    place,
+  );
+
+  const objectPath = leftPath.get("object");
+  const objectPlace = buildNode(objectPath, functionBuilder, moduleBuilder);
+  if (objectPlace === undefined || Array.isArray(objectPlace)) {
+    throw new Error("Assignment expression left must be a single place");
+  }
+
+  const propertyPath: NodePath<t.MemberExpression["property"]> =
+    leftPath.get("property");
+  propertyPath.assertIdentifier();
+  const property = propertyPath.node.name;
+
+  const storePropertyPlace = createPlace(
+    createIdentifier(functionBuilder.environment),
+    functionBuilder.environment,
+  );
+  const storePropertyInstruction = new StorePropertyInstruction(
+    createInstructionId(functionBuilder.environment),
+    storePropertyPlace,
+    nodePath,
+    objectPlace,
+    property,
+    loadLocalPlace,
+  );
+
+  const expressionStatementPlace = createPlace(
+    createIdentifier(functionBuilder.environment),
+    functionBuilder.environment,
+  );
+  const expressionStatementInstruction = new ExpressionStatementInstruction(
+    createInstructionId(functionBuilder.environment),
+    expressionStatementPlace,
+    nodePath,
+    storePropertyPlace,
+  );
+
+  return {
+    place,
+    instructions: [
+      loadLocalInstruction,
+      storePropertyInstruction,
+      expressionStatementInstruction,
+    ],
+  };
 }
 
 function buildArrayPatternAssignmentLeft(
