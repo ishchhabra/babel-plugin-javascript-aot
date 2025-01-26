@@ -31,21 +31,17 @@ import { FunctionIRBuilder } from "./FunctionIRBuilder";
 export function buildIdentifier(
   nodePath: NodePath<t.Identifier>,
   builder: FunctionIRBuilder,
-  { declInstrPlace }: { declInstrPlace?: Place } = {},
 ) {
   if (nodePath.isReferencedIdentifier()) {
     return buildReferencedIdentifier(nodePath, builder);
   } else {
-    return buildBindingIdentifier(nodePath, builder, {
-      declInstrPlace,
-    });
+    return buildBindingIdentifier(nodePath, builder);
   }
 }
 
-function buildBindingIdentifier(
+export function buildBindingIdentifier(
   nodePath: NodePath<t.Identifier>,
   builder: FunctionIRBuilder,
-  { declInstrPlace }: { declInstrPlace?: Place },
 ) {
   const name = nodePath.node.name;
 
@@ -70,13 +66,6 @@ function buildBindingIdentifier(
   builder.addInstruction(
     new BindingIdentifierInstruction(instructionId, place, nodePath, name),
   );
-
-  if (declInstrPlace !== undefined) {
-    builder.environment.declToDeclInstrPlace.set(
-      place.identifier.declarationId,
-      declInstrPlace.id,
-    );
-  }
 
   return place;
 }

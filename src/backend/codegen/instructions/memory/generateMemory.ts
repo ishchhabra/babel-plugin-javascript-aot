@@ -7,12 +7,16 @@ import {
   MemoryInstruction,
   StoreLocalInstruction,
 } from "../../../../ir";
+import { LoadPropertyInstruction } from "../../../../ir/instructions/memory/LoadProperty";
+import { StorePropertyInstruction } from "../../../../ir/instructions/memory/StoreProperty";
 import { CodeGenerator } from "../../../CodeGenerator";
 import { generateCopyInstruction } from "./generateCopy";
 import { generateLoadGlobalInstruction } from "./generateLoadGlobal";
 import { generateLoadLocalInstruction } from "./generateLoadLocal";
 import { generateLoadPhiInstruction } from "./generateLoadPhi";
+import { generateLoadPropertyInstruction } from "./generateLoadProperty";
 import { generateStoreLocalInstruction } from "./generateStoreLocal";
+import { generateStorePropertyInstruction } from "./generateStoreProperty";
 
 export function generateMemoryInstruction(
   instruction: MemoryInstruction,
@@ -26,8 +30,12 @@ export function generateMemoryInstruction(
     return generateLoadLocalInstruction(instruction, generator);
   } else if (instruction instanceof LoadPhiInstruction) {
     return generateLoadPhiInstruction(instruction, generator);
+  } else if (instruction instanceof LoadPropertyInstruction) {
+    return generateLoadPropertyInstruction(instruction, generator);
   } else if (instruction instanceof StoreLocalInstruction) {
     return generateStoreLocalInstruction(instruction, generator);
+  } else if (instruction instanceof StorePropertyInstruction) {
+    return generateStorePropertyInstruction(instruction, generator);
   }
 
   throw new Error(
