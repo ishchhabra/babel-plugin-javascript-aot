@@ -13,6 +13,7 @@ import {
   LoadGlobalInstruction,
   LoadLocalInstruction,
   LoadPhiInstruction,
+  LogicalExpressionInstruction,
   StoreLocalInstruction,
   TPrimitiveValue,
   UnaryExpressionInstruction,
@@ -208,6 +209,8 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
       return this.evaluateBinaryExpressionInstruction(instruction);
     } else if (instruction instanceof UnaryExpressionInstruction) {
       return this.evaluateUnaryExpressionInstruction(instruction);
+    } else if (instruction instanceof LogicalExpressionInstruction) {
+      return this.evaluateLogicalExpressionInstruction(instruction);
     } else if (instruction instanceof LoadGlobalInstruction) {
       return this.evaluateLoadGlobalInstruction(instruction);
     } else if (instruction instanceof StoreLocalInstruction) {
@@ -345,6 +348,40 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
         break;
       case "+":
         result = +(operand as number);
+        break;
+      default:
+        return undefined;
+    }
+
+    this.constants.set(instruction.place.identifier.id, result);
+    return new LiteralInstruction(
+      instruction.id,
+      instruction.place,
+      instruction.nodePath,
+      result,
+    );
+  }
+
+  private evaluateLogicalExpressionInstruction(
+    instruction: LogicalExpressionInstruction,
+  ) {
+    const left = this.constants.get(instruction.left.identifier.id);
+    const right = this.constants.get(instruction.right.identifier.id);
+
+    if (left === undefined || right === undefined) {
+      return undefined;
+    }
+
+    let result: TPrimitiveValue;
+    switch (instruction.operator) {
+      case "&&":
+        result = left && right;
+        break;
+      case "||":
+        result = left || right;
+        break;
+      case "??":
+        result = left ?? right;
         break;
       default:
         return undefined;
