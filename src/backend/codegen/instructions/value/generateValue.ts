@@ -14,10 +14,12 @@ import {
   ValueInstruction,
 } from "../../../../ir";
 import { FunctionIR } from "../../../../ir/core/FunctionIR";
+import { FunctionExpressionInstruction } from "../../../../ir/instructions/value/FunctionExpression";
 import { CodeGenerator } from "../../../CodeGenerator";
 import { generateArrayExpressionInstruction } from "./generateArrayExpression";
 import { generateBinaryExpressionInstruction } from "./generateBinaryExpression";
 import { generateCallExpression } from "./generateCallExpression";
+import { generateFunctionExpressionInstruction } from "./generateFunctionExpression";
 import { generateHoleInstruction } from "./generateHole";
 import { generateLiteralInstruction } from "./generateLiteral";
 import { generateLogicalExpressionInstruction } from "./generateLogicalExpression";
@@ -38,6 +40,8 @@ export function generateValueInstruction(
     return generateBinaryExpressionInstruction(instruction, generator);
   } else if (instruction instanceof CallExpressionInstruction) {
     return generateCallExpression(instruction, generator);
+  } else if (instruction instanceof FunctionExpressionInstruction) {
+    return generateFunctionExpressionInstruction(instruction, generator);
   } else if (instruction instanceof HoleInstruction) {
     return generateHoleInstruction(instruction, generator);
   } else if (instruction instanceof LiteralInstruction) {

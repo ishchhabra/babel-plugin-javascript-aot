@@ -8,6 +8,7 @@ import { buildArrayExpression } from "./buildArrayExpression";
 import { buildAssignmentExpression } from "./buildAssignmentExpression";
 import { buildBinaryExpression } from "./buildBinaryExpression";
 import { buildCallExpression } from "./buildCallExpression";
+import { buildFunctionExpression } from "./buildFunctionExpression";
 import { buildLiteral } from "./buildLiteral";
 import { buildLogicalExpression } from "./buildLogicalExpression";
 import { buildMemberExpression } from "./buildMemberExpression";
@@ -40,6 +41,9 @@ export function buildExpression(
     case "CallExpression":
       nodePath.assertCallExpression();
       return buildCallExpression(nodePath, functionBuilder, moduleBuilder);
+    case "FunctionExpression":
+      nodePath.assertFunctionExpression();
+      return buildFunctionExpression(nodePath, functionBuilder, moduleBuilder);
     case "LogicalExpression":
       nodePath.assertLogicalExpression();
       return buildLogicalExpression(nodePath, functionBuilder, moduleBuilder);
