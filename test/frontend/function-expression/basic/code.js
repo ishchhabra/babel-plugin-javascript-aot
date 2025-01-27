@@ -1,3 +1,3 @@
-const add = function func(a, b) {
+const add = function (a, b) {
   return a + b;
 };

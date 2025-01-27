@@ -16,7 +16,7 @@ export class FunctionExpressionInstruction extends ValueInstruction {
     public readonly id: InstructionId,
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
-    public readonly identifier: Place,
+    public readonly identifier: Place | null,
     public readonly functionIR: FunctionIR,
     public readonly generator: boolean,
     public readonly async: boolean,
@@ -44,7 +44,9 @@ export class FunctionExpressionInstruction extends ValueInstruction {
       this.id,
       this.place,
       this.nodePath,
-      values.get(this.identifier.identifier) ?? this.identifier,
+      this.identifier
+        ? (values.get(this.identifier.identifier) ?? this.identifier)
+        : null,
       this.functionIR,
       this.generator,
       this.async,
@@ -52,7 +54,7 @@ export class FunctionExpressionInstruction extends ValueInstruction {
   }
 
   public getReadPlaces(): Place[] {
-    return [this.identifier];
+    return [...(this.identifier ? [this.identifier] : [])];
   }
 
   public get isPure(): boolean {

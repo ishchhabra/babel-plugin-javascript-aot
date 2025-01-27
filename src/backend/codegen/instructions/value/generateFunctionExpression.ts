@@ -7,8 +7,12 @@ export function generateFunctionExpressionInstruction(
   instruction: FunctionExpressionInstruction,
   generator: CodeGenerator,
 ): t.FunctionExpression {
-  const idNode = generator.places.get(instruction.identifier.id);
-  t.assertIdentifier(idNode);
+  const idNode = instruction.identifier
+    ? generator.places.get(instruction.identifier.id)
+    : null;
+  if (idNode !== null && !t.isIdentifier(idNode)) {
+    throw new Error("Function expression identifier is not an identifier");
+  }
 
   const { params, statements } = generateFunction(
     instruction.functionIR,

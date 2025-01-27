@@ -16,12 +16,13 @@ export function buildFunctionExpression(
   moduleBuilder: ModuleIRBuilder,
 ) {
   const idPath: NodePath<t.FunctionExpression["id"]> = nodePath.get("id");
-  idPath.assertIdentifier();
+  if (idPath.hasNode() && !idPath.isIdentifier()) {
+    throw new Error("Function expression identifier is not an identifier");
+  }
 
-  console.log(
-    `Building function expression ${idPath.node.name} ${idPath.type}`,
-  );
-  const identifierPlace = buildIdentifier(idPath, functionBuilder);
+  const identifierPlace = idPath.hasNode()
+    ? buildIdentifier(idPath, functionBuilder)
+    : null;
 
   const paramPaths = nodePath.get("params");
   const bodyPath = nodePath.get("body");
