@@ -5,7 +5,6 @@ import {
   createInstructionId,
   FunctionDeclarationInstruction,
 } from "../../../ir";
-import { buildBindings } from "../bindings/buildBindings";
 import { buildIdentifier } from "../buildIdentifier";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -15,8 +14,6 @@ export function buildFunctionDeclaration(
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
 ) {
-  buildBindings(nodePath, functionBuilder);
-
   const idPath = nodePath.get("id");
   if (!idPath.isIdentifier()) {
     throw new Error("Invalid function declaration");

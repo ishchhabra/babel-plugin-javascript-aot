@@ -7,7 +7,6 @@ import {
   ObjectMethodInstruction,
   Place,
 } from "../../ir";
-import { buildBindings } from "./bindings/buildBindings";
 import { buildNode } from "./buildNode";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
@@ -23,8 +22,6 @@ export function buildObjectMethod(
   if (keyPlace === undefined || Array.isArray(keyPlace)) {
     throw new Error(`Unable to build key place for ${nodePath.type}`);
   }
-
-  buildBindings(nodePath, functionBuilder);
 
   const paramPaths = nodePath.get("params");
   const bodyPath = nodePath.get("body");
