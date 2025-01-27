@@ -26,36 +26,13 @@ export function buildObjectMethod(
 
   buildBindings(nodePath, functionBuilder);
 
-  const params = nodePath.get("params");
-  const paramPlaces = params.map((param) => {
-    if (!param.isIdentifier()) {
-      throw new Error(`Unsupported parameter type: ${param.type}`);
-    }
-
-    const declarationId = functionBuilder.getDeclarationId(
-      param.node.name,
-      nodePath,
-    );
-    if (declarationId === undefined) {
-      throw new Error(
-        `Variable accessed before declaration: ${param.node.name}`,
-      );
-    }
-
-    const place = functionBuilder.getLatestDeclarationPlace(declarationId);
-    if (place === undefined) {
-      throw new Error(`Unable to find the place for ${param.node.name}`);
-    }
-
-    return place;
-  });
-
+  const paramPaths = nodePath.get("params");
   const bodyPath = nodePath.get("body");
   const bodyIR = new FunctionIRBuilder(
+    paramPaths,
     bodyPath,
     functionBuilder.environment,
     moduleBuilder,
-    paramPlaces,
   ).build();
 
   const methodIdentifier = createIdentifier(functionBuilder.environment);

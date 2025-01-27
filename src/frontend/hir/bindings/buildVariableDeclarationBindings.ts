@@ -113,22 +113,3 @@ function buildRestElementBindings(
   const elementPath = nodePath.get("argument");
   buildLValBindings(bindingsPath, elementPath, functionBuilder);
 }
-
-export function buildParameterBindings(
-  bindingsPath: NodePath,
-  nodePath: NodePath<t.Identifier | t.RestElement | t.Pattern>,
-  functionBuilder: FunctionIRBuilder,
-) {
-  switch (nodePath.type) {
-    case "Identifier":
-      nodePath.assertIdentifier();
-      buildIdentifierBindings(bindingsPath, nodePath, functionBuilder);
-      break;
-    case "RestElement":
-      nodePath.assertRestElement();
-      buildRestElementBindings(bindingsPath, nodePath, functionBuilder);
-      break;
-    default:
-      throw new Error(`Unsupported parameter type: ${nodePath.type}`);
-  }
-}

@@ -11,18 +11,22 @@ import {
 } from "../../ir";
 import { FunctionIR, makeFunctionIRId } from "../../ir/core/FunctionIR";
 import { buildBindings } from "./bindings";
+import { buildFunctionParams } from "./buildFunctionParams";
 import { buildNode } from "./buildNode";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
 
 export class FunctionIRBuilder {
   public currentBlock: BasicBlock;
   public readonly blocks: Map<BlockId, BasicBlock> = new Map();
+  public readonly header: BaseInstruction[] = [];
 
   constructor(
-    public readonly nodePath: NodePath<t.Program | t.BlockStatement>,
+    public readonly paramPaths: NodePath<
+      t.Identifier | t.RestElement | t.Pattern
+    >[],
+    public readonly bodyPath: NodePath<t.Program | t.BlockStatement>,
     public readonly environment: Environment,
     public readonly moduleBuilder: ModuleIRBuilder,
-    public readonly params: Place[],
   ) {
     const entryBlock = createBlock(environment);
     this.blocks.set(entryBlock.id, entryBlock);
@@ -30,15 +34,22 @@ export class FunctionIRBuilder {
   }
 
   public build(): FunctionIR {
-    const functionId = makeFunctionIRId(this.environment.nextFunctionId++);
-    buildBindings(this.nodePath, this);
+    const params = buildFunctionParams(this.paramPaths, this.bodyPath, this);
 
-    const bodyPath = this.nodePath.get("body");
+    const functionId = makeFunctionIRId(this.environment.nextFunctionId++);
+    buildBindings(this.bodyPath, this);
+
+    const bodyPath = this.bodyPath.get("body");
     for (const statementPath of bodyPath) {
       buildNode(statementPath, this, this.moduleBuilder);
     }
 
-    const functionIR = new FunctionIR(functionId, this.params, this.blocks);
+    const functionIR = new FunctionIR(
+      functionId,
+      this.header,
+      params,
+      this.blocks,
+    );
     this.moduleBuilder.functions.set(functionIR.id, functionIR);
     return functionIR;
   }

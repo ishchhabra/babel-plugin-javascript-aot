@@ -6,6 +6,7 @@ import {
   getPredecessors,
   getSuccessors,
 } from "../../frontend/cfg";
+import { BaseInstruction } from "../base";
 import { BasicBlock, BlockId } from "./Block";
 import { Place } from "./Place";
 
@@ -38,6 +39,14 @@ export class FunctionIR {
 
   constructor(
     public readonly id: FunctionIRId,
+    /**
+     * A list of instructions executed at the very start of the function. These
+     * typically handle parameter initialization such as default values,
+     * destructuring, rest/spread setup, etc. Essentially, these instructions
+     * ensure the function's parameter `Place`s are fully populated before
+     * they are referenced.
+     */
+    public readonly header: BaseInstruction[],
     public readonly params: Place[],
     public blocks: Map<BlockId, BasicBlock>,
   ) {

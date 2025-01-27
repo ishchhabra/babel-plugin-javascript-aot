@@ -40,10 +40,10 @@ export class ModuleIRBuilder {
     }
 
     const functionIR = new FunctionIRBuilder(
+      [],
       programPath,
       this.environment,
       this,
-      [],
     ).build();
     this.functions.set(functionIR.id, functionIR);
 

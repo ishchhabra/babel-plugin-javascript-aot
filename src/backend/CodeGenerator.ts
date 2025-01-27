@@ -28,7 +28,7 @@ export class CodeGenerator {
   }
 
   generate(): string {
-    const statements = generateFunction(this.entryFunction, this);
+    const { statements } = generateFunction(this.entryFunction, this);
     const program = t.program(statements);
     return generate(program).code;
   }

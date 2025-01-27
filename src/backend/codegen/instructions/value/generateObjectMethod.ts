@@ -14,20 +14,12 @@ export function generateObjectMethodInstruction(
 
   t.assertExpression(key);
 
-  const params = instruction.body.params.map((param) => {
-    // Since this is the first time we're using param, it does not exist in the
-    // places map. We need to create a new identifier for it.
-    const identifier = t.identifier(param.identifier.name);
-    generator.places.set(param.id, identifier);
-    return identifier;
-  });
-
-  const body = generateFunction(instruction.body, generator);
+  const { params, statements } = generateFunction(instruction.body, generator);
   const node = t.objectMethod(
     instruction.kind,
     key,
     params,
-    t.blockStatement(body),
+    t.blockStatement(statements),
     instruction.computed,
     instruction.generator,
     instruction.async,

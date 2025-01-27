@@ -36,7 +36,7 @@ export function createBlock(environment: Environment): BasicBlock {
 
 export function createFunction(environment: Environment): FunctionIR {
   const functionId = makeFunctionIRId(environment.nextFunctionId++);
-  return new FunctionIR(functionId, [], new Map());
+  return new FunctionIR(functionId, [], [], new Map());
 }
 
 export function createInstructionId(environment: Environment): InstructionId {
