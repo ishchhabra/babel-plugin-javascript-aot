@@ -1,0 +1,24 @@
+import { createIdentifier, createPlace, createInstructionId } from '../../../ir/utils.js';
+import { FunctionExpressionInstruction } from '../../../ir/instructions/value/FunctionExpression.js';
+import { buildIdentifier } from '../buildIdentifier.js';
+import { FunctionIRBuilder } from '../FunctionIRBuilder.js';
+
+function buildFunctionExpression(nodePath, functionBuilder, moduleBuilder) {
+    const idPath = nodePath.get("id");
+    if (idPath.hasNode() && !idPath.isIdentifier()) {
+        throw new Error("Function expression identifier is not an identifier");
+    }
+    const identifierPlace = idPath.hasNode()
+        ? buildIdentifier(idPath, functionBuilder)
+        : null;
+    const paramPaths = nodePath.get("params");
+    const bodyPath = nodePath.get("body");
+    const functionIR = new FunctionIRBuilder(paramPaths, bodyPath, functionBuilder.environment, moduleBuilder).build();
+    const identifier = createIdentifier(functionBuilder.environment);
+    const place = createPlace(identifier, functionBuilder.environment);
+    functionBuilder.addInstruction(new FunctionExpressionInstruction(createInstructionId(functionBuilder.environment), place, nodePath, identifierPlace, functionIR, nodePath.node.generator, nodePath.node.async));
+    return place;
+}
+
+export { buildFunctionExpression };
+//# sourceMappingURL=buildFunctionExpression.js.map
