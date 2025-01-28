@@ -14,9 +14,11 @@ import {
   ValueInstruction,
 } from "../../../../ir";
 import { FunctionIR } from "../../../../ir/core/FunctionIR";
+import { ArrowFunctionExpressionInstruction } from "../../../../ir/instructions/value/ArrowFunctionExpression";
 import { FunctionExpressionInstruction } from "../../../../ir/instructions/value/FunctionExpression";
 import { CodeGenerator } from "../../../CodeGenerator";
 import { generateArrayExpressionInstruction } from "./generateArrayExpression";
+import { generateArrowFunctionExpressionInstruction } from "./generateArrowFunctionExpression";
 import { generateBinaryExpressionInstruction } from "./generateBinaryExpression";
 import { generateCallExpression } from "./generateCallExpression";
 import { generateFunctionExpressionInstruction } from "./generateFunctionExpression";
@@ -36,6 +38,8 @@ export function generateValueInstruction(
 ): t.Expression | t.ObjectMethod | t.ObjectProperty | null {
   if (instruction instanceof ArrayExpressionInstruction) {
     return generateArrayExpressionInstruction(instruction, generator);
+  } else if (instruction instanceof ArrowFunctionExpressionInstruction) {
+    return generateArrowFunctionExpressionInstruction(instruction, generator);
   } else if (instruction instanceof BinaryExpressionInstruction) {
     return generateBinaryExpressionInstruction(instruction, generator);
   } else if (instruction instanceof CallExpressionInstruction) {

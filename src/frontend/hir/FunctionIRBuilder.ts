@@ -24,7 +24,9 @@ export class FunctionIRBuilder {
     public readonly paramPaths: NodePath<
       t.Identifier | t.RestElement | t.Pattern
     >[],
-    public readonly bodyPath: NodePath<t.Program | t.BlockStatement>,
+    public readonly bodyPath: NodePath<
+      t.Program | t.BlockStatement | t.Expression
+    >,
     public readonly environment: Environment,
     public readonly moduleBuilder: ModuleIRBuilder,
   ) {
@@ -37,11 +39,19 @@ export class FunctionIRBuilder {
     const params = buildFunctionParams(this.paramPaths, this.bodyPath, this);
 
     const functionId = makeFunctionIRId(this.environment.nextFunctionId++);
-    buildBindings(this.bodyPath, this);
 
-    const bodyPath = this.bodyPath.get("body");
-    for (const statementPath of bodyPath) {
-      buildNode(statementPath, this, this.moduleBuilder);
+    if (this.bodyPath.isExpression()) {
+      buildNode(this.bodyPath, this, this.moduleBuilder);
+    } else {
+      buildBindings(this.bodyPath, this);
+      const bodyPath = this.bodyPath.get("body");
+      if (!Array.isArray(bodyPath)) {
+        throw new Error("Body path is not an array");
+      }
+
+      for (const statementPath of bodyPath) {
+        buildNode(statementPath, this, this.moduleBuilder);
+      }
     }
 
     const functionIR = new FunctionIR(

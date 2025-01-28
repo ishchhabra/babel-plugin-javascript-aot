@@ -5,6 +5,7 @@ import { buildUnsupportedNode } from "../buildUnsupportedNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
 import { buildArrayExpression } from "./buildArrayExpression";
+import { buildArrowFunctionExpression } from "./buildArrowFunctionExpression";
 import { buildAssignmentExpression } from "./buildAssignmentExpression";
 import { buildBinaryExpression } from "./buildBinaryExpression";
 import { buildCallExpression } from "./buildCallExpression";
@@ -32,6 +33,13 @@ export function buildExpression(
     case "ArrayExpression":
       nodePath.assertArrayExpression();
       return buildArrayExpression(nodePath, functionBuilder, moduleBuilder);
+    case "ArrowFunctionExpression":
+      nodePath.assertArrowFunctionExpression();
+      return buildArrowFunctionExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+      );
     case "BinaryExpression":
       nodePath.assertBinaryExpression();
       return buildBinaryExpression(nodePath, functionBuilder, moduleBuilder);
