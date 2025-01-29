@@ -3,11 +3,7 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, MemoryInstruction } from "../../base";
 import { Place } from "../../core";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../utils";
+import { createInstructionId } from "../../utils";
 
 /**
  * Represents a memory instruction that loads a value for a global variable to a place.
@@ -26,8 +22,8 @@ export class LoadGlobalInstruction extends MemoryInstruction {
   }
 
   public clone(environment: Environment): LoadGlobalInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new LoadGlobalInstruction(
       instructionId,

@@ -1,6 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { getFunctionName } from "../../../babel-utils";
+import { Environment } from "../../../environment";
 import {
   createInstructionId,
   FunctionDeclarationInstruction,
@@ -13,13 +14,14 @@ export function buildFunctionDeclaration(
   nodePath: NodePath<t.FunctionDeclaration>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const idPath = nodePath.get("id");
   if (!idPath.isIdentifier()) {
     throw new Error("Invalid function declaration");
   }
 
-  const identifierPlace = buildIdentifier(idPath, functionBuilder);
+  const identifierPlace = buildIdentifier(idPath, functionBuilder, environment);
 
   const paramPaths = nodePath.get("params");
   const bodyPath = nodePath.get("body");

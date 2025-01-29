@@ -3,11 +3,7 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../utils";
+import { createInstructionId } from "../../utils";
 
 /**
  * Represents an object expression.
@@ -26,8 +22,8 @@ export class ObjectExpressionInstruction extends ValueInstruction {
   }
 
   public clone(environment: Environment): ObjectExpressionInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new ObjectExpressionInstruction(
       instructionId,

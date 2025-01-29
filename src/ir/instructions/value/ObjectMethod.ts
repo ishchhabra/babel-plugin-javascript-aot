@@ -4,11 +4,7 @@ import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
 import { FunctionIR } from "../../core/FunctionIR";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../utils";
+import { createInstructionId } from "../../utils";
 
 /**
  * Represents an object method in the IR.
@@ -32,8 +28,8 @@ export class ObjectMethodInstruction extends ValueInstruction {
   }
 
   public clone(environment: Environment): ObjectMethodInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new ObjectMethodInstruction(
       instructionId,

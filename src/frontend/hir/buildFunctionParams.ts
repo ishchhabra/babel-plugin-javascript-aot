@@ -1,10 +1,9 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { Environment } from "../../environment";
 import {
   BindingIdentifierInstruction,
-  createIdentifier,
   createInstructionId,
-  createPlace,
   Place,
 } from "../../ir";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
@@ -13,15 +12,16 @@ export function buildFunctionParams(
   paramPaths: NodePath<t.Identifier | t.RestElement | t.Pattern>[],
   bodyPath: NodePath,
   functionBuilder: FunctionIRBuilder,
+  environment: Environment,
 ): Place[] {
   return paramPaths.map(
     (paramPath: NodePath<t.Identifier | t.RestElement | t.Pattern>) => {
       paramPath.assertIdentifier();
 
       const name = paramPath.node.name;
-      const identifier = createIdentifier(functionBuilder.environment);
-      const place = createPlace(identifier, functionBuilder.environment);
-      const instructionId = createInstructionId(functionBuilder.environment);
+      const identifier = environment.createIdentifier();
+      const place = environment.createPlace(identifier);
+      const instructionId = createInstructionId(environment);
       functionBuilder.header.push(
         new BindingIdentifierInstruction(
           instructionId,

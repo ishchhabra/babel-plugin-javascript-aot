@@ -1,10 +1,9 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { castArray } from "lodash-es";
+import { Environment } from "../../../environment";
 import {
-  createIdentifier,
   createInstructionId,
-  createPlace,
   ExpressionStatementInstruction,
   Place,
   StoreLocalInstruction,
@@ -17,12 +16,14 @@ export function buildExpressionStatement(
   nodePath: NodePath<t.ExpressionStatement>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): Place[] | undefined {
   const expressionPath = nodePath.get("expression");
   const expressionPlace = buildNode(
     expressionPath,
     functionBuilder,
     moduleBuilder,
+    environment,
   );
   const expressionPlaces = castArray(expressionPlace);
   const places = expressionPlaces
@@ -35,9 +36,9 @@ export function buildExpressionStatement(
         return undefined;
       }
 
-      const identifier = createIdentifier(functionBuilder.environment);
-      const place = createPlace(identifier, functionBuilder.environment);
-      const instructionId = createInstructionId(functionBuilder.environment);
+      const identifier = environment.createIdentifier();
+      const place = environment.createPlace(identifier);
+      const instructionId = createInstructionId(environment);
 
       functionBuilder.addInstruction(
         new ExpressionStatementInstruction(

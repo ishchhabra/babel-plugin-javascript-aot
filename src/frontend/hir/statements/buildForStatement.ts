@@ -1,11 +1,10 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import {
   BranchTerminal,
   createBlock,
-  createIdentifier,
   createInstructionId,
-  createPlace,
   ExpressionStatementInstruction,
   JumpTerminal,
   makeInstructionId,
@@ -20,6 +19,7 @@ export function buildForStatement(
   nodePath: NodePath<t.ForStatement>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const currentBlock = functionBuilder.currentBlock;
 
@@ -36,8 +36,8 @@ export function buildForStatement(
     }
 
     initPath.assertStatement();
-    buildBindings(nodePath, functionBuilder);
-    buildStatement(initPath, functionBuilder, moduleBuilder);
+    buildBindings(nodePath, functionBuilder, environment);
+    buildStatement(initPath, functionBuilder, moduleBuilder, environment);
   }
   const initBlockTerminus = functionBuilder.currentBlock;
 
@@ -53,7 +53,12 @@ export function buildForStatement(
   testPath.assertExpression();
 
   functionBuilder.currentBlock = testBlock;
-  const testPlace = buildNode(testPath, functionBuilder, moduleBuilder);
+  const testPlace = buildNode(
+    testPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
   if (testPlace === undefined || Array.isArray(testPlace)) {
     throw new Error("For statement test place must be a single place");
   }
@@ -65,12 +70,17 @@ export function buildForStatement(
   functionBuilder.blocks.set(bodyBlock.id, bodyBlock);
 
   functionBuilder.currentBlock = bodyBlock;
-  buildNode(bodyPath, functionBuilder, moduleBuilder);
+  buildNode(bodyPath, functionBuilder, moduleBuilder, environment);
 
   // Build the update inside body block.
   const updatePath: NodePath<t.ForStatement["update"]> = nodePath.get("update");
   if (updatePath.hasNode()) {
-    buildExpressionAsStatement(updatePath, functionBuilder, moduleBuilder);
+    buildExpressionAsStatement(
+      updatePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
   }
 
   const bodyBlockTerminus = functionBuilder.currentBlock;
@@ -114,19 +124,21 @@ function buildExpressionAsStatement(
   expressionPath: NodePath<t.Expression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const expressionPlace = buildNode(
     expressionPath,
     functionBuilder,
     moduleBuilder,
+    environment,
   );
   if (expressionPlace === undefined || Array.isArray(expressionPlace)) {
     throw new Error("Expression place is undefined");
   }
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
-  const instructionId = createInstructionId(functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instructionId = createInstructionId(environment);
   functionBuilder.addInstruction(
     new ExpressionStatementInstruction(
       instructionId,

@@ -1,12 +1,8 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { createRequire } from "module";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-  ImportSpecifierInstruction,
-} from "../../ir";
+import { Environment } from "../../environment";
+import { createInstructionId, ImportSpecifierInstruction } from "../../ir";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
 
@@ -15,12 +11,13 @@ export function buildImportSpecifier(
   declarationNodePath: NodePath<t.ImportDeclaration>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const localName = getLocalName(specifierNodePath);
   const importedName = getImportedName(specifierNodePath);
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
   functionBuilder.addInstruction(
     new ImportSpecifierInstruction(
       createInstructionId(functionBuilder.environment),

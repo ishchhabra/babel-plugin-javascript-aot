@@ -3,11 +3,7 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, PatternInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../utils";
+import { createInstructionId } from "../../utils";
 
 /**
  * Represents an array pattern in the IR.
@@ -26,8 +22,8 @@ export class ArrayPatternInstruction extends PatternInstruction {
   }
 
   public clone(environment: Environment): ArrayPatternInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new ArrayPatternInstruction(
       instructionId,

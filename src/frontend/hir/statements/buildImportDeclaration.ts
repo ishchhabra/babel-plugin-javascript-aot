@@ -1,12 +1,8 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { createRequire } from "module";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-  ImportDeclarationInstruction,
-} from "../../../ir";
+import { Environment } from "../../../environment";
+import { createInstructionId, ImportDeclarationInstruction } from "../../../ir";
 import { buildImportSpecifier } from "../buildImportSpecifier";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -15,6 +11,7 @@ export function buildImportDeclaration(
   nodePath: NodePath<t.ImportDeclaration>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const sourcePath = nodePath.get("source");
   const sourceValue = sourcePath.node.value;
@@ -34,6 +31,7 @@ export function buildImportDeclaration(
       nodePath,
       functionBuilder,
       moduleBuilder,
+      environment,
     );
     if (
       importSpecifierPlace === undefined ||
@@ -44,10 +42,10 @@ export function buildImportDeclaration(
     return importSpecifierPlace;
   });
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
   const instruction = new ImportDeclarationInstruction(
-    createInstructionId(functionBuilder.environment),
+    createInstructionId(environment),
     place,
     nodePath,
     sourceValue,

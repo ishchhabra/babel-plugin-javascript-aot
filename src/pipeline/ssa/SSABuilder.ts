@@ -1,7 +1,6 @@
 import {
   BaseInstruction,
   BlockId,
-  createPlace,
   DeclarationId,
   Identifier,
   LoadLocalInstruction,
@@ -85,7 +84,7 @@ export class SSABuilder {
 
         // Insert new φ-node
         const identifier = createPhiIdentifier(this.moduleIR.environment);
-        const place = createPlace(identifier, this.moduleIR.environment);
+        const place = this.moduleIR.environment.createPlace(identifier);
         phis.add(new Phi(blockId, place, new Map(), declarationId));
         hasPhi.add(blockId);
 

@@ -3,11 +3,7 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../utils";
+import { createInstructionId } from "../../utils";
 
 /**
  * An instruction that stores a value into a **static** property for an object:
@@ -26,8 +22,8 @@ export class StorePropertyInstruction extends MemoryInstruction {
   }
 
   public clone(environment: Environment): StorePropertyInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new StorePropertyInstruction(
       instructionId,

@@ -1,5 +1,6 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../environment";
 import { Place } from "../../ir";
 import { buildExportSpecifier } from "./buildExportSpecifier";
 import { buildIdentifier } from "./buildIdentifier";
@@ -18,46 +19,77 @@ export function buildNode(
   nodePath: NodePath<t.Node | null>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): Place | Place[] | undefined {
   if (nodePath.node === null) {
     assertNull(nodePath);
-    return buildHole(nodePath, functionBuilder);
+    return buildHole(nodePath, functionBuilder, environment);
   }
 
   assertNonNull(nodePath);
   if (nodePath.isIdentifier()) {
-    return buildIdentifier(nodePath, functionBuilder);
+    return buildIdentifier(nodePath, functionBuilder, environment);
   }
 
   if (nodePath.isObjectMethod()) {
-    return buildObjectMethod(nodePath, functionBuilder, moduleBuilder);
+    return buildObjectMethod(
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
   }
 
   if (nodePath.isObjectProperty()) {
-    return buildObjectProperty(nodePath, functionBuilder, moduleBuilder);
+    return buildObjectProperty(
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
   }
 
   if (nodePath.isExpression()) {
-    return buildExpression(nodePath, functionBuilder, moduleBuilder);
+    return buildExpression(
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
   }
 
   if (nodePath.isStatement()) {
-    return buildStatement(nodePath, functionBuilder, moduleBuilder);
+    return buildStatement(
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
   }
 
   if (nodePath.isSpreadElement()) {
-    return buildSpreadElement(nodePath, functionBuilder, moduleBuilder);
+    return buildSpreadElement(
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
   }
 
   if (nodePath.isPattern()) {
-    return buildPattern(nodePath, functionBuilder, moduleBuilder);
+    return buildPattern(nodePath, functionBuilder, moduleBuilder, environment);
   }
 
   if (nodePath.isExportSpecifier()) {
-    return buildExportSpecifier(nodePath, functionBuilder, moduleBuilder);
+    return buildExportSpecifier(
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
   }
 
-  return buildUnsupportedNode(nodePath, functionBuilder);
+  return buildUnsupportedNode(nodePath, functionBuilder, environment);
 }
 
 function assertNull<T extends t.Node>(

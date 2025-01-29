@@ -3,7 +3,7 @@ import * as t from "@babel/types";
 import { Environment } from "../../environment";
 import { BaseInstruction, InstructionId } from "../base";
 import { Place } from "../core";
-import { createIdentifier, createInstructionId, createPlace } from "../utils";
+import { createInstructionId } from "../utils";
 
 /**
  * Represents a binding identifier in the IR.
@@ -27,8 +27,8 @@ export class BindingIdentifierInstruction extends BaseInstruction {
   }
 
   public clone(environment: Environment): BindingIdentifierInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new BindingIdentifierInstruction(
       instructionId,

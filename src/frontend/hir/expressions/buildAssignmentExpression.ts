@@ -1,12 +1,11 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import {
   ArrayPatternInstruction,
   BaseInstruction,
   BindingIdentifierInstruction,
-  createIdentifier,
   createInstructionId,
-  createPlace,
   ExpressionStatementInstruction,
   LoadLocalInstruction,
   ObjectPropertyInstruction,
@@ -23,28 +22,46 @@ export function buildAssignmentExpression(
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): Place {
   const leftPath = nodePath.get("left");
   if (leftPath.isIdentifier()) {
-    return buildIdentifierAssignment(nodePath, functionBuilder, moduleBuilder);
+    return buildIdentifierAssignment(
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
   } else if (leftPath.isMemberExpression()) {
     return buildMemberExpressionAssignment(
       nodePath,
       functionBuilder,
       moduleBuilder,
+      environment,
     );
   }
 
-  return buildDestructuringAssignment(nodePath, functionBuilder, moduleBuilder);
+  return buildDestructuringAssignment(
+    nodePath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
 }
 
 function buildIdentifierAssignment(
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): Place {
   const rightPath = nodePath.get("right");
-  const rightPlace = buildNode(rightPath, functionBuilder, moduleBuilder);
+  const rightPlace = buildNode(
+    rightPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
   if (rightPlace === undefined || Array.isArray(rightPlace)) {
     throw new Error("Assignment expression right must be a single place");
   }
@@ -67,11 +84,12 @@ function buildIdentifierAssignment(
     leftPath,
     nodePath,
     functionBuilder,
+    environment,
   );
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
-  const instructionId = createInstructionId(functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instructionId = createInstructionId(environment);
   functionBuilder.addInstruction(
     new StoreLocalInstruction(
       instructionId,
@@ -89,9 +107,15 @@ function buildMemberExpressionAssignment(
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): Place {
   const rightPath = nodePath.get("right");
-  const rightPlace = buildNode(rightPath, functionBuilder, moduleBuilder);
+  const rightPlace = buildNode(
+    rightPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
   if (rightPlace === undefined || Array.isArray(rightPlace)) {
     throw new Error("Assignment expression right must be a single place");
   }
@@ -101,7 +125,12 @@ function buildMemberExpressionAssignment(
   leftPath.assertMemberExpression();
 
   const objectPath = leftPath.get("object");
-  const objectPlace = buildNode(objectPath, functionBuilder, moduleBuilder);
+  const objectPlace = buildNode(
+    objectPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
   if (objectPlace === undefined || Array.isArray(objectPlace)) {
     throw new Error("Assignment expression left must be a single place");
   }
@@ -111,9 +140,9 @@ function buildMemberExpressionAssignment(
   propertyPath.assertIdentifier();
   const property = propertyPath.node.name;
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
-  const instructionId = createInstructionId(functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instructionId = createInstructionId(environment);
   functionBuilder.addInstruction(
     new StorePropertyInstruction(
       instructionId,
@@ -131,9 +160,15 @@ function buildDestructuringAssignment(
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): Place {
   const rightPath = nodePath.get("right");
-  const rightPlace = buildNode(rightPath, functionBuilder, moduleBuilder);
+  const rightPlace = buildNode(
+    rightPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
   if (rightPlace === undefined || Array.isArray(rightPlace)) {
     throw new Error("Assignment expression right must be a single place");
   }
@@ -146,11 +181,12 @@ function buildDestructuringAssignment(
     nodePath,
     functionBuilder,
     moduleBuilder,
+    environment,
   );
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
-  const instructionId = createInstructionId(functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instructionId = createInstructionId(environment);
   functionBuilder.addInstruction(
     new StoreLocalInstruction(
       instructionId,
@@ -173,15 +209,22 @@ function buildAssignmentLeft(
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): { place: Place; instructions: BaseInstruction[] } {
   if (leftPath.isIdentifier()) {
-    return buildIdentifierAssignmentLeft(leftPath, nodePath, functionBuilder);
+    return buildIdentifierAssignmentLeft(
+      leftPath,
+      nodePath,
+      functionBuilder,
+      environment,
+    );
   } else if (leftPath.isMemberExpression()) {
     return buildMemberExpressionAssignmentLeft(
       leftPath,
       nodePath,
       functionBuilder,
       moduleBuilder,
+      environment,
     );
   } else if (leftPath.isArrayPattern()) {
     return buildArrayPatternAssignmentLeft(
@@ -189,6 +232,7 @@ function buildAssignmentLeft(
       nodePath,
       functionBuilder,
       moduleBuilder,
+      environment,
     );
   } else if (leftPath.isObjectPattern()) {
     return buildObjectPatternAssignmentLeft(
@@ -196,6 +240,7 @@ function buildAssignmentLeft(
       nodePath,
       functionBuilder,
       moduleBuilder,
+      environment,
     );
   }
 
@@ -206,6 +251,7 @@ function buildIdentifierAssignmentLeft(
   leftPath: NodePath<t.Identifier>,
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
+  environment: Environment,
 ): { place: Place; instructions: BaseInstruction[] } {
   const declarationId = functionBuilder.getDeclarationId(
     leftPath.node.name,
@@ -217,14 +263,11 @@ function buildIdentifierAssignmentLeft(
     );
   }
 
-  const identifier = createIdentifier(
-    functionBuilder.environment,
-    declarationId,
-  );
-  const place = createPlace(identifier, functionBuilder.environment);
+  const identifier = environment.createIdentifier(declarationId);
+  const place = environment.createPlace(identifier);
   functionBuilder.addInstruction(
     new BindingIdentifierInstruction(
-      createInstructionId(functionBuilder.environment),
+      createInstructionId(environment),
       place,
       nodePath,
       identifier.name,
@@ -239,12 +282,13 @@ function buildMemberExpressionAssignmentLeft(
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): { place: Place; instructions: BaseInstruction[] } {
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
   functionBuilder.addInstruction(
     new BindingIdentifierInstruction(
-      createInstructionId(functionBuilder.environment),
+      createInstructionId(environment),
       place,
       nodePath,
       identifier.name,
@@ -252,9 +296,8 @@ function buildMemberExpressionAssignmentLeft(
   );
   functionBuilder.registerDeclarationPlace(identifier.declarationId, place);
 
-  const loadLocalPlace = createPlace(
-    createIdentifier(functionBuilder.environment),
-    functionBuilder.environment,
+  const loadLocalPlace = environment.createPlace(
+    environment.createIdentifier(),
   );
   const loadLocalInstruction = new LoadLocalInstruction(
     createInstructionId(functionBuilder.environment),
@@ -264,7 +307,12 @@ function buildMemberExpressionAssignmentLeft(
   );
 
   const objectPath = leftPath.get("object");
-  const objectPlace = buildNode(objectPath, functionBuilder, moduleBuilder);
+  const objectPlace = buildNode(
+    objectPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
   if (objectPlace === undefined || Array.isArray(objectPlace)) {
     throw new Error("Assignment expression left must be a single place");
   }
@@ -274,12 +322,11 @@ function buildMemberExpressionAssignmentLeft(
   propertyPath.assertIdentifier();
   const property = propertyPath.node.name;
 
-  const storePropertyPlace = createPlace(
-    createIdentifier(functionBuilder.environment),
-    functionBuilder.environment,
+  const storePropertyPlace = environment.createPlace(
+    environment.createIdentifier(),
   );
   const storePropertyInstruction = new StorePropertyInstruction(
-    createInstructionId(functionBuilder.environment),
+    createInstructionId(environment),
     storePropertyPlace,
     nodePath,
     objectPlace,
@@ -287,12 +334,11 @@ function buildMemberExpressionAssignmentLeft(
     loadLocalPlace,
   );
 
-  const expressionStatementPlace = createPlace(
-    createIdentifier(functionBuilder.environment),
-    functionBuilder.environment,
+  const expressionStatementPlace = environment.createPlace(
+    environment.createIdentifier(),
   );
   const expressionStatementInstruction = new ExpressionStatementInstruction(
-    createInstructionId(functionBuilder.environment),
+    createInstructionId(environment),
     expressionStatementPlace,
     nodePath,
     storePropertyPlace,
@@ -313,6 +359,7 @@ function buildArrayPatternAssignmentLeft(
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): { place: Place; instructions: BaseInstruction[] } {
   const instructions: BaseInstruction[] = [];
 
@@ -326,16 +373,17 @@ function buildArrayPatternAssignmentLeft(
       nodePath,
       functionBuilder,
       moduleBuilder,
+      environment,
     );
     instructions.push(...elementInstructions);
     return place;
   });
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
   functionBuilder.addInstruction(
     new ArrayPatternInstruction(
-      createInstructionId(functionBuilder.environment),
+      createInstructionId(environment),
       place,
       nodePath,
       elementPlaces,
@@ -349,6 +397,7 @@ function buildObjectPatternAssignmentLeft(
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): { place: Place; instructions: BaseInstruction[] } {
   const instructions: BaseInstruction[] = [];
 
@@ -356,7 +405,12 @@ function buildObjectPatternAssignmentLeft(
   const propertyPlaces = propertyPaths.map((propertyPath) => {
     if (propertyPath.isObjectProperty()) {
       const keyPath = propertyPath.get("key");
-      const keyPlace = buildNode(keyPath, functionBuilder, moduleBuilder);
+      const keyPlace = buildNode(
+        keyPath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
       if (keyPlace === undefined || Array.isArray(keyPlace)) {
         throw new Error("Object pattern key must be a single place");
       }
@@ -368,14 +422,15 @@ function buildObjectPatternAssignmentLeft(
           nodePath,
           functionBuilder,
           moduleBuilder,
+          environment,
         );
       instructions.push(...valueInstructions);
 
-      const identifier = createIdentifier(functionBuilder.environment);
-      const place = createPlace(identifier, functionBuilder.environment);
+      const identifier = environment.createIdentifier();
+      const place = environment.createPlace(identifier);
       functionBuilder.addInstruction(
         new ObjectPropertyInstruction(
-          createInstructionId(functionBuilder.environment),
+          createInstructionId(environment),
           place,
           nodePath,
           keyPlace,
@@ -390,11 +445,11 @@ function buildObjectPatternAssignmentLeft(
     throw new Error("Unsupported object pattern property");
   });
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
   functionBuilder.addInstruction(
     new ObjectPatternInstruction(
-      createInstructionId(functionBuilder.environment),
+      createInstructionId(environment),
       place,
       leftPath,
       propertyPlaces,

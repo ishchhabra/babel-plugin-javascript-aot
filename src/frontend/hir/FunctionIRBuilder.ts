@@ -36,21 +36,26 @@ export class FunctionIRBuilder {
   }
 
   public build(): FunctionIR {
-    const params = buildFunctionParams(this.paramPaths, this.bodyPath, this);
+    const params = buildFunctionParams(
+      this.paramPaths,
+      this.bodyPath,
+      this,
+      this.environment,
+    );
 
     const functionId = makeFunctionIRId(this.environment.nextFunctionId++);
 
     if (this.bodyPath.isExpression()) {
-      buildNode(this.bodyPath, this, this.moduleBuilder);
+      buildNode(this.bodyPath, this, this.moduleBuilder, this.environment);
     } else {
-      buildBindings(this.bodyPath, this);
+      buildBindings(this.bodyPath, this, this.environment);
       const bodyPath = this.bodyPath.get("body");
       if (!Array.isArray(bodyPath)) {
         throw new Error("Body path is not an array");
       }
 
       for (const statementPath of bodyPath) {
-        buildNode(statementPath, this, this.moduleBuilder);
+        buildNode(statementPath, this, this.moduleBuilder, this.environment);
       }
     }
 

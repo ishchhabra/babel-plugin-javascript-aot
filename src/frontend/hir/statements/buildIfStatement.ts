@@ -1,5 +1,6 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import {
   BasicBlock,
   BranchTerminal,
@@ -15,9 +16,15 @@ export function buildIfStatement(
   nodePath: NodePath<t.IfStatement>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const testPath = nodePath.get("test");
-  const testPlace = buildNode(testPath, functionBuilder, moduleBuilder);
+  const testPlace = buildNode(
+    testPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
   if (testPlace === undefined || Array.isArray(testPlace)) {
     throw new Error("If statement test must be a single place");
   }
@@ -34,7 +41,7 @@ export function buildIfStatement(
   functionBuilder.blocks.set(consequentBlock.id, consequentBlock);
 
   functionBuilder.currentBlock = consequentBlock;
-  buildNode(consequentPath, functionBuilder, moduleBuilder);
+  buildNode(consequentPath, functionBuilder, moduleBuilder, environment);
 
   // After building the consequent block, we need to set the terminal
   // from the last block to the join block.
@@ -51,7 +58,7 @@ export function buildIfStatement(
     functionBuilder.blocks.set(alternateBlock.id, alternateBlock);
 
     functionBuilder.currentBlock = alternateBlock;
-    buildNode(alternatePath, functionBuilder, moduleBuilder);
+    buildNode(alternatePath, functionBuilder, moduleBuilder, environment);
   }
 
   // After building the alternate block, we need to set the terminal

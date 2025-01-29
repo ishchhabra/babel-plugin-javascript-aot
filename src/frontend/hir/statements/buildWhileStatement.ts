@@ -1,5 +1,6 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import {
   BranchTerminal,
   createBlock,
@@ -14,6 +15,7 @@ export function buildWhileStatement(
   nodePath: NodePath<t.WhileStatement>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const currentBlock = functionBuilder.currentBlock;
 
@@ -23,7 +25,12 @@ export function buildWhileStatement(
   functionBuilder.blocks.set(testBlock.id, testBlock);
 
   functionBuilder.currentBlock = testBlock;
-  const testPlace = buildNode(testPath, functionBuilder, moduleBuilder);
+  const testPlace = buildNode(
+    testPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
   if (testPlace === undefined || Array.isArray(testPlace)) {
     throw new Error("While statement test must be a single place");
   }
@@ -35,7 +42,7 @@ export function buildWhileStatement(
   functionBuilder.blocks.set(bodyBlock.id, bodyBlock);
 
   functionBuilder.currentBlock = bodyBlock;
-  buildNode(bodyPath, functionBuilder, moduleBuilder);
+  buildNode(bodyPath, functionBuilder, moduleBuilder, environment);
   const bodyBlockTerminus = functionBuilder.currentBlock;
 
   // Build the exit block.

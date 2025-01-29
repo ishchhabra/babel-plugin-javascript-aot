@@ -1,10 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../../ir";
+import { Environment } from "../../../environment";
+import { createInstructionId } from "../../../ir";
 import { FunctionExpressionInstruction } from "../../../ir/instructions/value/FunctionExpression";
 import { buildIdentifier } from "../buildIdentifier";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
@@ -14,6 +11,7 @@ export function buildFunctionExpression(
   nodePath: NodePath<t.FunctionExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const idPath: NodePath<t.FunctionExpression["id"]> = nodePath.get("id");
   if (idPath.hasNode() && !idPath.isIdentifier()) {
@@ -21,7 +19,7 @@ export function buildFunctionExpression(
   }
 
   const identifierPlace = idPath.hasNode()
-    ? buildIdentifier(idPath, functionBuilder)
+    ? buildIdentifier(idPath, functionBuilder, environment)
     : null;
 
   const paramPaths = nodePath.get("params");
@@ -33,11 +31,11 @@ export function buildFunctionExpression(
     moduleBuilder,
   ).build();
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
   functionBuilder.addInstruction(
     new FunctionExpressionInstruction(
-      createInstructionId(functionBuilder.environment),
+      createInstructionId(environment),
       place,
       nodePath,
       identifierPlace,

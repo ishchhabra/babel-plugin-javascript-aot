@@ -3,11 +3,7 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ModuleInstruction } from "../../base";
 import { Place } from "../../core";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../utils";
+import { createInstructionId } from "../../utils";
 
 /**
  * Represents an import specifier.
@@ -27,8 +23,8 @@ export class ImportSpecifierInstruction extends ModuleInstruction {
   }
 
   public clone(environment: Environment): ImportSpecifierInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new ImportSpecifierInstruction(
       instructionId,

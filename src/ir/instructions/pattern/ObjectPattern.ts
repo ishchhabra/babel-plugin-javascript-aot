@@ -2,9 +2,7 @@ import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import {
   BaseInstruction,
-  createIdentifier,
   createInstructionId,
-  createPlace,
   Identifier,
   InstructionId,
   PatternInstruction,
@@ -29,8 +27,8 @@ export class ObjectPatternInstruction extends PatternInstruction {
   }
 
   public clone(environment: Environment): ObjectPatternInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new ObjectPatternInstruction(
       instructionId,

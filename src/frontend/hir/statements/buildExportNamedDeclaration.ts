@@ -1,8 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import {
-  createIdentifier,
-  createPlace,
   ExportNamedDeclarationInstruction,
   makeInstructionId,
 } from "../../../ir";
@@ -14,6 +13,7 @@ export function buildExportNamedDeclaration(
   nodePath: NodePath<t.ExportNamedDeclaration>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const declarationPath = nodePath.get("declaration");
   const specifiersPath = nodePath.get("specifiers");
@@ -24,6 +24,7 @@ export function buildExportNamedDeclaration(
       declarationPath,
       functionBuilder,
       moduleBuilder,
+      environment,
     )!;
     if (Array.isArray(declarationPlace)) {
       // TODO: Iterate over all declaration places to split them into multiple instructions.
@@ -35,10 +36,10 @@ export function buildExportNamedDeclaration(
       declarationPlace = declarationPlace[0];
     }
 
-    const identifier = createIdentifier(functionBuilder.environment);
-    const place = createPlace(identifier, functionBuilder.environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instruction = new ExportNamedDeclarationInstruction(
-      makeInstructionId(functionBuilder.environment.nextInstructionId++),
+      makeInstructionId(environment.nextInstructionId++),
       place,
       nodePath,
       [],
@@ -58,6 +59,7 @@ export function buildExportNamedDeclaration(
         specifierPath,
         functionBuilder,
         moduleBuilder,
+        environment,
       );
       if (
         exportSpecifierPlace === undefined ||
@@ -68,10 +70,10 @@ export function buildExportNamedDeclaration(
       return exportSpecifierPlace;
     });
 
-    const identifier = createIdentifier(functionBuilder.environment);
-    const place = createPlace(identifier, functionBuilder.environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instruction = new ExportNamedDeclarationInstruction(
-      makeInstructionId(functionBuilder.environment.nextInstructionId++),
+      makeInstructionId(environment.nextInstructionId++),
       place,
       nodePath,
       exportSpecifierPlaces,

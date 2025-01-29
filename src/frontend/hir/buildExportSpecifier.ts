@@ -1,9 +1,8 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { Environment } from "../../environment";
 import {
-  createIdentifier,
   createInstructionId,
-  createPlace,
   ExportSpecifierInstruction,
   Place,
 } from "../../ir";
@@ -15,9 +14,15 @@ export function buildExportSpecifier(
   nodePath: NodePath<t.ExportSpecifier>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): Place {
   const localPath = nodePath.get("local");
-  const localPlace = buildNode(localPath, functionBuilder, moduleBuilder);
+  const localPlace = buildNode(
+    localPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
   if (localPlace === undefined || Array.isArray(localPlace)) {
     throw new Error("Export specifier local must be a single place");
   }
@@ -25,9 +30,9 @@ export function buildExportSpecifier(
   const localName = getLocalName(nodePath);
   const exportedName = getExportedName(nodePath);
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
-  const instructionId = createInstructionId(functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instructionId = createInstructionId(environment);
   const instruction = new ExportSpecifierInstruction(
     instructionId,
     place,

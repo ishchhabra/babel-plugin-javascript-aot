@@ -3,11 +3,7 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../utils";
+import { createInstructionId } from "../../utils";
 
 /**
  * Represents a memory instruction that stores a value at a given place.
@@ -30,8 +26,8 @@ export class StoreLocalInstruction extends MemoryInstruction {
   }
 
   public clone(environment: Environment): StoreLocalInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new StoreLocalInstruction(
       instructionId,

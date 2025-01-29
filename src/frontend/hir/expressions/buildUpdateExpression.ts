@@ -1,11 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-  StoreLocalInstruction,
-} from "../../../ir";
+import { Environment } from "../../../environment";
+import { createInstructionId, StoreLocalInstruction } from "../../../ir";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
 import { buildBinaryExpression } from "./buildBinaryExpression";
@@ -14,6 +10,7 @@ export function buildUpdateExpression(
   nodePath: NodePath<t.UpdateExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const argumentPath = nodePath.get("argument");
   if (!argumentPath.isIdentifier()) {
@@ -38,11 +35,8 @@ export function buildUpdateExpression(
     );
   }
 
-  const lvalIdentifier = createIdentifier(
-    functionBuilder.environment,
-    declarationId,
-  );
-  const lvalPlace = createPlace(lvalIdentifier, functionBuilder.environment);
+  const lvalIdentifier = environment.createIdentifier(declarationId);
+  const lvalPlace = environment.createPlace(lvalIdentifier);
 
   const rightLiteral = t.numericLiteral(1);
   const isIncrement = nodePath.node.operator === "++";
@@ -60,14 +54,15 @@ export function buildUpdateExpression(
     binaryExpressionPath,
     functionBuilder,
     moduleBuilder,
+    environment,
   );
   if (valuePlace === undefined || Array.isArray(valuePlace)) {
     throw new Error("Update expression value must be a single place");
   }
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
-  const instructionId = createInstructionId(functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instructionId = createInstructionId(environment);
 
   functionBuilder.registerDeclarationPlace(declarationId, lvalPlace);
 

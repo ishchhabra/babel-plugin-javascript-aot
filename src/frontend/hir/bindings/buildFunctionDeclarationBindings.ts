@@ -1,13 +1,14 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { getFunctionName } from "../../../babel-utils";
-import { createIdentifier, createPlace } from "../../../ir";
+import { Environment } from "../../../environment";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 
 export function buildFunctionDeclarationBindings(
   bindingsPath: NodePath<t.Node>,
   nodePath: NodePath<t.FunctionDeclaration>,
   functionBuilder: FunctionIRBuilder,
+  environment: Environment,
 ) {
   // For function declarations, we only want direct children
   // of the binding path. The nested function declarations
@@ -22,7 +23,7 @@ export function buildFunctionDeclarationBindings(
     return;
   }
 
-  const identifier = createIdentifier(functionBuilder.environment);
+  const identifier = environment.createIdentifier();
   functionBuilder.registerDeclarationName(
     functionName.node.name,
     identifier.declarationId,
@@ -37,6 +38,6 @@ export function buildFunctionDeclarationBindings(
     bindingsPath,
   );
 
-  const place = createPlace(identifier, functionBuilder.environment);
+  const place = environment.createPlace(identifier);
   functionBuilder.registerDeclarationPlace(identifier.declarationId, place);
 }

@@ -2,8 +2,6 @@ import {
   BasicBlock,
   BlockId,
   CopyInstruction,
-  createIdentifier,
-  createPlace,
   ExpressionStatementInstruction,
   LoadLocalInstruction,
   makeInstructionId,
@@ -57,11 +55,10 @@ export class SSAEliminator {
       throw new Error(`Declaration block not found for ${phi.declarationId}`);
     }
 
-    const identifier = createIdentifier(
-      this.moduleIR.environment,
+    const identifier = this.moduleIR.environment.createIdentifier(
       phi.place.identifier.declarationId,
     );
-    const place = createPlace(identifier, this.moduleIR.environment);
+    const place = this.moduleIR.environment.createPlace(identifier);
 
     const instructionId = makeInstructionId(
       this.moduleIR.environment.nextInstructionId++,
@@ -89,9 +86,8 @@ export class SSAEliminator {
       const loadId = makeInstructionId(
         this.moduleIR.environment.nextInstructionId++,
       );
-      const loadPlace = createPlace(
-        createIdentifier(this.moduleIR.environment),
-        this.moduleIR.environment,
+      const loadPlace = this.moduleIR.environment.createPlace(
+        this.moduleIR.environment.createIdentifier(),
       );
       block.instructions.push(
         new LoadLocalInstruction(loadId, loadPlace, undefined, place),
@@ -101,12 +97,10 @@ export class SSAEliminator {
       const copyId = makeInstructionId(
         this.moduleIR.environment.nextInstructionId++,
       );
-      const copyPlace = createPlace(
-        createIdentifier(
-          this.moduleIR.environment,
+      const copyPlace = this.moduleIR.environment.createPlace(
+        this.moduleIR.environment.createIdentifier(
           phi.place.identifier.declarationId,
         ),
-        this.moduleIR.environment,
       );
       block.instructions.push(
         new CopyInstruction(copyId, copyPlace, undefined, phi.place, loadPlace),
@@ -116,9 +110,8 @@ export class SSAEliminator {
       const exprId = makeInstructionId(
         this.moduleIR.environment.nextInstructionId++,
       );
-      const exprPlace = createPlace(
-        createIdentifier(this.moduleIR.environment),
-        this.moduleIR.environment,
+      const exprPlace = this.moduleIR.environment.createPlace(
+        this.moduleIR.environment.createIdentifier(),
       );
       block.instructions.push(
         new ExpressionStatementInstruction(

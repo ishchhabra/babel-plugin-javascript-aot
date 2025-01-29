@@ -1,8 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import {
-  createIdentifier,
-  createPlace,
   ExportDefaultDeclarationInstruction,
   makeInstructionId,
 } from "../../../ir";
@@ -14,19 +13,21 @@ export function buildExportDefaultDeclaration(
   nodePath: NodePath<t.ExportDefaultDeclaration>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ) {
   const declarationPath = nodePath.get("declaration");
   const declarationPlace = buildNode(
     declarationPath,
     functionBuilder,
     moduleBuilder,
+    environment,
   );
   if (declarationPlace === undefined || Array.isArray(declarationPlace)) {
     throw new Error("Export default declaration must be a single place");
   }
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
   const instructionId = makeInstructionId(
     functionBuilder.environment.nextInstructionId++,
   );

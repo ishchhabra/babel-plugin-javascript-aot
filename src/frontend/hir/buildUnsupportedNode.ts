@@ -1,9 +1,8 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../environment";
 import {
-  createIdentifier,
   createInstructionId,
-  createPlace,
   Place,
   UnsupportedNodeInstruction,
 } from "../../ir";
@@ -12,10 +11,11 @@ import { FunctionIRBuilder } from "./FunctionIRBuilder";
 export function buildUnsupportedNode(
   nodePath: NodePath<t.Node>,
   functionBuilder: FunctionIRBuilder,
+  environment: Environment,
 ): Place {
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
-  const instructionId = createInstructionId(functionBuilder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instructionId = createInstructionId(environment);
 
   functionBuilder.addInstruction(
     new UnsupportedNodeInstruction(

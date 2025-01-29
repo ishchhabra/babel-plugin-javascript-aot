@@ -1,9 +1,8 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import {
   CallExpressionInstruction,
-  createIdentifier,
-  createPlace,
   makeInstructionId,
   Place,
 } from "../../../ir";
@@ -15,13 +14,19 @@ export function buildCallExpression(
   expressionPath: NodePath<t.CallExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): Place {
   const calleePath = expressionPath.get("callee");
   if (!calleePath.isExpression()) {
     throw new Error(`Unsupported callee type: ${calleePath.type}`);
   }
 
-  const calleePlace = buildNode(calleePath, functionBuilder, moduleBuilder);
+  const calleePlace = buildNode(
+    calleePath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
   if (calleePlace === undefined || Array.isArray(calleePlace)) {
     throw new Error("Call expression callee must be a single place");
   }
@@ -32,6 +37,7 @@ export function buildCallExpression(
       argumentPath,
       functionBuilder,
       moduleBuilder,
+      environment,
     );
     if (argumentPlace === undefined || Array.isArray(argumentPlace)) {
       throw new Error("Call expression argument must be a single place");
@@ -40,11 +46,9 @@ export function buildCallExpression(
     return argumentPlace;
   });
 
-  const identifier = createIdentifier(functionBuilder.environment);
-  const place = createPlace(identifier, functionBuilder.environment);
-  const instructionId = makeInstructionId(
-    functionBuilder.environment.nextInstructionId++,
-  );
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instructionId = makeInstructionId(environment.nextInstructionId++);
 
   functionBuilder.addInstruction(
     new CallExpressionInstruction(

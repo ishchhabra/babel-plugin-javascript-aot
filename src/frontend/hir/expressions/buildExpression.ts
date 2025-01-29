@@ -1,5 +1,6 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../../environment";
 import { Place } from "../../../ir";
 import { buildUnsupportedNode } from "../buildUnsupportedNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
@@ -21,6 +22,7 @@ export function buildExpression(
   nodePath: NodePath<t.Expression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
 ): Place {
   switch (nodePath.type) {
     case "AssignmentExpression":
@@ -29,51 +31,98 @@ export function buildExpression(
         nodePath,
         functionBuilder,
         moduleBuilder,
+        environment,
       );
     case "ArrayExpression":
       nodePath.assertArrayExpression();
-      return buildArrayExpression(nodePath, functionBuilder, moduleBuilder);
+      return buildArrayExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "ArrowFunctionExpression":
       nodePath.assertArrowFunctionExpression();
       return buildArrowFunctionExpression(
         nodePath,
         functionBuilder,
         moduleBuilder,
+        environment,
       );
     case "BinaryExpression":
       nodePath.assertBinaryExpression();
-      return buildBinaryExpression(nodePath, functionBuilder, moduleBuilder);
+      return buildBinaryExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "BooleanLiteral":
       nodePath.assertBooleanLiteral();
-      return buildLiteral(nodePath, functionBuilder);
+      return buildLiteral(nodePath, functionBuilder, environment);
     case "CallExpression":
       nodePath.assertCallExpression();
-      return buildCallExpression(nodePath, functionBuilder, moduleBuilder);
+      return buildCallExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "FunctionExpression":
       nodePath.assertFunctionExpression();
-      return buildFunctionExpression(nodePath, functionBuilder, moduleBuilder);
+      return buildFunctionExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "LogicalExpression":
       nodePath.assertLogicalExpression();
-      return buildLogicalExpression(nodePath, functionBuilder, moduleBuilder);
+      return buildLogicalExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "MemberExpression":
       nodePath.assertMemberExpression();
-      return buildMemberExpression(nodePath, functionBuilder, moduleBuilder);
+      return buildMemberExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "NumericLiteral":
       nodePath.assertNumericLiteral();
-      return buildLiteral(nodePath, functionBuilder);
+      return buildLiteral(nodePath, functionBuilder, environment);
     case "ObjectExpression":
       nodePath.assertObjectExpression();
-      return buildObjectExpression(nodePath, functionBuilder, moduleBuilder);
+      return buildObjectExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "StringLiteral":
       nodePath.assertStringLiteral();
-      return buildLiteral(nodePath, functionBuilder);
+      return buildLiteral(nodePath, functionBuilder, environment);
     case "UnaryExpression":
       nodePath.assertUnaryExpression();
-      return buildUnaryExpression(nodePath, functionBuilder, moduleBuilder);
+      return buildUnaryExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "UpdateExpression":
       nodePath.assertUpdateExpression();
-      return buildUpdateExpression(nodePath, functionBuilder, moduleBuilder);
+      return buildUpdateExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     default:
-      return buildUnsupportedNode(nodePath, functionBuilder);
+      return buildUnsupportedNode(nodePath, functionBuilder, environment);
   }
 }

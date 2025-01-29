@@ -8,11 +8,7 @@ import {
 } from "../../base";
 import { Identifier, Place } from "../../core";
 import { FunctionIR } from "../../core/FunctionIR";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../utils";
+import { createInstructionId } from "../../utils";
 
 export class FunctionDeclarationInstruction extends DeclarationInstruction {
   constructor(
@@ -28,8 +24,8 @@ export class FunctionDeclarationInstruction extends DeclarationInstruction {
   }
 
   public clone(environment: Environment): FunctionDeclarationInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new FunctionDeclarationInstruction(
       instructionId,

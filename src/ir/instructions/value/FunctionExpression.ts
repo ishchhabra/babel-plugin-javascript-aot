@@ -5,11 +5,7 @@ import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { FunctionIR } from "../../core/FunctionIR";
 import { Identifier } from "../../core/Identifier";
 import { Place } from "../../core/Place";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../utils";
+import { createInstructionId } from "../../utils";
 
 export class FunctionExpressionInstruction extends ValueInstruction {
   constructor(
@@ -25,8 +21,8 @@ export class FunctionExpressionInstruction extends ValueInstruction {
   }
 
   public clone(environment: Environment): FunctionExpressionInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new FunctionExpressionInstruction(
       instructionId,

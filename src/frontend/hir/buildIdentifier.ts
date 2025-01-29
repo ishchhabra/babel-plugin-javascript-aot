@@ -1,9 +1,8 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { Environment } from "../../environment";
 import {
   BindingIdentifierInstruction,
-  createIdentifier,
-  createPlace,
   LoadGlobalInstruction,
   LoadLocalInstruction,
   makeInstructionId,
@@ -31,17 +30,19 @@ import { FunctionIRBuilder } from "./FunctionIRBuilder";
 export function buildIdentifier(
   nodePath: NodePath<t.Identifier>,
   builder: FunctionIRBuilder,
+  environment: Environment,
 ) {
   if (nodePath.isReferencedIdentifier()) {
-    return buildReferencedIdentifier(nodePath, builder);
+    return buildReferencedIdentifier(nodePath, builder, environment);
   } else {
-    return buildBindingIdentifier(nodePath, builder);
+    return buildBindingIdentifier(nodePath, builder, environment);
   }
 }
 
 export function buildBindingIdentifier(
   nodePath: NodePath<t.Identifier>,
   builder: FunctionIRBuilder,
+  environment: Environment,
 ) {
   const name = nodePath.node.name;
 
@@ -55,8 +56,8 @@ export function buildBindingIdentifier(
   }
 
   if (place === undefined) {
-    const identifier = createIdentifier(builder.environment);
-    place = createPlace(identifier, builder.environment);
+    const identifier = environment.createIdentifier();
+    place = environment.createPlace(identifier);
   }
 
   const instructionId = makeInstructionId(
@@ -73,12 +74,13 @@ export function buildBindingIdentifier(
 function buildReferencedIdentifier(
   nodePath: NodePath<t.Identifier>,
   builder: FunctionIRBuilder,
+  environment: Environment,
 ) {
   const name = nodePath.node.name;
   const declarationId = builder.getDeclarationId(name, nodePath);
 
-  const identifier = createIdentifier(builder.environment);
-  const place = createPlace(identifier, builder.environment);
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
   const instructionId = makeInstructionId(
     builder.environment.nextInstructionId++,
   );

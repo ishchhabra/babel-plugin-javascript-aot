@@ -3,11 +3,7 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { InstructionId, ModuleInstruction } from "../../base";
 import { Place } from "../../core";
-import {
-  createIdentifier,
-  createInstructionId,
-  createPlace,
-} from "../../utils";
+import { createInstructionId } from "../../utils";
 
 /**
  * Represents an export declaration.
@@ -29,8 +25,8 @@ export class ExportDeclarationInstruction extends ModuleInstruction {
   }
 
   public clone(environment: Environment): ExportDeclarationInstruction {
-    const identifier = createIdentifier(environment);
-    const place = createPlace(identifier, environment);
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
     const instructionId = createInstructionId(environment);
     return new ExportDeclarationInstruction(
       instructionId,
