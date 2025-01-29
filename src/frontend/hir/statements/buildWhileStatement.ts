@@ -1,12 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import {
-  BranchTerminal,
-  createBlock,
-  createInstructionId,
-  JumpTerminal,
-} from "../../../ir";
+import { BranchTerminal, createInstructionId, JumpTerminal } from "../../../ir";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -21,7 +16,7 @@ export function buildWhileStatement(
 
   // Build the test block.
   const testPath = nodePath.get("test");
-  const testBlock = createBlock(functionBuilder.environment);
+  const testBlock = environment.createBlock();
   functionBuilder.blocks.set(testBlock.id, testBlock);
 
   functionBuilder.currentBlock = testBlock;
@@ -38,7 +33,7 @@ export function buildWhileStatement(
 
   // Build the body block.
   const bodyPath = nodePath.get("body");
-  const bodyBlock = createBlock(functionBuilder.environment);
+  const bodyBlock = environment.createBlock();
   functionBuilder.blocks.set(bodyBlock.id, bodyBlock);
 
   functionBuilder.currentBlock = bodyBlock;
@@ -46,7 +41,7 @@ export function buildWhileStatement(
   const bodyBlockTerminus = functionBuilder.currentBlock;
 
   // Build the exit block.
-  const exitBlock = createBlock(functionBuilder.environment);
+  const exitBlock = environment.createBlock();
   functionBuilder.blocks.set(exitBlock.id, exitBlock);
 
   // Set the branch terminal for the test block.

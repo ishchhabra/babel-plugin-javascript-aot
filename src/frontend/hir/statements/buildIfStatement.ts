@@ -4,7 +4,6 @@ import { Environment } from "../../../environment";
 import {
   BasicBlock,
   BranchTerminal,
-  createBlock,
   createInstructionId,
   JumpTerminal,
 } from "../../../ir";
@@ -32,12 +31,12 @@ export function buildIfStatement(
   const currentBlock = functionBuilder.currentBlock;
 
   // Create the join block.
-  const joinBlock = createBlock(functionBuilder.environment);
+  const joinBlock = environment.createBlock();
   functionBuilder.blocks.set(joinBlock.id, joinBlock);
 
   // Build the consequent block
   const consequentPath = nodePath.get("consequent");
-  const consequentBlock = createBlock(functionBuilder.environment);
+  const consequentBlock = environment.createBlock();
   functionBuilder.blocks.set(consequentBlock.id, consequentBlock);
 
   functionBuilder.currentBlock = consequentBlock;
@@ -54,7 +53,7 @@ export function buildIfStatement(
   const alternatePath = nodePath.get("alternate");
   let alternateBlock: BasicBlock | undefined = currentBlock;
   if (alternatePath.hasNode()) {
-    alternateBlock = createBlock(functionBuilder.environment);
+    alternateBlock = environment.createBlock();
     functionBuilder.blocks.set(alternateBlock.id, alternateBlock);
 
     functionBuilder.currentBlock = alternateBlock;

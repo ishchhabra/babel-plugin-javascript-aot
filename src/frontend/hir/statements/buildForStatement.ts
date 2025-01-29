@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import {
   BranchTerminal,
-  createBlock,
   createInstructionId,
   ExpressionStatementInstruction,
   JumpTerminal,
@@ -25,7 +24,7 @@ export function buildForStatement(
 
   // Build the init block.
   const initPath: NodePath<t.ForStatement["init"]> = nodePath.get("init");
-  const initBlock = createBlock(functionBuilder.environment);
+  const initBlock = environment.createBlock();
   functionBuilder.blocks.set(initBlock.id, initBlock);
 
   functionBuilder.currentBlock = initBlock;
@@ -43,7 +42,7 @@ export function buildForStatement(
 
   // Build the test block.
   const testPath: NodePath<t.ForStatement["test"]> = nodePath.get("test");
-  const testBlock = createBlock(functionBuilder.environment);
+  const testBlock = environment.createBlock();
   functionBuilder.blocks.set(testBlock.id, testBlock);
 
   // If the test is not provided, it is equivalent to while(true).
@@ -66,7 +65,7 @@ export function buildForStatement(
 
   // Build the body block.
   const bodyPath = nodePath.get("body");
-  const bodyBlock = createBlock(functionBuilder.environment);
+  const bodyBlock = environment.createBlock();
   functionBuilder.blocks.set(bodyBlock.id, bodyBlock);
 
   functionBuilder.currentBlock = bodyBlock;
@@ -86,7 +85,7 @@ export function buildForStatement(
   const bodyBlockTerminus = functionBuilder.currentBlock;
 
   // Build the exit block.
-  const exitBlock = createBlock(functionBuilder.environment);
+  const exitBlock = environment.createBlock();
   functionBuilder.blocks.set(exitBlock.id, exitBlock);
 
   // Set the jump terminal for init block to test block.

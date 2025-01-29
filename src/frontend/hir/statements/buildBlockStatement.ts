@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { createBlock, JumpTerminal, makeInstructionId } from "../../../ir";
+import { JumpTerminal, makeInstructionId } from "../../../ir";
 import { buildBindings } from "../bindings/buildBindings";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
@@ -15,7 +15,7 @@ export function buildBlockStatement(
 ) {
   const currentBlock = functionBuilder.currentBlock;
 
-  const block = createBlock(functionBuilder.environment);
+  const block = environment.createBlock();
   functionBuilder.blocks.set(block.id, block);
   functionBuilder.currentBlock = block;
 

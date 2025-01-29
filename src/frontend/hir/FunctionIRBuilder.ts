@@ -5,7 +5,6 @@ import {
   BaseInstruction,
   BasicBlock,
   BlockId,
-  createBlock,
   DeclarationId,
   Place,
 } from "../../ir";
@@ -30,7 +29,7 @@ export class FunctionIRBuilder {
     public readonly environment: Environment,
     public readonly moduleBuilder: ModuleIRBuilder,
   ) {
-    const entryBlock = createBlock(environment);
+    const entryBlock = this.environment.createBlock();
     this.blocks.set(entryBlock.id, entryBlock);
     this.currentBlock = entryBlock;
   }
