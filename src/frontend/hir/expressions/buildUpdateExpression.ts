@@ -27,8 +27,8 @@ export function buildUpdateExpression(
     );
   }
 
-  const originalPlace =
-    functionBuilder.getLatestDeclarationPlace(declarationId);
+  const latestDeclaration = environment.getLatestDeclaration(declarationId)!;
+  const originalPlace = environment.places.get(latestDeclaration.placeId);
   if (originalPlace === undefined) {
     throw new Error(
       `Unable to find the place for ${argumentPath.node.name} (${declarationId})`,
@@ -71,7 +71,11 @@ export function buildUpdateExpression(
     "const",
   );
   functionBuilder.addInstruction(instruction);
-  functionBuilder.registerDeclarationPlace(declarationId, lvalPlace);
+  environment.registerDeclaration(
+    declarationId,
+    functionBuilder.currentBlock.id,
+    lvalPlace.id,
+  );
   return nodePath.node.prefix ? valuePlace : originalPlace;
 }
 

@@ -265,7 +265,11 @@ function buildIdentifierAssignmentLeft(
     identifier.name,
   );
   functionBuilder.addInstruction(instruction);
-  functionBuilder.registerDeclarationPlace(declarationId, place);
+  environment.registerDeclaration(
+    declarationId,
+    functionBuilder.currentBlock.id,
+    place.id,
+  );
   return { place, instructions: [] };
 }
 
@@ -285,7 +289,11 @@ function buildMemberExpressionAssignmentLeft(
     identifier.name,
   );
   functionBuilder.addInstruction(instruction);
-  functionBuilder.registerDeclarationPlace(identifier.declarationId, place);
+  environment.registerDeclaration(
+    identifier.declarationId,
+    functionBuilder.currentBlock.id,
+    place.id,
+  );
 
   const loadLocalPlace = environment.createPlace(
     environment.createIdentifier(),

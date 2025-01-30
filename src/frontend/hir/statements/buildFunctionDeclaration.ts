@@ -44,8 +44,8 @@ export function buildFunctionDeclaration(
     );
   }
 
-  const functionPlace =
-    functionBuilder.getLatestDeclarationPlace(declarationId);
+  const latestDeclaration = environment.getLatestDeclaration(declarationId)!;
+  const functionPlace = environment.places.get(latestDeclaration.placeId)!;
   if (functionPlace === undefined) {
     throw new Error(
       `Unable to find the place for ${functionName.node.name} (${declarationId})`,

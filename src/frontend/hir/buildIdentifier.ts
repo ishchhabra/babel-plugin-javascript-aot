@@ -51,7 +51,8 @@ export function buildBindingIdentifier(
   // in #buildBindings.
   const declarationId = builder.getDeclarationId(name, nodePath);
   if (declarationId !== undefined) {
-    place = builder.getLatestDeclarationPlace(declarationId);
+    const latestDeclaration = environment.getLatestDeclaration(declarationId);
+    place = environment.places.get(latestDeclaration.placeId);
   }
 
   if (place === undefined) {
@@ -95,7 +96,8 @@ function buildReferencedIdentifier(
       throw new Error(`Variable accessed before declaration: ${name}`);
     }
 
-    const declarationPlace = builder.getLatestDeclarationPlace(declarationId);
+    const latestDeclaration = environment.getLatestDeclaration(declarationId);
+    const declarationPlace = environment.places.get(latestDeclaration.placeId);
     if (declarationPlace === undefined) {
       throw new Error(
         `Unable to find the place for ${name} (${declarationId})`,

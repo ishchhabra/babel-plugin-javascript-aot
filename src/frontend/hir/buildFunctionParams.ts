@@ -27,7 +27,11 @@ export function buildFunctionParams(
 
       const declarationId = identifier.declarationId;
       functionBuilder.registerDeclarationName(name, declarationId, bodyPath);
-      functionBuilder.registerDeclarationPlace(declarationId, place);
+      environment.registerDeclaration(
+        declarationId,
+        functionBuilder.currentBlock.id,
+        place.id,
+      );
       return place;
     },
   );

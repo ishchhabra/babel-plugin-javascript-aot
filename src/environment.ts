@@ -43,8 +43,10 @@ export class Environment {
    * or scope effectively creates a new “version” of that declaration, captured by
    * a distinct `Place`. This structure keeps track of those versions over time.
    */
-  declToPlaces: Map<DeclarationId, Array<{ blockId: BlockId; place: Place }>> =
-    new Map();
+  declToPlaces: Map<
+    DeclarationId,
+    Array<{ blockId: BlockId; placeId: PlaceId }>
+  > = new Map();
 
   /**
    * Maps each `DeclarationId` to the `PlaceId` of the IR instruction responsible
@@ -96,11 +98,11 @@ export class Environment {
     return place;
   }
 
-  public createInstruction<
-    I extends BaseInstruction,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    C extends new (...args: any[]) => I,
-  >(Class: C, ...args: OmitFirst<ConstructorParameters<C>>): I {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public createInstruction<C extends new (...args: any[]) => any>(
+    Class: C,
+    ...args: OmitFirst<ConstructorParameters<C>>
+  ): InstanceType<C> {
     const instructionId = makeInstructionId(this.nextInstructionId++);
     const instruction = new Class(instructionId, ...args);
     this.instructions.set(instructionId, instruction);
@@ -119,5 +121,20 @@ export class Environment {
     const functionIR = new FunctionIR(functionId, [], [], new Map());
     this.functions.set(functionId, functionIR);
     return functionIR;
+  }
+
+  public registerDeclaration(
+    declarationId: DeclarationId,
+    blockId: BlockId,
+    placeId: PlaceId,
+  ) {
+    const placeIds = this.declToPlaces.get(declarationId) ?? [];
+    placeIds.push({ blockId, placeId });
+    this.declToPlaces.set(declarationId, placeIds);
+  }
+
+  public getLatestDeclaration(declarationId: DeclarationId) {
+    const placeIds = this.declToPlaces.get(declarationId) ?? [];
+    return placeIds[placeIds.length - 1];
   }
 }

@@ -63,12 +63,18 @@ export class SSAEliminator {
     const instructionId = makeInstructionId(
       this.moduleIR.environment.nextInstructionId++,
     );
+    const declarationPlace = this.moduleIR.environment.places.get(
+      declaration.placeId,
+    );
+    if (declarationPlace === undefined) {
+      throw new Error(`Declaration place not found for ${phi.declarationId}`);
+    }
     const instruction = new StoreLocalInstruction(
       instructionId,
       place,
       undefined,
       phi.place,
-      declaration.place,
+      declarationPlace,
       "let",
     );
 

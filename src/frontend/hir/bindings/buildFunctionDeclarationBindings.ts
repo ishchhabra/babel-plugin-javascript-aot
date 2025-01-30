@@ -39,5 +39,9 @@ export function buildFunctionDeclarationBindings(
   );
 
   const place = environment.createPlace(identifier);
-  functionBuilder.registerDeclarationPlace(identifier.declarationId, place);
+  environment.registerDeclaration(
+    identifier.declarationId,
+    functionBuilder.currentBlock.id,
+    place.id,
+  );
 }

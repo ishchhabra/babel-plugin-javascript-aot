@@ -1,13 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../environment";
-import {
-  BaseInstruction,
-  BasicBlock,
-  BlockId,
-  DeclarationId,
-  Place,
-} from "../../ir";
+import { BaseInstruction, BasicBlock, BlockId, DeclarationId } from "../../ir";
 import { FunctionIR, makeFunctionIRId } from "../../ir/core/FunctionIR";
 import { buildBindings } from "./bindings";
 import { buildFunctionParams } from "./buildFunctionParams";
@@ -76,9 +70,10 @@ export class FunctionIRBuilder {
         instruction.place.identifier.declarationId,
       )
     ) {
-      this.registerDeclarationPlace(
+      this.environment.registerDeclaration(
         instruction.place.identifier.declarationId,
-        instruction.place,
+        this.currentBlock.id,
+        instruction.place.id,
       );
     }
     this.currentBlock.instructions.push(instruction);
@@ -100,27 +95,15 @@ export class FunctionIRBuilder {
     return nodePath.scope.getData(name);
   }
 
-  public registerDeclarationPlace(declarationId: DeclarationId, place: Place) {
-    const places = this.environment.declToPlaces.get(declarationId) ?? [];
-    places.push({ blockId: this.currentBlock.id, place });
-    this.environment.declToPlaces.set(declarationId, places);
-  }
-
-  public getLatestDeclarationPlace(
-    declarationId: DeclarationId,
-  ): Place | undefined {
-    const places = this.environment.declToPlaces.get(declarationId);
-    return places?.at(-1)?.place;
-  }
-
   public getDeclarationInstruction(
     declarationId: DeclarationId,
   ): BaseInstruction | undefined {
-    const declarationPlace = this.getLatestDeclarationPlace(declarationId);
+    const declarationPlace =
+      this.environment.getLatestDeclaration(declarationId).placeId;
     if (declarationPlace === undefined) {
       return undefined;
     }
 
-    return this.environment.placeToInstruction.get(declarationPlace.id);
+    return this.environment.placeToInstruction.get(declarationPlace);
   }
 }

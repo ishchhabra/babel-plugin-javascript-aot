@@ -6,6 +6,7 @@ import {
   LoadLocalInstruction,
   LoadPhiInstruction,
   Place,
+  PlaceId,
 } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
@@ -39,16 +40,16 @@ export class SSABuilder {
   private computePhiNodes(): Set<Phi> {
     const phis = new Set<Phi>();
 
-    for (const [declarationId, places] of this.moduleIR.environment
+    for (const [declarationId, placeIds] of this.moduleIR.environment
       .declToPlaces) {
-      const definitionBlocks = places.map((p) => p.blockId);
+      const definitionBlocks = placeIds.map((p) => p.blockId);
       if (definitionBlocks.length <= 1) {
         continue;
       }
 
       this.insertPhiNodesForDeclaration(
         declarationId,
-        places,
+        placeIds,
         definitionBlocks,
         phis,
       );
@@ -63,7 +64,7 @@ export class SSABuilder {
    */
   private insertPhiNodesForDeclaration(
     declarationId: DeclarationId,
-    places: { blockId: BlockId; place: Place }[],
+    placeIds: { blockId: BlockId; placeId: PlaceId }[],
     definitionBlocks: BlockId[],
     phis: Set<Phi>,
   ): void {
@@ -89,7 +90,7 @@ export class SSABuilder {
         hasPhi.add(blockId);
 
         // Record that this block now also defines the variable
-        places.push({ blockId, place });
+        placeIds.push({ blockId, placeId: place.id });
 
         // If blockId wasn't already in the definition list, add it to the workList
         if (!definitionBlocks.includes(blockId)) {
@@ -119,16 +120,17 @@ export class SSABuilder {
       }
 
       for (const predecessor of predecessors) {
-        const place = places.find((p) => p.blockId === predecessor)?.place;
+        const placeId = places.find((p) => p.blockId === predecessor)?.placeId;
         // If the variable is not defined in the predecessor, ignore it.
         // This occurs with back edges in loops, where the variable is defined
         // within the loop body but not in the block that enters the loop.
         // The variable definition exists in the loop block (a predecessor)
         // but not in the original entry block.
-        if (place === undefined) {
+        if (placeId === undefined) {
           continue;
         }
 
+        const place = this.moduleIR.environment.places.get(placeId)!;
         phi.operands.set(predecessor, place);
       }
     }
