@@ -55,6 +55,14 @@ export class Environment {
   declToDeclInstrPlace: Map<DeclarationId, PlaceId> = new Map();
 
   /**
+   * Maps each `DeclarationId` to the `InstructionId` of the IR instruction responsible
+   * for its *declaration statement*. When multiple variables are declared
+   * together (e.g. `const a = 1, b = 2`), all associated `DeclarationId`s will
+   * map to the *same* StoreLocal instruction.
+   */
+  declToDeclInstr: Map<DeclarationId, InstructionId> = new Map();
+
+  /**
    * Maps each `PlaceId` to the IR instruction that is associated with it.
    */
   placeToInstruction: Map<PlaceId, BaseInstruction> = new Map();
