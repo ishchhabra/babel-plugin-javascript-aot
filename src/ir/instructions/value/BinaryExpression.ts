@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents a binary expression.
@@ -26,9 +25,8 @@ export class BinaryExpressionInstruction extends ValueInstruction {
   public clone(environment: Environment): BinaryExpressionInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new BinaryExpressionInstruction(
-      instructionId,
+    return environment.createInstruction(
+      BinaryExpressionInstruction,
       place,
       this.nodePath,
       this.operator,
@@ -37,7 +35,7 @@ export class BinaryExpressionInstruction extends ValueInstruction {
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+  rewrite(values: Map<Identifier, Place>): BaseInstruction {
     return new BinaryExpressionInstruction(
       this.id,
       this.place,

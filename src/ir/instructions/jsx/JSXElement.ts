@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, JSXInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents a JSX element in the IR.
@@ -27,9 +26,8 @@ export class JSXElementInstruction extends JSXInstruction {
   public clone(environment: Environment): JSXElementInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new JSXElementInstruction(
-      instructionId,
+    return environment.createInstruction(
+      JSXElementInstruction,
       place,
       this.nodePath,
       this.openingElement,
@@ -38,7 +36,7 @@ export class JSXElementInstruction extends JSXInstruction {
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+  rewrite(values: Map<Identifier, Place>): BaseInstruction {
     return new JSXElementInstruction(
       this.id,
       this.place,

@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents an object property in the IR.
@@ -27,9 +26,8 @@ export class ObjectPropertyInstruction extends ValueInstruction {
   public clone(environment: Environment): ObjectPropertyInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new ObjectPropertyInstruction(
-      instructionId,
+    return environment.createInstruction(
+      ObjectPropertyInstruction,
       place,
       this.nodePath,
       this.key,
@@ -39,7 +37,7 @@ export class ObjectPropertyInstruction extends ValueInstruction {
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+  rewrite(values: Map<Identifier, Place>): BaseInstruction {
     return new ObjectPropertyInstruction(
       this.id,
       this.place,

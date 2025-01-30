@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * An instruction that loads a **static** property for an object:
@@ -23,9 +22,8 @@ export class LoadPropertyInstruction extends MemoryInstruction {
   public clone(environment: Environment): LoadPropertyInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new LoadPropertyInstruction(
-      instructionId,
+    return environment.createInstruction(
+      LoadPropertyInstruction,
       place,
       this.nodePath,
       this.object,
@@ -33,7 +31,7 @@ export class LoadPropertyInstruction extends MemoryInstruction {
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): LoadPropertyInstruction {
+  rewrite(values: Map<Identifier, Place>): LoadPropertyInstruction {
     return new LoadPropertyInstruction(
       this.id,
       this.place,

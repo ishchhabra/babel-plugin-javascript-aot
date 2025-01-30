@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Environment } from "../../environment";
-import { makeInstructionId, ObjectPropertyInstruction } from "../../ir";
+import { ObjectPropertyInstruction } from "../../ir";
 import { buildNode } from "./buildNode";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
@@ -36,18 +36,15 @@ export function buildObjectProperty(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-
-  functionBuilder.addInstruction(
-    new ObjectPropertyInstruction(
-      makeInstructionId(functionBuilder.environment.nextInstructionId++),
-      place,
-      nodePath,
-      keyPlace,
-      valuePlace,
-      nodePath.node.computed,
-      nodePath.node.shorthand,
-    ),
+  const instruction = environment.createInstruction(
+    ObjectPropertyInstruction,
+    place,
+    nodePath,
+    keyPlace,
+    valuePlace,
+    nodePath.node.computed,
+    nodePath.node.shorthand,
   );
-
+  functionBuilder.addInstruction(instruction);
   return place;
 }

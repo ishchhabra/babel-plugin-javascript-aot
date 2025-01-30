@@ -4,6 +4,7 @@ import {
   BlockId,
   InstructionId,
   makeBlockId,
+  makeInstructionId,
 } from "./ir";
 import {
   FunctionIR,
@@ -18,6 +19,11 @@ import {
   makeIdentifierId,
 } from "./ir/core/Identifier";
 import { makePlaceId, Place, PlaceId } from "./ir/core/Place";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type OmitFirst<T extends unknown[]> = T extends [any, ...infer Rest]
+  ? Rest
+  : never;
 
 export class Environment {
   public readonly identifiers: Map<IdentifierId, Identifier> = new Map();
@@ -82,7 +88,16 @@ export class Environment {
     return place;
   }
 
-  // TODO: Implement createInstruction generic
+  public createInstruction<
+    I extends BaseInstruction,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    C extends new (...args: any[]) => I,
+  >(Class: C, ...args: OmitFirst<ConstructorParameters<C>>): I {
+    const instructionId = makeInstructionId(this.nextInstructionId++);
+    const instruction = new Class(instructionId, ...args);
+    this.instructions.set(instructionId, instruction);
+    return instruction;
+  }
 
   public createBlock(): BasicBlock {
     const blockId = makeBlockId(this.nextBlockId++);

@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { InstructionId, JSXInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents a JSX fragment in the IR.
@@ -27,9 +26,8 @@ export class JSXFragmentInstruction extends JSXInstruction {
   public clone(environment: Environment): JSXFragmentInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new JSXFragmentInstruction(
-      instructionId,
+    return environment.createInstruction(
+      JSXFragmentInstruction,
       place,
       this.nodePath,
       this.openingFragment,
@@ -38,7 +36,7 @@ export class JSXFragmentInstruction extends JSXInstruction {
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): JSXFragmentInstruction {
+  rewrite(values: Map<Identifier, Place>): JSXFragmentInstruction {
     return new JSXFragmentInstruction(
       this.id,
       this.place,

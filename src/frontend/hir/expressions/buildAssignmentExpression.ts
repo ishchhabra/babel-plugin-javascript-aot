@@ -5,7 +5,6 @@ import {
   ArrayPatternInstruction,
   BaseInstruction,
   BindingIdentifierInstruction,
-  createInstructionId,
   ExpressionStatementInstruction,
   LoadLocalInstruction,
   ObjectPropertyInstruction,
@@ -89,17 +88,15 @@ function buildIdentifierAssignment(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-  functionBuilder.addInstruction(
-    new StoreLocalInstruction(
-      instructionId,
-      place,
-      nodePath,
-      leftPlace,
-      rightPlace,
-      "const",
-    ),
+  const instruction = environment.createInstruction(
+    StoreLocalInstruction,
+    place,
+    nodePath,
+    leftPlace,
+    rightPlace,
+    "const",
   );
+  functionBuilder.addInstruction(instruction);
   return place;
 }
 
@@ -142,17 +139,15 @@ function buildMemberExpressionAssignment(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-  functionBuilder.addInstruction(
-    new StorePropertyInstruction(
-      instructionId,
-      place,
-      nodePath,
-      objectPlace,
-      property,
-      rightPlace,
-    ),
+  const instruction = environment.createInstruction(
+    StorePropertyInstruction,
+    place,
+    nodePath,
+    objectPlace,
+    property,
+    rightPlace,
   );
+  functionBuilder.addInstruction(instruction);
   return place;
 }
 
@@ -186,17 +181,15 @@ function buildDestructuringAssignment(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-  functionBuilder.addInstruction(
-    new StoreLocalInstruction(
-      instructionId,
-      place,
-      nodePath,
-      leftPlace,
-      rightPlace,
-      "const",
-    ),
+  const instruction = environment.createInstruction(
+    StoreLocalInstruction,
+    place,
+    nodePath,
+    leftPlace,
+    rightPlace,
+    "const",
   );
+  functionBuilder.addInstruction(instruction);
 
   for (const instruction of instructions) {
     functionBuilder.addInstruction(instruction);
@@ -265,14 +258,13 @@ function buildIdentifierAssignmentLeft(
 
   const identifier = environment.createIdentifier(declarationId);
   const place = environment.createPlace(identifier);
-  functionBuilder.addInstruction(
-    new BindingIdentifierInstruction(
-      createInstructionId(environment),
-      place,
-      nodePath,
-      identifier.name,
-    ),
+  const instruction = environment.createInstruction(
+    BindingIdentifierInstruction,
+    place,
+    nodePath,
+    identifier.name,
   );
+  functionBuilder.addInstruction(instruction);
   functionBuilder.registerDeclarationPlace(declarationId, place);
   return { place, instructions: [] };
 }
@@ -286,21 +278,20 @@ function buildMemberExpressionAssignmentLeft(
 ): { place: Place; instructions: BaseInstruction[] } {
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  functionBuilder.addInstruction(
-    new BindingIdentifierInstruction(
-      createInstructionId(environment),
-      place,
-      nodePath,
-      identifier.name,
-    ),
+  const instruction = environment.createInstruction(
+    BindingIdentifierInstruction,
+    place,
+    nodePath,
+    identifier.name,
   );
+  functionBuilder.addInstruction(instruction);
   functionBuilder.registerDeclarationPlace(identifier.declarationId, place);
 
   const loadLocalPlace = environment.createPlace(
     environment.createIdentifier(),
   );
-  const loadLocalInstruction = new LoadLocalInstruction(
-    createInstructionId(functionBuilder.environment),
+  const loadLocalInstruction = environment.createInstruction(
+    LoadLocalInstruction,
     loadLocalPlace,
     nodePath,
     place,
@@ -325,8 +316,8 @@ function buildMemberExpressionAssignmentLeft(
   const storePropertyPlace = environment.createPlace(
     environment.createIdentifier(),
   );
-  const storePropertyInstruction = new StorePropertyInstruction(
-    createInstructionId(environment),
+  const storePropertyInstruction = environment.createInstruction(
+    StorePropertyInstruction,
     storePropertyPlace,
     nodePath,
     objectPlace,
@@ -337,8 +328,8 @@ function buildMemberExpressionAssignmentLeft(
   const expressionStatementPlace = environment.createPlace(
     environment.createIdentifier(),
   );
-  const expressionStatementInstruction = new ExpressionStatementInstruction(
-    createInstructionId(environment),
+  const expressionStatementInstruction = environment.createInstruction(
+    ExpressionStatementInstruction,
     expressionStatementPlace,
     nodePath,
     storePropertyPlace,
@@ -381,14 +372,13 @@ function buildArrayPatternAssignmentLeft(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  functionBuilder.addInstruction(
-    new ArrayPatternInstruction(
-      createInstructionId(environment),
-      place,
-      nodePath,
-      elementPlaces,
-    ),
+  const instruction = environment.createInstruction(
+    ArrayPatternInstruction,
+    place,
+    nodePath,
+    elementPlaces,
   );
+  functionBuilder.addInstruction(instruction);
   return { place, instructions };
 }
 
@@ -428,17 +418,16 @@ function buildObjectPatternAssignmentLeft(
 
       const identifier = environment.createIdentifier();
       const place = environment.createPlace(identifier);
-      functionBuilder.addInstruction(
-        new ObjectPropertyInstruction(
-          createInstructionId(environment),
-          place,
-          nodePath,
-          keyPlace,
-          valuePlace,
-          propertyPath.node.computed,
-          propertyPath.node.shorthand,
-        ),
+      const instruction = environment.createInstruction(
+        ObjectPropertyInstruction,
+        place,
+        nodePath,
+        keyPlace,
+        valuePlace,
+        propertyPath.node.computed,
+        propertyPath.node.shorthand,
       );
+      functionBuilder.addInstruction(instruction);
       return place;
     }
 
@@ -447,14 +436,12 @@ function buildObjectPatternAssignmentLeft(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  functionBuilder.addInstruction(
-    new ObjectPatternInstruction(
-      createInstructionId(environment),
-      place,
-      leftPath,
-      propertyPlaces,
-    ),
+  const instruction = environment.createInstruction(
+    ObjectPatternInstruction,
+    place,
+    leftPath,
+    propertyPlaces,
   );
-
+  functionBuilder.addInstruction(instruction);
   return { place, instructions };
 }

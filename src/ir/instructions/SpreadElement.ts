@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../environment";
 import { BaseInstruction, InstructionId } from "../base";
 import { Identifier, Place } from "../core";
-import { createInstructionId } from "../utils";
 
 /**
  * Represents a spread element in the IR.
@@ -25,16 +24,15 @@ export class SpreadElementInstruction extends BaseInstruction {
   public clone(environment: Environment): SpreadElementInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new SpreadElementInstruction(
-      instructionId,
+    return environment.createInstruction(
+      SpreadElementInstruction,
       place,
       this.nodePath,
       this.argument,
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+  rewrite(values: Map<Identifier, Place>): BaseInstruction {
     return new SpreadElementInstruction(
       this.id,
       this.place,

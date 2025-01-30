@@ -139,7 +139,7 @@ export class SSAEliminator {
       }
 
       block.instructions = block.instructions.map((instruction) =>
-        instruction.rewriteInstruction(values),
+        instruction.rewrite(values),
       );
     }
   }

@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Environment } from "../../environment";
-import { createInstructionId, Place, SpreadElementInstruction } from "../../ir";
+import { Place, SpreadElementInstruction } from "../../ir";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
 import { buildNode } from "./buildNode";
@@ -25,11 +25,12 @@ export function buildSpreadElement(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-
-  functionBuilder.addInstruction(
-    new SpreadElementInstruction(instructionId, place, nodePath, argumentPlace),
+  const instruction = environment.createInstruction(
+    SpreadElementInstruction,
+    place,
+    nodePath,
+    argumentPlace,
   );
-
+  functionBuilder.addInstruction(instruction);
   return place;
 }

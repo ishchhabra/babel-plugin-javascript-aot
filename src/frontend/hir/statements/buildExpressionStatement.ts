@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { castArray } from "lodash-es";
 import { Environment } from "../../../environment";
 import {
-  createInstructionId,
   ExpressionStatementInstruction,
   Place,
   StoreLocalInstruction,
@@ -38,17 +37,13 @@ export function buildExpressionStatement(
 
       const identifier = environment.createIdentifier();
       const place = environment.createPlace(identifier);
-      const instructionId = createInstructionId(environment);
-
-      functionBuilder.addInstruction(
-        new ExpressionStatementInstruction(
-          instructionId,
-          place,
-          expressionPath,
-          expressionPlace,
-        ),
+      const instruction = environment.createInstruction(
+        ExpressionStatementInstruction,
+        place,
+        expressionPath,
+        expressionPlace,
       );
-
+      functionBuilder.addInstruction(instruction);
       return place;
     })
     .filter((place) => place !== undefined);

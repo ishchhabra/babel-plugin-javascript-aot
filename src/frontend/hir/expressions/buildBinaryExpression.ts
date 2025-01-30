@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { BinaryExpressionInstruction, makeInstructionId } from "../../../ir";
+import { BinaryExpressionInstruction } from "../../../ir";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -37,18 +37,14 @@ export function buildBinaryExpression(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = makeInstructionId(environment.nextInstructionId++);
-
-  functionBuilder.addInstruction(
-    new BinaryExpressionInstruction(
-      instructionId,
-      place,
-      nodePath,
-      nodePath.node.operator,
-      leftPlace,
-      rightPlace,
-    ),
+  const instruction = environment.createInstruction(
+    BinaryExpressionInstruction,
+    place,
+    nodePath,
+    nodePath.node.operator,
+    leftPlace,
+    rightPlace,
   );
-
+  functionBuilder.addInstruction(instruction);
   return place;
 }

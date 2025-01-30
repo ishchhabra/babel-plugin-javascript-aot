@@ -2,10 +2,7 @@ import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { getFunctionName } from "../../../babel-utils";
 import { Environment } from "../../../environment";
-import {
-  createInstructionId,
-  FunctionDeclarationInstruction,
-} from "../../../ir";
+import { FunctionDeclarationInstruction } from "../../../ir";
 import { buildIdentifier } from "../buildIdentifier";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -55,17 +52,15 @@ export function buildFunctionDeclaration(
     );
   }
 
-  functionBuilder.addInstruction(
-    new FunctionDeclarationInstruction(
-      createInstructionId(functionBuilder.environment),
-      functionPlace,
-      nodePath,
-      identifierPlace,
-      functionIR,
-      nodePath.node.generator,
-      nodePath.node.async,
-    ),
+  const instruction = environment.createInstruction(
+    FunctionDeclarationInstruction,
+    functionPlace,
+    nodePath,
+    identifierPlace,
+    functionIR,
+    nodePath.node.generator,
+    nodePath.node.async,
   );
-
+  functionBuilder.addInstruction(instruction);
   return functionPlace;
 }

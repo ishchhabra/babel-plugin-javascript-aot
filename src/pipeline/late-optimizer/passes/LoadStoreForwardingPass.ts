@@ -152,7 +152,7 @@ function rewriteStoreSource(
 ): CopyInstruction | StoreLocalInstruction {
   const oldValueId = storeInstr.value.identifier;
   const rewriteMap = new Map<Identifier, Place>([[oldValueId, newValue]]);
-  return storeInstr.rewriteInstruction(rewriteMap);
+  return storeInstr.rewrite(rewriteMap);
 }
 
 /**

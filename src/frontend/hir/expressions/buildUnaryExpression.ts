@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { createInstructionId, UnaryExpressionInstruction } from "../../../ir";
+import { UnaryExpressionInstruction } from "../../../ir";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -25,17 +25,13 @@ export function buildUnaryExpression(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-
-  functionBuilder.addInstruction(
-    new UnaryExpressionInstruction(
-      instructionId,
-      place,
-      nodePath,
-      nodePath.node.operator,
-      argumentPlace,
-    ),
+  const instruction = environment.createInstruction(
+    UnaryExpressionInstruction,
+    place,
+    nodePath,
+    nodePath.node.operator,
+    argumentPlace,
   );
-
+  functionBuilder.addInstruction(instruction);
   return place;
 }

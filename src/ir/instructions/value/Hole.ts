@@ -26,7 +26,7 @@ export class HoleInstruction extends ValueInstruction {
     return new HoleInstruction(instructionId, place, this.nodePath);
   }
 
-  rewriteInstruction(): BaseInstruction {
+  rewrite(): BaseInstruction {
     // Hole can not be rewritten.
     return this;
   }

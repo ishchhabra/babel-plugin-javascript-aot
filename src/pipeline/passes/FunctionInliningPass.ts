@@ -170,12 +170,12 @@ export class FunctionInliningPass extends BaseOptimizationPass {
     for (const instr of block.instructions) {
       const clonedInstr = instr.clone(environment);
       rewriteMap.set(instr.place.identifier, clonedInstr.place);
-      instrs.push(clonedInstr.rewriteInstruction(rewriteMap));
+      instrs.push(clonedInstr.rewrite(rewriteMap));
     }
 
     if (block.terminal instanceof ReturnTerminal) {
       callExpressionBlock.instructions[index] =
-        callExpressionInstr.rewriteInstruction(rewriteMap);
+        callExpressionInstr.rewrite(rewriteMap);
     }
 
     let returnPlace: Place | undefined = undefined;
@@ -202,8 +202,7 @@ export class FunctionInliningPass extends BaseOptimizationPass {
         i++
       ) {
         const oldInstr = callExpressionBlock.instructions[i];
-        callExpressionBlock.instructions[i] =
-          oldInstr.rewriteInstruction(retRewriteMap);
+        callExpressionBlock.instructions[i] = oldInstr.rewrite(retRewriteMap);
       }
     }
   }

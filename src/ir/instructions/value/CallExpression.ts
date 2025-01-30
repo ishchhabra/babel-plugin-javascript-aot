@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents a call expression.
@@ -26,9 +25,8 @@ export class CallExpressionInstruction extends ValueInstruction {
   public clone(environment: Environment): CallExpressionInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new CallExpressionInstruction(
-      instructionId,
+    return environment.createInstruction(
+      CallExpressionInstruction,
       place,
       this.nodePath,
       this.callee,
@@ -36,7 +34,7 @@ export class CallExpressionInstruction extends ValueInstruction {
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+  rewrite(values: Map<Identifier, Place>): BaseInstruction {
     return new CallExpressionInstruction(
       this.id,
       this.place,

@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { createInstructionId, Place } from "../../../ir";
+import { Place } from "../../../ir";
 import { ArrowFunctionExpressionInstruction } from "../../../ir/instructions/value/ArrowFunctionExpression";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -23,17 +23,15 @@ export function buildArrowFunctionExpression(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-
-  functionBuilder.addInstruction(
-    new ArrowFunctionExpressionInstruction(
-      createInstructionId(environment),
-      place,
-      nodePath,
-      functionIR,
-      nodePath.node.async,
-      bodyPath.isExpression(),
-      false,
-    ),
+  const instruction = environment.createInstruction(
+    ArrowFunctionExpressionInstruction,
+    place,
+    nodePath,
+    functionIR,
+    nodePath.node.async,
+    bodyPath.isExpression(),
+    false,
   );
+  functionBuilder.addInstruction(instruction);
   return place;
 }

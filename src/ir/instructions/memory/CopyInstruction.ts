@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents a memory instruction that copies the value of one place to another.
@@ -24,9 +23,8 @@ export class CopyInstruction extends MemoryInstruction {
   public clone(environment: Environment): CopyInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new CopyInstruction(
-      instructionId,
+    return environment.createInstruction(
+      CopyInstruction,
       place,
       this.nodePath,
       this.lval,
@@ -34,7 +32,7 @@ export class CopyInstruction extends MemoryInstruction {
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): CopyInstruction {
+  rewrite(values: Map<Identifier, Place>): CopyInstruction {
     return new CopyInstruction(
       this.id,
       this.place,

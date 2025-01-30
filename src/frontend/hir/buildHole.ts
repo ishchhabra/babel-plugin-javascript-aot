@@ -1,6 +1,6 @@
 import { NodePath } from "@babel/traverse";
 import { Environment } from "../../environment";
-import { createInstructionId, HoleInstruction, Place } from "../../ir";
+import { HoleInstruction, Place } from "../../ir";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 
 export function buildHole(
@@ -10,11 +10,11 @@ export function buildHole(
 ): Place {
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-
-  builder.addInstruction(
-    new HoleInstruction(instructionId, place, expressionPath),
+  const instruction = environment.createInstruction(
+    HoleInstruction,
+    place,
+    expressionPath,
   );
-
+  builder.addInstruction(instruction);
   return place;
 }

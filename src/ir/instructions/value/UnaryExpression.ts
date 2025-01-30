@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents a unary expression.
@@ -26,9 +25,8 @@ export class UnaryExpressionInstruction extends ValueInstruction {
   public clone(environment: Environment): UnaryExpressionInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new UnaryExpressionInstruction(
-      instructionId,
+    return environment.createInstruction(
+      UnaryExpressionInstruction,
       place,
       this.nodePath,
       this.operator,
@@ -36,7 +34,7 @@ export class UnaryExpressionInstruction extends ValueInstruction {
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+  rewrite(values: Map<Identifier, Place>): BaseInstruction {
     return new UnaryExpressionInstruction(
       this.id,
       this.place,

@@ -4,7 +4,6 @@ import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { FunctionIR } from "../../core/FunctionIR";
 import { Place } from "../../core/Place";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents an arrow function expression, e.g.
@@ -30,9 +29,8 @@ export class ArrowFunctionExpressionInstruction extends ValueInstruction {
   public clone(environment: Environment): ArrowFunctionExpressionInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new ArrowFunctionExpressionInstruction(
-      instructionId,
+    return environment.createInstruction(
+      ArrowFunctionExpressionInstruction,
       place,
       this.nodePath,
       this.functionIR,
@@ -42,7 +40,7 @@ export class ArrowFunctionExpressionInstruction extends ValueInstruction {
     );
   }
 
-  public rewriteInstruction(): BaseInstruction {
+  public rewrite(): BaseInstruction {
     return this;
   }
 

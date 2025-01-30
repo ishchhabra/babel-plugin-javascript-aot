@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { createInstructionId, Place, StoreLocalInstruction } from "../../../ir";
+import { Place, StoreLocalInstruction } from "../../../ir";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -41,17 +41,15 @@ export function buildVariableDeclaration(
 
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    functionBuilder.addInstruction(
-      new StoreLocalInstruction(
-        instructionId,
-        place,
-        nodePath,
-        lvalPlace,
-        valuePlace,
-        "const",
-      ),
+    const instruction = environment.createInstruction(
+      StoreLocalInstruction,
+      place,
+      nodePath,
+      lvalPlace,
+      valuePlace,
+      "const",
     );
+    functionBuilder.addInstruction(instruction);
 
     functionBuilder.environment.declToDeclInstrPlace.set(
       lvalPlace.identifier.declarationId,

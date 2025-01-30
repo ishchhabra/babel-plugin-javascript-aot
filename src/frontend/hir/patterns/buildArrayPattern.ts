@@ -1,11 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import {
-  ArrayPatternInstruction,
-  createInstructionId,
-  Place,
-} from "../../../ir";
+import { ArrayPatternInstruction, Place } from "../../../ir";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -33,11 +29,12 @@ export function buildArrayPattern(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-
-  functionBuilder.addInstruction(
-    new ArrayPatternInstruction(instructionId, place, nodePath, elementPlaces),
+  const instruction = environment.createInstruction(
+    ArrayPatternInstruction,
+    place,
+    nodePath,
+    elementPlaces,
   );
-
+  functionBuilder.addInstruction(instruction);
   return place;
 }

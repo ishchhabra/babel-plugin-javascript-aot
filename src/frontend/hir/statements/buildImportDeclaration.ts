@@ -2,7 +2,7 @@ import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { createRequire } from "module";
 import { Environment } from "../../../environment";
-import { createInstructionId, ImportDeclarationInstruction } from "../../../ir";
+import { ImportDeclarationInstruction } from "../../../ir";
 import { buildImportSpecifier } from "../buildImportSpecifier";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -44,8 +44,8 @@ export function buildImportDeclaration(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instruction = new ImportDeclarationInstruction(
-    createInstructionId(environment),
+  const instruction = environment.createInstruction(
+    ImportDeclarationInstruction,
     place,
     nodePath,
     sourceValue,

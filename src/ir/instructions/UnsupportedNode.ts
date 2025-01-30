@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../environment";
 import { BaseInstruction, InstructionId } from "../base";
 import { Identifier, Place } from "../core";
-import { createInstructionId } from "../utils";
 
 /**
  * Represents a node that is not supported by the IR. This is used to bail out
@@ -25,16 +24,15 @@ export class UnsupportedNodeInstruction extends BaseInstruction {
   public clone(environment: Environment): UnsupportedNodeInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new UnsupportedNodeInstruction(
-      instructionId,
+    return environment.createInstruction(
+      UnsupportedNodeInstruction,
       place,
       this.nodePath,
       this.node,
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+  rewrite(values: Map<Identifier, Place>): BaseInstruction {
     for (const [identifier, place] of values) {
       // The only other place we're renaming is in the binding phase of the
       // HIR Builder. So, when we rename here, we need to use the declaration

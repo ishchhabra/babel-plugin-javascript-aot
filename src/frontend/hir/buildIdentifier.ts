@@ -5,7 +5,6 @@ import {
   BindingIdentifierInstruction,
   LoadGlobalInstruction,
   LoadLocalInstruction,
-  makeInstructionId,
   Place,
 } from "../../ir";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
@@ -60,13 +59,13 @@ export function buildBindingIdentifier(
     place = environment.createPlace(identifier);
   }
 
-  const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
+  const instruction = environment.createInstruction(
+    BindingIdentifierInstruction,
+    place,
+    nodePath,
+    name,
   );
-
-  builder.addInstruction(
-    new BindingIdentifierInstruction(instructionId, place, nodePath, name),
-  );
+  builder.addInstruction(instruction);
 
   return place;
 }
@@ -81,14 +80,15 @@ function buildReferencedIdentifier(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = makeInstructionId(
-    builder.environment.nextInstructionId++,
-  );
 
   if (declarationId === undefined) {
-    builder.addInstruction(
-      new LoadGlobalInstruction(instructionId, place, nodePath, name),
+    const instruction = environment.createInstruction(
+      LoadGlobalInstruction,
+      place,
+      nodePath,
+      name,
     );
+    builder.addInstruction(instruction);
   } else {
     const declarationId = builder.getDeclarationId(name, nodePath);
     if (declarationId === undefined) {
@@ -102,14 +102,13 @@ function buildReferencedIdentifier(
       );
     }
 
-    builder.addInstruction(
-      new LoadLocalInstruction(
-        instructionId,
-        place,
-        nodePath,
-        declarationPlace,
-      ),
+    const instruction = environment.createInstruction(
+      LoadLocalInstruction,
+      place,
+      nodePath,
+      declarationPlace,
     );
+    builder.addInstruction(instruction);
   }
 
   return place;

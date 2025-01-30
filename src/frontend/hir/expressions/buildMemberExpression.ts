@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { createInstructionId, MemberExpressionInstruction } from "../../../ir";
+import { MemberExpressionInstruction } from "../../../ir";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -36,18 +36,14 @@ export function buildMemberExpression(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-
-  functionBuilder.addInstruction(
-    new MemberExpressionInstruction(
-      instructionId,
-      place,
-      nodePath,
-      objectPlace,
-      propertyPlace,
-      nodePath.node.computed,
-    ),
+  const instruction = environment.createInstruction(
+    MemberExpressionInstruction,
+    place,
+    nodePath,
+    objectPlace,
+    propertyPlace,
+    nodePath.node.computed,
   );
-
+  functionBuilder.addInstruction(instruction);
   return place;
 }

@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 export class LoadPhiInstruction extends MemoryInstruction {
   constructor(
@@ -18,16 +17,15 @@ export class LoadPhiInstruction extends MemoryInstruction {
   public clone(environment: Environment): LoadPhiInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new LoadPhiInstruction(
-      instructionId,
+    return environment.createInstruction(
+      LoadPhiInstruction,
       place,
       this.nodePath,
       this.value,
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): LoadPhiInstruction {
+  rewrite(values: Map<Identifier, Place>): LoadPhiInstruction {
     return new LoadPhiInstruction(
       this.id,
       this.place,

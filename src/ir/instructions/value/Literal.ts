@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 export type TPrimitiveValue =
   | string
@@ -35,16 +34,15 @@ export class LiteralInstruction extends ValueInstruction {
   public clone(environment: Environment): LiteralInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new LiteralInstruction(
-      instructionId,
+    return environment.createInstruction(
+      LiteralInstruction,
       place,
       this.nodePath,
       this.value,
     );
   }
 
-  rewriteInstruction(): BaseInstruction {
+  rewrite(): BaseInstruction {
     // Literals can not be rewritten.
     return this;
   }

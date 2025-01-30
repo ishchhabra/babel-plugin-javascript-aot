@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import {
   BranchTerminal,
-  createInstructionId,
   ExpressionStatementInstruction,
   JumpTerminal,
   makeInstructionId,
@@ -137,13 +136,12 @@ function buildExpressionAsStatement(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-  functionBuilder.addInstruction(
-    new ExpressionStatementInstruction(
-      instructionId,
-      place,
-      expressionPath,
-      expressionPlace,
-    ),
+  const instruction = environment.createInstruction(
+    ExpressionStatementInstruction,
+    place,
+    expressionPath,
+    expressionPlace,
   );
+  functionBuilder.addInstruction(instruction);
+  return place;
 }

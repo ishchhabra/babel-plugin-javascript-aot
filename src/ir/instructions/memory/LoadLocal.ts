@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, MemoryInstruction } from "../../base";
 import { Identifier, Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents an instruction that loads a value from one place to another place.
@@ -25,16 +24,15 @@ export class LoadLocalInstruction extends MemoryInstruction {
   public clone(environment: Environment): LoadLocalInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new LoadLocalInstruction(
-      instructionId,
+    return environment.createInstruction(
+      LoadLocalInstruction,
       place,
       this.nodePath,
       this.value,
     );
   }
 
-  rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+  rewrite(values: Map<Identifier, Place>): BaseInstruction {
     const rewrittenTarget = values.get(this.value.identifier) ?? this.value;
 
     if (rewrittenTarget === this.value) {

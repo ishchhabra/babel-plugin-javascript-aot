@@ -5,7 +5,6 @@ import { BaseInstruction, InstructionId, ValueInstruction } from "../../base";
 import { FunctionIR } from "../../core/FunctionIR";
 import { Identifier } from "../../core/Identifier";
 import { Place } from "../../core/Place";
-import { createInstructionId } from "../../utils";
 
 export class FunctionExpressionInstruction extends ValueInstruction {
   constructor(
@@ -23,9 +22,8 @@ export class FunctionExpressionInstruction extends ValueInstruction {
   public clone(environment: Environment): FunctionExpressionInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new FunctionExpressionInstruction(
-      instructionId,
+    return environment.createInstruction(
+      FunctionExpressionInstruction,
       place,
       this.nodePath,
       this.identifier,
@@ -35,7 +33,7 @@ export class FunctionExpressionInstruction extends ValueInstruction {
     );
   }
 
-  public rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction {
+  public rewrite(values: Map<Identifier, Place>): BaseInstruction {
     return new FunctionExpressionInstruction(
       this.id,
       this.place,

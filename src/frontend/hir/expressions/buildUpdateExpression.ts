@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { createInstructionId, StoreLocalInstruction } from "../../../ir";
+import { StoreLocalInstruction } from "../../../ir";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
 import { buildBinaryExpression } from "./buildBinaryExpression";
@@ -62,21 +62,16 @@ export function buildUpdateExpression(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-
-  functionBuilder.registerDeclarationPlace(declarationId, lvalPlace);
-
-  functionBuilder.addInstruction(
-    new StoreLocalInstruction(
-      instructionId,
-      place,
-      nodePath,
-      lvalPlace,
-      valuePlace,
-      "const",
-    ),
+  const instruction = environment.createInstruction(
+    StoreLocalInstruction,
+    place,
+    nodePath,
+    lvalPlace,
+    valuePlace,
+    "const",
   );
-
+  functionBuilder.addInstruction(instruction);
+  functionBuilder.registerDeclarationPlace(declarationId, lvalPlace);
   return nodePath.node.prefix ? valuePlace : originalPlace;
 }
 

@@ -2,7 +2,7 @@ import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { createRequire } from "module";
 import { Environment } from "../../environment";
-import { createInstructionId, ImportSpecifierInstruction } from "../../ir";
+import { ImportSpecifierInstruction } from "../../ir";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
 
@@ -18,15 +18,14 @@ export function buildImportSpecifier(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  functionBuilder.addInstruction(
-    new ImportSpecifierInstruction(
-      createInstructionId(functionBuilder.environment),
-      place,
-      specifierNodePath,
-      localName,
-      importedName,
-    ),
+  const instruction = environment.createInstruction(
+    ImportSpecifierInstruction,
+    place,
+    specifierNodePath,
+    localName,
+    importedName,
   );
+  functionBuilder.addInstruction(instruction);
 
   const source = declarationNodePath.node.source.value;
   moduleBuilder.globals.set(localName, {

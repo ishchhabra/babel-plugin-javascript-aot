@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, JSXInstruction } from "../../base";
 import { Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents a JSX text node in the IR.
@@ -24,16 +23,15 @@ export class JSXTextInstruction extends JSXInstruction {
   public clone(environment: Environment): JSXTextInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new JSXTextInstruction(
-      instructionId,
+    return environment.createInstruction(
+      JSXTextInstruction,
       place,
       this.nodePath,
       this.value,
     );
   }
 
-  rewriteInstruction(): BaseInstruction {
+  rewrite(): BaseInstruction {
     // JSXText can not be rewritten.
     return this;
   }

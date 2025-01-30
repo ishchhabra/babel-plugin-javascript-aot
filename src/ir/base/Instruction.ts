@@ -39,7 +39,7 @@ export abstract class BaseInstruction {
    * @param values - A map of old values to new values.
    * @returns The rewritten instruction.
    */
-  abstract rewriteInstruction(values: Map<Identifier, Place>): BaseInstruction;
+  abstract rewrite(values: Map<Identifier, Place>): BaseInstruction;
 
   /**
    * Return a set of place IDs that this instruction *reads* (uses).

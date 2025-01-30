@@ -1,11 +1,7 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../environment";
-import {
-  createInstructionId,
-  ExportSpecifierInstruction,
-  Place,
-} from "../../ir";
+import { ExportSpecifierInstruction, Place } from "../../ir";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
 import { buildNode } from "./buildNode";
@@ -32,15 +28,13 @@ export function buildExportSpecifier(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = createInstructionId(environment);
-  const instruction = new ExportSpecifierInstruction(
-    instructionId,
+  const instruction = environment.createInstruction(
+    ExportSpecifierInstruction,
     place,
     nodePath,
     localName,
     exportedName,
   );
-
   functionBuilder.addInstruction(instruction);
 
   const declarationId = functionBuilder.getDeclarationId(localName, nodePath)!;

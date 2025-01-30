@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { ArrayExpressionInstruction, makeInstructionId } from "../../../ir";
+import { ArrayExpressionInstruction } from "../../../ir";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -29,16 +29,12 @@ export function buildArrayExpression(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = makeInstructionId(environment.nextInstructionId++);
-
-  functionBuilder.addInstruction(
-    new ArrayExpressionInstruction(
-      instructionId,
-      place,
-      nodePath,
-      elementPlaces,
-    ),
+  const instruction = environment.createInstruction(
+    ArrayExpressionInstruction,
+    place,
+    nodePath,
+    elementPlaces,
   );
-
+  functionBuilder.addInstruction(instruction);
   return place;
 }

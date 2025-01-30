@@ -1,10 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import {
-  ExportDefaultDeclarationInstruction,
-  makeInstructionId,
-} from "../../../ir";
+import { ExportDefaultDeclarationInstruction } from "../../../ir";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
@@ -28,12 +25,8 @@ export function buildExportDefaultDeclaration(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  const instructionId = makeInstructionId(
-    functionBuilder.environment.nextInstructionId++,
-  );
-
-  const instruction = new ExportDefaultDeclarationInstruction(
-    instructionId,
+  const instruction = environment.createInstruction(
+    ExportDefaultDeclarationInstruction,
     place,
     nodePath,
     declarationPlace,

@@ -171,6 +171,6 @@ export class SSABuilder {
       );
     }
 
-    return instruction.rewriteInstruction(values) as T;
+    return instruction.rewrite(values) as T;
   }
 }

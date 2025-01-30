@@ -1,7 +1,6 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { createInstructionId } from "../../../ir";
 import { FunctionExpressionInstruction } from "../../../ir/instructions/value/FunctionExpression";
 import { buildIdentifier } from "../buildIdentifier";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
@@ -33,16 +32,15 @@ export function buildFunctionExpression(
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
-  functionBuilder.addInstruction(
-    new FunctionExpressionInstruction(
-      createInstructionId(environment),
-      place,
-      nodePath,
-      identifierPlace,
-      functionIR,
-      nodePath.node.generator,
-      nodePath.node.async,
-    ),
+  const instruction = environment.createInstruction(
+    FunctionExpressionInstruction,
+    place,
+    nodePath,
+    identifierPlace,
+    functionIR,
+    nodePath.node.generator,
+    nodePath.node.async,
   );
+  functionBuilder.addInstruction(instruction);
   return place;
 }

@@ -3,7 +3,6 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import { BaseInstruction, InstructionId, ModuleInstruction } from "../../base";
 import { Place } from "../../core";
-import { createInstructionId } from "../../utils";
 
 /**
  * Represents an export default declaration.
@@ -24,16 +23,15 @@ export class ExportDefaultDeclarationInstruction extends ModuleInstruction {
   public clone(environment: Environment): ExportDefaultDeclarationInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
-    const instructionId = createInstructionId(environment);
-    return new ExportDefaultDeclarationInstruction(
-      instructionId,
+    return environment.createInstruction(
+      ExportDefaultDeclarationInstruction,
       place,
       this.nodePath,
       this.declaration,
     );
   }
 
-  rewriteInstruction(): BaseInstruction {
+  rewrite(): BaseInstruction {
     return this;
   }
 
