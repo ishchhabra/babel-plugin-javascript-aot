@@ -38,7 +38,13 @@ export class FunctionIR {
   }
 
   get exitBlockId(): BlockId {
-    return Array.from(this.blocks.keys()).pop()!;
+    for (const [blockId, successors] of this.successors) {
+      if (successors.size === 0) {
+        return blockId;
+      }
+    }
+
+    throw new Error("No exit block found");
   }
 
   get exitBlock(): BasicBlock {
