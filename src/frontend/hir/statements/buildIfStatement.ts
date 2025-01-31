@@ -51,7 +51,7 @@ export function buildIfStatement(
 
   // Build the alternate block
   const alternatePath = nodePath.get("alternate");
-  let alternateBlock: BasicBlock | undefined = currentBlock;
+  let alternateBlock: BasicBlock | undefined = joinBlock;
   if (alternatePath.hasNode()) {
     alternateBlock = environment.createBlock();
     functionBuilder.blocks.set(alternateBlock.id, alternateBlock);
