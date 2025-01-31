@@ -51,13 +51,9 @@ export function buildVariableDeclaration(
       "const",
     );
     functionBuilder.addInstruction(instruction);
-
-    for (const identifier of lvalIdentifiers) {
-      functionBuilder.environment.declToDeclInstrPlace.set(
-        identifier.identifier.declarationId,
-        place.id,
-      );
-    }
+    lvalIdentifiers.forEach((identifier) => {
+      environment.registerDeclarationInstruction(identifier, instruction);
+    });
 
     return place;
   });
@@ -93,10 +89,6 @@ function buildIdentifierVariableDeclaratorLVal(
   environment: Environment,
 ): { place: Place; identifiers: Place[] } {
   const place = buildBindingIdentifier(nodePath, functionBuilder, environment);
-  functionBuilder.environment.declToDeclInstrPlace.set(
-    place.identifier.declarationId,
-    place.id,
-  );
   return { place, identifiers: [place] };
 }
 

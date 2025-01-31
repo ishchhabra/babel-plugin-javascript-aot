@@ -1,3 +1,4 @@
+import { castArray } from "lodash-es";
 import {
   BaseInstruction,
   BasicBlock,
@@ -47,14 +48,6 @@ export class Environment {
     DeclarationId,
     Array<{ blockId: BlockId; placeId: PlaceId }>
   > = new Map();
-
-  /**
-   * Maps each `DeclarationId` to the `PlaceId` of the IR instruction responsible
-   * for its *declaration statement*. When multiple variables are declared
-   * together (e.g. `const a = 1, b = 2`), all associated `DeclarationId`s will
-   * map to the *same* StoreLocal instruction.
-   */
-  declToDeclInstrPlace: Map<DeclarationId, PlaceId> = new Map();
 
   /**
    * Maps each `DeclarationId` to the `InstructionId` of the IR instruction responsible
@@ -136,5 +129,24 @@ export class Environment {
   public getLatestDeclaration(declarationId: DeclarationId) {
     const placeIds = this.declToPlaces.get(declarationId) ?? [];
     return placeIds[placeIds.length - 1];
+  }
+
+  public registerDeclarationInstruction(
+    declarations: Place | Place[],
+    instruction: BaseInstruction,
+  ) {
+    const declarations_ = castArray(declarations);
+    declarations_.forEach((declaration) => {
+      this.declToDeclInstr.set(
+        declaration.identifier.declarationId,
+        instruction.id,
+      );
+    });
+  }
+
+  public getDeclarationInstruction(
+    declarationId: DeclarationId,
+  ): InstructionId | undefined {
+    return this.declToDeclInstr.get(declarationId);
   }
 }

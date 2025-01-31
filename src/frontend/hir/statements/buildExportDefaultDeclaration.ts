@@ -32,16 +32,12 @@ export function buildExportDefaultDeclaration(
     declarationPlace,
   );
   functionBuilder.addInstruction(instruction);
-
-  functionBuilder.environment.declToDeclInstrPlace.set(
+  const declarationInstructionId = environment.getDeclarationInstruction(
     declarationPlace.identifier.declarationId,
-    place.id,
-  );
+  )!;
   moduleBuilder.exports.set("default", {
     instruction,
-    declaration: functionBuilder.getDeclarationInstruction(
-      declarationPlace.identifier.declarationId,
-    )!,
+    declaration: environment.instructions.get(declarationInstructionId)!,
   });
   return place;
 }

@@ -38,9 +38,11 @@ export function buildExportSpecifier(
   functionBuilder.addInstruction(instruction);
 
   const declarationId = functionBuilder.getDeclarationId(localName, nodePath)!;
+  const declarationInstructionId =
+    environment.getDeclarationInstruction(declarationId)!;
   moduleBuilder.exports.set(exportedName, {
     instruction,
-    declaration: functionBuilder.getDeclarationInstruction(declarationId)!,
+    declaration: environment.instructions.get(declarationInstructionId)!,
   });
   return place;
 }

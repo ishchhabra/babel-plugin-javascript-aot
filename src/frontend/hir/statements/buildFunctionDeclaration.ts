@@ -62,5 +62,6 @@ export function buildFunctionDeclaration(
     nodePath.node.async,
   );
   functionBuilder.addInstruction(instruction);
+  environment.registerDeclarationInstruction(identifierPlace, instruction);
   return functionPlace;
 }

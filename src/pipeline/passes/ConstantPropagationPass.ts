@@ -406,6 +406,7 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
     }
 
     const value = this.constants.get(instruction.value.identifier.id);
+    this.constants.set(instruction.place.identifier.id, value);
     this.constants.set(instruction.lval.identifier.id, value);
     return null;
   }
@@ -514,7 +515,7 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
       return undefined;
     }
 
-    const identifierId = moduleExport.declaration.place.identifier.id;
+    const identifierId = moduleExport.instruction.place.identifier.id;
     if (!constantsForSource.has(identifierId)) {
       return undefined;
     }

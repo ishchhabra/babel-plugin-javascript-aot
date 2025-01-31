@@ -29,12 +29,20 @@ export class FunctionIR {
   public dominanceFrontier!: Map<BlockId, Set<BlockId>>;
   public backEdges!: Map<BlockId, Set<BlockId>>;
 
+  get entryBlockId(): BlockId {
+    return this.blocks.keys().next().value!;
+  }
+
   get entryBlock(): BasicBlock {
     return this.blocks.get(this.entryBlockId)!;
   }
 
-  get entryBlockId(): BlockId {
-    return this.blocks.keys().next().value!;
+  get exitBlockId(): BlockId {
+    return Array.from(this.blocks.keys()).pop()!;
+  }
+
+  get exitBlock(): BasicBlock {
+    return this.blocks.get(this.exitBlockId)!;
   }
 
   constructor(

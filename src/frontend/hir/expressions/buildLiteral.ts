@@ -26,5 +26,6 @@ export function buildLiteral(
     expressionPath.node.value,
   );
   functionBuilder.addInstruction(instruction);
+  environment.registerDeclarationInstruction(place, instruction);
   return place;
 }

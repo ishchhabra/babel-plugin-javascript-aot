@@ -16,13 +16,7 @@ import { FunctionIRBuilder } from "./FunctionIRBuilder";
  *
  * @param nodePath - The Babel NodePath for the identifier
  * @param builder - The FunctionIRBuilder managing IR state
- * @param options.declInstrPlace - If provided, the place is recoded in the
- * environment's `declToDeclInstrPlace` mapping as the "declaration instruction
- * place" for this identifier's `DeclarationId`. In other words, if `declInstrPlace`
- * is set, the newly created or updated declaration place for this identifier is
- * associated with the provided instruction place in the IR, allowing
- * multi-declaration statements (e.g. `const a=1,b=2`) or subsequent exports
- * to reference this higher-level statement/instruction.
+ * @param environment - The environment managing IR state
  *
  * @returns The `Place` representing this identifier in the IR
  */
@@ -79,7 +73,7 @@ function buildReferencedIdentifier(
   const name = nodePath.node.name;
   const declarationId = builder.getDeclarationId(name, nodePath);
 
-  const identifier = environment.createIdentifier();
+  const identifier = environment.createIdentifier(declarationId);
   const place = environment.createPlace(identifier);
 
   if (declarationId === undefined) {

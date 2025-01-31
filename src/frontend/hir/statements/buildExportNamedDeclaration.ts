@@ -43,11 +43,12 @@ export function buildExportNamedDeclaration(
       declarationPlace,
     );
     functionBuilder.addInstruction(instruction);
+    const declarationInstructionId = environment.getDeclarationInstruction(
+      declarationPlace.identifier.declarationId,
+    )!;
     moduleBuilder.exports.set(identifier.name, {
       instruction,
-      declaration: functionBuilder.getDeclarationInstruction(
-        declarationPlace.identifier.declarationId,
-      )!,
+      declaration: environment.instructions.get(declarationInstructionId)!,
     });
     return place;
   } else {
