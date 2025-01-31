@@ -1,6 +1,3 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
 # Colors for husky output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -41,7 +38,7 @@ echo "${GREEN}✅ Prettier check passed!${NC}\n"
 
 # Run ESLint on staged files (JS/TS only)
 echo "${BLUE}🔍 Running ESLint...${NC}"
-STAGED_JS_FILES=$(echo "$STAGED_FILES" | grep -E '\.(js|jsx|ts|tsx)$')
+STAGED_JS_FILES=$(echo "$STAGED_FILES" | grep -E '\.(js|jsx|ts|tsx)$' || true)
 if [ ! -z "$STAGED_JS_FILES" ]; then
     echo "$STAGED_JS_FILES" | xargs pnpm exec eslint --flag unstable_config_lookup_from_file --max-warnings=0 || {
         handle_error "ESLint check" "Fix the issues highlighted above and try again"
