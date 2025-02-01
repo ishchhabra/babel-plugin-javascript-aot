@@ -1,5 +1,6 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
+import { isStaticMemberAccess } from "../../../babel-utils";
 import { Environment } from "../../../environment";
 import {
   ArrayPatternInstruction,
@@ -11,6 +12,7 @@ import {
   Place,
   StoreLocalInstruction,
 } from "../../../ir";
+import { StoreDynamicPropertyInstruction } from "../../../ir/instructions/memory/StoreComputedProperty";
 import { StorePropertyInstruction } from "../../../ir/instructions/memory/StoreProperty";
 import { ObjectPatternInstruction } from "../../../ir/instructions/pattern/ObjectPattern";
 import { buildNode } from "../buildNode";
@@ -132,23 +134,49 @@ function buildMemberExpressionAssignment(
     throw new Error("Assignment expression left must be a single place");
   }
 
-  const propertyPath: NodePath<t.MemberExpression["property"]> =
-    leftPath.get("property");
-  propertyPath.assertIdentifier();
-  const property = propertyPath.node.name;
+  if (isStaticMemberAccess(leftPath)) {
+    const propertyPath: NodePath<t.MemberExpression["property"]> =
+      leftPath.get("property");
+    propertyPath.assertIdentifier();
+    const property = propertyPath.node.name;
 
-  const identifier = environment.createIdentifier();
-  const place = environment.createPlace(identifier);
-  const instruction = environment.createInstruction(
-    StorePropertyInstruction,
-    place,
-    nodePath,
-    objectPlace,
-    property,
-    rightPlace,
-  );
-  functionBuilder.addInstruction(instruction);
-  return place;
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
+    const instruction = environment.createInstruction(
+      StorePropertyInstruction,
+      place,
+      nodePath,
+      objectPlace,
+      property,
+      rightPlace,
+    );
+    functionBuilder.addInstruction(instruction);
+    return place;
+  } else {
+    const propertyPath = leftPath.get("property");
+    const propertyPlace = buildNode(
+      propertyPath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
+    if (propertyPlace === undefined || Array.isArray(propertyPlace)) {
+      throw new Error("Assignment expression left must be a single place");
+    }
+
+    const identifier = environment.createIdentifier();
+    const place = environment.createPlace(identifier);
+    const instruction = environment.createInstruction(
+      StoreDynamicPropertyInstruction,
+      place,
+      nodePath,
+      objectPlace,
+      propertyPlace,
+      rightPlace,
+    );
+    functionBuilder.addInstruction(instruction);
+    return place;
+  }
 }
 
 function buildDestructuringAssignment(

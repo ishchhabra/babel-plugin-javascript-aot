@@ -52,3 +52,31 @@ export function toIdentifierOrStringLiteral(
     ? t.identifier(name)
     : t.stringLiteral(name);
 }
+
+/**
+ * Determines whether a MemberExpression should be considered "static"
+ * or "dynamic" in the intermediate representation (IR).
+ *
+ * A MemberExpression is treated as "static" if it is not computed
+ * (i.e., accessed via dot notation) or if it is accessed via bracket
+ * notation with a known literal property (e.g., `obj["foo"]` or
+ * `obj[0]`). In contrast, any bracket access (e.g., `obj[anything]`)
+ * sets `node.computed = true` in Babel, indicating dynamic access.
+ *
+ * @param path - The NodePath of the MemberExpression to evaluate.
+ * @returns `true` if the MemberExpression is static, `false` if it is dynamic.
+ */
+export function isStaticMemberAccess(
+  path: NodePath<t.MemberExpression>,
+): boolean {
+  if (!path.node.computed) {
+    return true;
+  }
+
+  const prop = path.node.property;
+  if (t.isStringLiteral(prop) || t.isNumericLiteral(prop)) {
+    return true;
+  }
+
+  return false;
+}
