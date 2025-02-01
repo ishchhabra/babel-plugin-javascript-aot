@@ -12,8 +12,8 @@ import {
   Place,
   StoreLocalInstruction,
 } from "../../../ir";
-import { StoreDynamicPropertyInstruction } from "../../../ir/instructions/memory/StoreComputedProperty";
-import { StorePropertyInstruction } from "../../../ir/instructions/memory/StoreProperty";
+import { StoreDynamicPropertyInstruction } from "../../../ir/instructions/memory/StoreDynamicProperty";
+import { StoreStaticPropertyInstruction } from "../../../ir/instructions/memory/StoreStaticProperty";
 import { ObjectPatternInstruction } from "../../../ir/instructions/pattern/ObjectPattern";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
@@ -143,7 +143,7 @@ function buildMemberExpressionAssignment(
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
     const instruction = environment.createInstruction(
-      StorePropertyInstruction,
+      StoreStaticPropertyInstruction,
       place,
       nodePath,
       objectPlace,
@@ -353,7 +353,7 @@ function buildMemberExpressionAssignmentLeft(
     environment.createIdentifier(),
   );
   const storePropertyInstruction = environment.createInstruction(
-    StorePropertyInstruction,
+    StoreStaticPropertyInstruction,
     storePropertyPlace,
     nodePath,
     objectPlace,

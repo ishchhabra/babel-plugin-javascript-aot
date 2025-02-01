@@ -1,7 +1,7 @@
 import { BaseInstruction, BlockId, LoadGlobalInstruction } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
-import { StorePropertyInstruction } from "../../ir/instructions/memory/StoreProperty";
+import { StoreStaticPropertyInstruction } from "../../ir/instructions/memory/StoreStaticProperty";
 
 const EXPORTS_PROPERTY_NAME = "exports";
 
@@ -52,9 +52,9 @@ export class CommonJSExportCollectorPass {
 
   private isModuleExportInstruction(
     instruction: BaseInstruction,
-  ): instruction is StorePropertyInstruction {
+  ): instruction is StoreStaticPropertyInstruction {
     if (
-      !(instruction instanceof StorePropertyInstruction) ||
+      !(instruction instanceof StoreStaticPropertyInstruction) ||
       instruction.property !== EXPORTS_PROPERTY_NAME
     ) {
       return false;

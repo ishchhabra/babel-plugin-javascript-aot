@@ -8,7 +8,7 @@ import { Identifier, Place } from "../../core";
  * An instruction that loads a **static** property for an object:
  * `object[0]` or `object.foo`.
  */
-export class LoadPropertyInstruction extends MemoryInstruction {
+export class LoadStaticPropertyInstruction extends MemoryInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,
@@ -19,11 +19,11 @@ export class LoadPropertyInstruction extends MemoryInstruction {
     super(id, place, nodePath);
   }
 
-  public clone(environment: Environment): LoadPropertyInstruction {
+  public clone(environment: Environment): LoadStaticPropertyInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
     return environment.createInstruction(
-      LoadPropertyInstruction,
+      LoadStaticPropertyInstruction,
       place,
       this.nodePath,
       this.object,
@@ -31,8 +31,8 @@ export class LoadPropertyInstruction extends MemoryInstruction {
     );
   }
 
-  rewrite(values: Map<Identifier, Place>): LoadPropertyInstruction {
-    return new LoadPropertyInstruction(
+  rewrite(values: Map<Identifier, Place>): LoadStaticPropertyInstruction {
+    return new LoadStaticPropertyInstruction(
       this.id,
       this.place,
       this.nodePath,

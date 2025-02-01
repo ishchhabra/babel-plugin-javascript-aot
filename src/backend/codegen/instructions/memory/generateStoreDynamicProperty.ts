@@ -1,5 +1,5 @@
 import * as t from "@babel/types";
-import { StoreDynamicPropertyInstruction } from "../../../../ir/instructions/memory/StoreComputedProperty";
+import { StoreDynamicPropertyInstruction } from "../../../../ir/instructions/memory/StoreDynamicProperty";
 import { CodeGenerator } from "../../../CodeGenerator";
 
 /**

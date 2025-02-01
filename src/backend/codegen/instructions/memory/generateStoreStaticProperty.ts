@@ -1,17 +1,17 @@
 import * as t from "@babel/types";
-import { StorePropertyInstruction } from "../../../../ir/instructions/memory/StoreProperty";
+import { StoreStaticPropertyInstruction } from "../../../../ir/instructions/memory/StoreStaticProperty";
 import { CodeGenerator } from "../../../CodeGenerator";
 
 /**
  * Generates the Babel AST for storing a value into an object property:
  * `object[property] = value`.
  *
- * We keep a separate `StorePropertyInstruction` (rather than reusing local
+ * We keep a separate `StoreStaticPropertyInstruction` (rather than reusing local
  * store instructions) because object property writes typically involve memory
  * and alias analysis that differs from local variable writes.
  */
-export function generateStorePropertyInstruction(
-  instruction: StorePropertyInstruction,
+export function generateStoreStaticPropertyInstruction(
+  instruction: StoreStaticPropertyInstruction,
   generator: CodeGenerator,
 ) {
   const objectNode = generator.places.get(instruction.object.id);

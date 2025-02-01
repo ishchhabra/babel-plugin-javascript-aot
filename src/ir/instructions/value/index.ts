@@ -4,7 +4,6 @@ export { CallExpressionInstruction } from "./CallExpression";
 export { HoleInstruction } from "./Hole";
 export { LiteralInstruction, type TPrimitiveValue } from "./Literal";
 export { LogicalExpressionInstruction } from "./LogicalExpression";
-export { MemberExpressionInstruction } from "./MemberExpression";
 export { ObjectExpressionInstruction } from "./ObjectExpression";
 export { ObjectMethodInstruction } from "./ObjectMethod";
 export { ObjectPropertyInstruction } from "./ObjectProperty";

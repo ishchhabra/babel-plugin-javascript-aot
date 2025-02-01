@@ -8,7 +8,7 @@ import { Identifier, Place } from "../../core";
  * An instruction that stores a value into a **static** property for an object:
  * `object[0]` or `object.foo`.
  */
-export class StorePropertyInstruction extends MemoryInstruction {
+export class StoreStaticPropertyInstruction extends MemoryInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,
@@ -20,11 +20,11 @@ export class StorePropertyInstruction extends MemoryInstruction {
     super(id, place, nodePath);
   }
 
-  public clone(environment: Environment): StorePropertyInstruction {
+  public clone(environment: Environment): StoreStaticPropertyInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
     return environment.createInstruction(
-      StorePropertyInstruction,
+      StoreStaticPropertyInstruction,
       place,
       this.nodePath,
       this.object,
@@ -33,8 +33,8 @@ export class StorePropertyInstruction extends MemoryInstruction {
     );
   }
 
-  rewrite(values: Map<Identifier, Place>): StorePropertyInstruction {
-    return new StorePropertyInstruction(
+  rewrite(values: Map<Identifier, Place>): StoreStaticPropertyInstruction {
+    return new StoreStaticPropertyInstruction(
       this.id,
       this.place,
       this.nodePath,
