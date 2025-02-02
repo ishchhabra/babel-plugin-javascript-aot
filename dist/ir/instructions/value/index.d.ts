@@ -1,0 +1,10 @@
+export { ArrayExpressionInstruction } from "./ArrayExpression";
+export { BinaryExpressionInstruction } from "./BinaryExpression";
+export { CallExpressionInstruction } from "./CallExpression";
+export { HoleInstruction } from "./Hole";
+export { LiteralInstruction, type TPrimitiveValue } from "./Literal";
+export { LogicalExpressionInstruction } from "./LogicalExpression";
+export { ObjectExpressionInstruction } from "./ObjectExpression";
+export { ObjectMethodInstruction } from "./ObjectMethod";
+export { ObjectPropertyInstruction } from "./ObjectProperty";
+export { UnaryExpressionInstruction } from "./UnaryExpression";
