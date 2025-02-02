@@ -5,6 +5,7 @@ import { Environment } from "../../../environment";
 import {
   ArrayPatternInstruction,
   BaseInstruction,
+  BinaryExpressionInstruction,
   BindingIdentifierInstruction,
   ExpressionStatementInstruction,
   LoadLocalInstruction,
@@ -56,16 +57,12 @@ function buildIdentifierAssignment(
   moduleBuilder: ModuleIRBuilder,
   environment: Environment,
 ): Place {
-  const rightPath = nodePath.get("right");
-  const rightPlace = buildNode(
-    rightPath,
+  const rightPlace = buildAssignmentRight(
+    nodePath,
     functionBuilder,
     moduleBuilder,
     environment,
   );
-  if (rightPlace === undefined || Array.isArray(rightPlace)) {
-    throw new Error("Assignment expression right must be a single place");
-  }
 
   const leftPath: NodePath<t.AssignmentExpression["left"]> =
     nodePath.get("left");
@@ -108,16 +105,12 @@ function buildMemberExpressionAssignment(
   moduleBuilder: ModuleIRBuilder,
   environment: Environment,
 ): Place {
-  const rightPath = nodePath.get("right");
-  const rightPlace = buildNode(
-    rightPath,
+  const rightPlace = buildAssignmentRight(
+    nodePath,
     functionBuilder,
     moduleBuilder,
     environment,
   );
-  if (rightPlace === undefined || Array.isArray(rightPlace)) {
-    throw new Error("Assignment expression right must be a single place");
-  }
 
   const leftPath: NodePath<t.AssignmentExpression["left"]> =
     nodePath.get("left");
@@ -480,4 +473,57 @@ function buildObjectPatternAssignmentLeft(
   );
   functionBuilder.addInstruction(instruction);
   return { place, instructions };
+}
+
+function buildAssignmentRight(
+  nodePath: NodePath<t.AssignmentExpression>,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
+): Place {
+  const rightPath = nodePath.get("right");
+  const rightPlace = buildNode(
+    rightPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
+  if (rightPlace === undefined || Array.isArray(rightPlace)) {
+    throw new Error("Assignment expression right must be a single place");
+  }
+
+  const operator = nodePath.node.operator;
+  if (operator === "=") {
+    return rightPlace;
+  }
+
+  const binaryOperator = operator.slice(0, -1);
+
+  const leftPath: NodePath<t.AssignmentExpression["left"]> =
+    nodePath.get("left");
+
+  const leftPlace = buildNode(
+    leftPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
+  if (leftPlace === undefined || Array.isArray(leftPlace)) {
+    throw new Error("Assignment expression left must be a single place");
+  }
+
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  functionBuilder.addInstruction(
+    environment.createInstruction(
+      BinaryExpressionInstruction,
+      place,
+      nodePath,
+      binaryOperator as t.BinaryExpression["operator"],
+      leftPlace,
+      rightPlace,
+    ),
+  );
+
+  return place;
 }
