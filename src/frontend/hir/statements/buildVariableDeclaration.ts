@@ -8,6 +8,7 @@ import {
   Place,
   StoreLocalInstruction,
 } from "../../../ir";
+import { AssignmentPatternInstruction } from "../../../ir/instructions/pattern/AssignmentPattern";
 import { ObjectPatternInstruction } from "../../../ir/instructions/pattern/ObjectPattern";
 import { buildBindingIdentifier } from "../buildIdentifier";
 import { buildNode } from "../buildNode";
@@ -90,6 +91,13 @@ function buildVariableDeclaratorLVal(
     );
   } else if (nodePath.isObjectPattern()) {
     return buildObjectPatternVariableDeclaratorLVal(
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
+  } else if (nodePath.isAssignmentPattern()) {
+    return buildAssignmentPatternVariableDeclaratorLVal(
       nodePath,
       functionBuilder,
       moduleBuilder,
@@ -228,4 +236,43 @@ function buildObjectPropertyKeyVariableDeclaratorLVal(
   );
   functionBuilder.addInstruction(keyInstruction);
   return keyPlace;
+}
+
+function buildAssignmentPatternVariableDeclaratorLVal(
+  nodePath: NodePath<t.AssignmentPattern>,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
+): { place: Place; identifiers: Place[] } {
+  const leftPath = nodePath.get("left");
+  const { place: leftPlace, identifiers: leftIdentifiers } =
+    buildVariableDeclaratorLVal(
+      leftPath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
+
+  const rightPath = nodePath.get("right");
+  const rightPlace = buildNode(
+    rightPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
+  if (rightPlace === undefined || Array.isArray(rightPlace)) {
+    throw new Error("Right place must be a single place");
+  }
+
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instruction = environment.createInstruction(
+    AssignmentPatternInstruction,
+    place,
+    nodePath,
+    leftPlace,
+    rightPlace,
+  );
+  functionBuilder.addInstruction(instruction);
+  return { place, identifiers: leftIdentifiers };
 }

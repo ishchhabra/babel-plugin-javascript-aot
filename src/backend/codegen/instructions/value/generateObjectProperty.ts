@@ -17,7 +17,11 @@ export function generateObjectPropertyInstruction(
   }
 
   t.assertExpression(key);
-  t.assertExpression(value);
+  if (!(t.isExpression(value) || t.isPatternLike(value))) {
+    throw new Error(
+      `Value ${instruction.value.id} is not an expression or pattern`,
+    );
+  }
 
   const node = t.objectProperty(key, value);
   generator.places.set(instruction.place.id, node);

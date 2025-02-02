@@ -52,6 +52,15 @@ function buildLValBindings(
         environment,
       );
       break;
+    case "AssignmentPattern":
+      nodePath.assertAssignmentPattern();
+      buildAssignmentPatternBindings(
+        bindingsPath,
+        nodePath,
+        functionBuilder,
+        environment,
+      );
+      break;
     case "ObjectPattern":
       nodePath.assertObjectPattern();
       buildObjectPatternBindings(
@@ -125,6 +134,16 @@ function buildArrayPatternBindings(
     elementPath.assertLVal();
     buildLValBindings(bindingsPath, elementPath, functionBuilder, environment);
   }
+}
+
+function buildAssignmentPatternBindings(
+  bindingsPath: NodePath,
+  nodePath: NodePath<t.AssignmentPattern>,
+  functionBuilder: FunctionIRBuilder,
+  environment: Environment,
+) {
+  const leftPath = nodePath.get("left");
+  buildLValBindings(bindingsPath, leftPath, functionBuilder, environment);
 }
 
 function buildObjectPatternBindings(
