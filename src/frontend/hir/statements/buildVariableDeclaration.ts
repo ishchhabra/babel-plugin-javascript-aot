@@ -3,9 +3,12 @@ import * as t from "@babel/types";
 import { Environment } from "../../../environment";
 import {
   ArrayPatternInstruction,
+  BindingIdentifierInstruction,
+  ObjectPropertyInstruction,
   Place,
   StoreLocalInstruction,
 } from "../../../ir";
+import { ObjectPatternInstruction } from "../../../ir/instructions/pattern/ObjectPattern";
 import { buildBindingIdentifier } from "../buildIdentifier";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
@@ -21,7 +24,12 @@ export function buildVariableDeclaration(
   const declarationPlaces = declarations.map((declaration) => {
     const id = declaration.get("id");
     const { place: lvalPlace, identifiers: lvalIdentifiers } =
-      buildVariableDeclaratorLVal(id, functionBuilder, environment);
+      buildVariableDeclaratorLVal(
+        id,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     if (lvalPlace === undefined || Array.isArray(lvalPlace)) {
       throw new Error("Lval place must be a single place");
     }
@@ -64,6 +72,7 @@ export function buildVariableDeclaration(
 function buildVariableDeclaratorLVal(
   nodePath: NodePath<t.LVal>,
   functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
   environment: Environment,
 ): { place: Place; identifiers: Place[] } {
   if (nodePath.isIdentifier()) {
@@ -76,6 +85,14 @@ function buildVariableDeclaratorLVal(
     return buildArrayPatternVariableDeclaratorLVal(
       nodePath,
       functionBuilder,
+      moduleBuilder,
+      environment,
+    );
+  } else if (nodePath.isObjectPattern()) {
+    return buildObjectPatternVariableDeclaratorLVal(
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
       environment,
     );
   }
@@ -95,6 +112,7 @@ function buildIdentifierVariableDeclaratorLVal(
 function buildArrayPatternVariableDeclaratorLVal(
   nodePath: NodePath<t.ArrayPattern>,
   functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
   environment: Environment,
 ): { place: Place; identifiers: Place[] } {
   const identifiers: Place[] = [];
@@ -104,7 +122,12 @@ function buildArrayPatternVariableDeclaratorLVal(
     (elementPath: NodePath<t.ArrayPattern["elements"][number]>) => {
       elementPath.assertLVal();
       const { place, identifiers: elementIdentifiers } =
-        buildVariableDeclaratorLVal(elementPath, functionBuilder, environment);
+        buildVariableDeclaratorLVal(
+          elementPath,
+          functionBuilder,
+          moduleBuilder,
+          environment,
+        );
       identifiers.push(...elementIdentifiers);
       return place;
     },
@@ -120,4 +143,89 @@ function buildArrayPatternVariableDeclaratorLVal(
   );
   functionBuilder.addInstruction(instruction);
   return { place, identifiers };
+}
+
+function buildObjectPatternVariableDeclaratorLVal(
+  nodePath: NodePath<t.ObjectPattern>,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
+): { place: Place; identifiers: Place[] } {
+  const identifiers: Place[] = [];
+
+  const propertyPaths = nodePath.get("properties");
+  const propertyPlaces = propertyPaths.map((propertyPath) => {
+    if (propertyPath.isObjectProperty()) {
+      const keyPath: NodePath<t.ObjectProperty["key"]> =
+        propertyPath.get("key");
+      keyPath.assertIdentifier();
+
+      const keyPlace = buildObjectPropertyKeyVariableDeclaratorLVal(
+        keyPath,
+        functionBuilder,
+        environment,
+      );
+      if (keyPlace === undefined || Array.isArray(keyPlace)) {
+        throw new Error("Object pattern key must be a single place");
+      }
+
+      const valuePath: NodePath<t.ObjectProperty["value"]> =
+        propertyPath.get("value");
+      valuePath.assertLVal();
+      const { place: valuePlace, identifiers: valueIdentifiers } =
+        buildVariableDeclaratorLVal(
+          valuePath,
+          functionBuilder,
+          moduleBuilder,
+          environment,
+        );
+      identifiers.push(...valueIdentifiers);
+
+      const identifier = environment.createIdentifier();
+      const place = environment.createPlace(identifier);
+      const instruction = environment.createInstruction(
+        ObjectPropertyInstruction,
+        place,
+        nodePath,
+        keyPlace,
+        valuePlace,
+        propertyPath.node.computed,
+        false,
+      );
+      functionBuilder.addInstruction(instruction);
+      return place;
+    }
+
+    throw new Error("Unsupported object pattern property");
+  });
+
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instruction = environment.createInstruction(
+    ObjectPatternInstruction,
+    place,
+    nodePath,
+    propertyPlaces,
+  );
+  functionBuilder.addInstruction(instruction);
+  return { place, identifiers };
+}
+
+function buildObjectPropertyKeyVariableDeclaratorLVal(
+  nodePath: NodePath<t.Identifier>,
+  functionBuilder: FunctionIRBuilder,
+  environment: Environment,
+): Place {
+  // Not using `buildBindingIdentifier` because that defaults to using
+  // existing place if it exists.
+  const keyIdentifier = environment.createIdentifier();
+  const keyPlace = environment.createPlace(keyIdentifier);
+  const keyInstruction = environment.createInstruction(
+    BindingIdentifierInstruction,
+    keyPlace,
+    nodePath,
+    nodePath.node.name,
+  );
+  functionBuilder.addInstruction(keyInstruction);
+  return keyPlace;
 }

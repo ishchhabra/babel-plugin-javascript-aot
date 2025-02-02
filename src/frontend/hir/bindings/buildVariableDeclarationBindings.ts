@@ -29,7 +29,7 @@ export function buildVariableDeclarationBindings(
 
 function buildLValBindings(
   bindingsPath: NodePath,
-  nodePath: NodePath<t.LVal>,
+  nodePath: NodePath<t.LVal | t.ObjectProperty>,
   functionBuilder: FunctionIRBuilder,
   environment: Environment,
 ) {
@@ -55,6 +55,15 @@ function buildLValBindings(
     case "ObjectPattern":
       nodePath.assertObjectPattern();
       buildObjectPatternBindings(
+        bindingsPath,
+        nodePath,
+        functionBuilder,
+        environment,
+      );
+      break;
+    case "ObjectProperty":
+      nodePath.assertObjectProperty();
+      buildObjectPropertyBindings(
         bindingsPath,
         nodePath,
         functionBuilder,
@@ -126,12 +135,26 @@ function buildObjectPatternBindings(
 ) {
   const propertiesPath = nodePath.get("properties");
   for (const propertyPath of propertiesPath) {
-    if (!propertyPath.isLVal()) {
+    if (!(propertyPath.isLVal() || propertyPath.isObjectProperty())) {
       throw new Error(`Unsupported property type: ${propertyPath.type}`);
     }
 
     buildLValBindings(bindingsPath, propertyPath, functionBuilder, environment);
   }
+}
+
+function buildObjectPropertyBindings(
+  bindingsPath: NodePath,
+  nodePath: NodePath<t.ObjectProperty>,
+  functionBuilder: FunctionIRBuilder,
+  environment: Environment,
+) {
+  const valuePath = nodePath.get("value");
+  if (!(valuePath.isLVal() || valuePath.isObjectProperty())) {
+    throw new Error(`Unsupported property type: ${valuePath.type}`);
+  }
+
+  buildLValBindings(bindingsPath, valuePath, functionBuilder, environment);
 }
 
 function buildRestElementBindings(
