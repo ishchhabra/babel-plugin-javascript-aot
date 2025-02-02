@@ -15,6 +15,7 @@ import {
 } from "../../../ir";
 import { StoreDynamicPropertyInstruction } from "../../../ir/instructions/memory/StoreDynamicProperty";
 import { StoreStaticPropertyInstruction } from "../../../ir/instructions/memory/StoreStaticProperty";
+import { AssignmentPatternInstruction } from "../../../ir/instructions/pattern/AssignmentPattern";
 import { ObjectPatternInstruction } from "../../../ir/instructions/pattern/ObjectPattern";
 import { buildNode } from "../buildNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
@@ -256,6 +257,14 @@ function buildAssignmentLeft(
       moduleBuilder,
       environment,
     );
+  } else if (leftPath.isAssignmentPattern()) {
+    return buildAssignmentPattern(
+      leftPath,
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
   }
 
   throw new Error("Unsupported assignment left");
@@ -470,6 +479,46 @@ function buildObjectPatternAssignmentLeft(
     place,
     leftPath,
     propertyPlaces,
+  );
+  functionBuilder.addInstruction(instruction);
+  return { place, instructions };
+}
+
+function buildAssignmentPattern(
+  leftPath: NodePath<t.AssignmentPattern>,
+  nodePath: NodePath<t.AssignmentExpression>,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
+): { place: Place; instructions: BaseInstruction[] } {
+  const leftPath_ = leftPath.get("left");
+  const { place: leftPlace, instructions } = buildAssignmentLeft(
+    leftPath_,
+    nodePath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
+
+  const rightPath = leftPath.get("right");
+  const rightPlace = buildNode(
+    rightPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
+  if (rightPlace === undefined || Array.isArray(rightPlace)) {
+    throw new Error("Assignment pattern right must be a single place");
+  }
+
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instruction = environment.createInstruction(
+    AssignmentPatternInstruction,
+    place,
+    leftPath,
+    leftPlace,
+    rightPlace,
   );
   functionBuilder.addInstruction(instruction);
   return { place, instructions };
