@@ -258,7 +258,7 @@ function buildAssignmentLeft(
       environment,
     );
   } else if (leftPath.isAssignmentPattern()) {
-    return buildAssignmentPattern(
+    return buildAssignmentPatternAssignmentLeft(
       leftPath,
       nodePath,
       functionBuilder,
@@ -484,7 +484,7 @@ function buildObjectPatternAssignmentLeft(
   return { place, instructions };
 }
 
-function buildAssignmentPattern(
+function buildAssignmentPatternAssignmentLeft(
   leftPath: NodePath<t.AssignmentPattern>,
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
