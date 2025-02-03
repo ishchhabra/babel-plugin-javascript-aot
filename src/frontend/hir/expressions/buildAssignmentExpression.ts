@@ -11,6 +11,7 @@ import {
   LoadLocalInstruction,
   ObjectPropertyInstruction,
   Place,
+  RestElementInstruction,
   StoreLocalInstruction,
 } from "../../../ir";
 import { StoreDynamicPropertyInstruction } from "../../../ir/instructions/memory/StoreDynamicProperty";
@@ -259,6 +260,14 @@ function buildAssignmentLeft(
     );
   } else if (leftPath.isAssignmentPattern()) {
     return buildAssignmentPatternAssignmentLeft(
+      leftPath,
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
+  } else if (leftPath.isRestElement()) {
+    return buildRestElementAssignmentLeft(
       leftPath,
       nodePath,
       functionBuilder,
@@ -522,6 +531,35 @@ function buildAssignmentPatternAssignmentLeft(
   );
   functionBuilder.addInstruction(instruction);
   return { place, instructions };
+}
+
+function buildRestElementAssignmentLeft(
+  leftPath: NodePath<t.RestElement>,
+  nodePath: NodePath<t.AssignmentExpression>,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
+): { place: Place; instructions: BaseInstruction[] } {
+  const argumentPath = leftPath.get("argument");
+  const { place: argumentPlace, instructions: argumentInstructions } =
+    buildAssignmentLeft(
+      argumentPath,
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
+
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instruction = environment.createInstruction(
+    RestElementInstruction,
+    place,
+    leftPath,
+    argumentPlace,
+  );
+  functionBuilder.addInstruction(instruction);
+  return { place, instructions: [...argumentInstructions] };
 }
 
 function buildAssignmentRight(

@@ -6,6 +6,7 @@ import {
   BindingIdentifierInstruction,
   ObjectPropertyInstruction,
   Place,
+  RestElementInstruction,
   StoreLocalInstruction,
 } from "../../../ir";
 import { AssignmentPatternInstruction } from "../../../ir/instructions/pattern/AssignmentPattern";
@@ -98,6 +99,13 @@ function buildVariableDeclaratorLVal(
     );
   } else if (nodePath.isAssignmentPattern()) {
     return buildAssignmentPatternVariableDeclaratorLVal(
+      nodePath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
+  } else if (nodePath.isRestElement()) {
+    return buildRestElementVariableDeclaratorLVal(
       nodePath,
       functionBuilder,
       moduleBuilder,
@@ -275,4 +283,31 @@ function buildAssignmentPatternVariableDeclaratorLVal(
   );
   functionBuilder.addInstruction(instruction);
   return { place, identifiers: leftIdentifiers };
+}
+
+function buildRestElementVariableDeclaratorLVal(
+  nodePath: NodePath<t.RestElement>,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
+): { place: Place; identifiers: Place[] } {
+  const argumentPath = nodePath.get("argument");
+  const { place: argumentPlace, identifiers: argumentIdentifiers } =
+    buildVariableDeclaratorLVal(
+      argumentPath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
+
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instruction = environment.createInstruction(
+    RestElementInstruction,
+    place,
+    nodePath,
+    argumentPlace,
+  );
+  functionBuilder.addInstruction(instruction);
+  return { place, identifiers: argumentIdentifiers };
 }

@@ -9,6 +9,7 @@ import {
   MemoryInstruction,
   ModuleInstruction,
   PatternInstruction,
+  RestElementInstruction,
   SpreadElementInstruction,
   StoreLocalInstruction,
   UnsupportedNodeInstruction,
@@ -20,6 +21,7 @@ import { generateUnsupportedNode } from "../generateUnsupportedNode";
 import { generateDeclarationInstruction } from "./declaration/generateDeclaration";
 import { generateBindingIdentifierInstruction } from "./generateBindingIdentifier";
 import { generateExpressionStatementInstruction } from "./generateExpressionStatement";
+import { generateRestElementInstruction } from "./generateRestElement";
 import { generateMemoryInstruction } from "./memory/generateMemory";
 import { generateModuleInstruction } from "./module/generateModule";
 import { generatePatternInstruction } from "./pattern/generatePattern";
@@ -67,6 +69,9 @@ export function generateInstruction(
     return [statement as t.Statement];
   } else if (instruction instanceof PatternInstruction) {
     generatePatternInstruction(instruction, generator);
+    return [];
+  } else if (instruction instanceof RestElementInstruction) {
+    generateRestElementInstruction(instruction, generator);
     return [];
   } else if (instruction instanceof SpreadElementInstruction) {
     generateSpreadElementInstruction(instruction, generator);
