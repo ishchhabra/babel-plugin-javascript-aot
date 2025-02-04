@@ -222,7 +222,7 @@ function buildDestructuringAssignment(
 }
 
 function buildAssignmentLeft(
-  leftPath: NodePath<t.LVal | null>,
+  leftPath: NodePath<t.LVal>,
   nodePath: NodePath<t.AssignmentExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
