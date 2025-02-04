@@ -4,6 +4,7 @@ import { Environment } from "../../../environment";
 import {
   ArrayPatternInstruction,
   BindingIdentifierInstruction,
+  HoleInstruction,
   ObjectPropertyInstruction,
   Place,
   RestElementInstruction,
@@ -136,6 +137,18 @@ function buildArrayPatternVariableDeclaratorLVal(
   const elementPaths = nodePath.get("elements");
   const elementPlaces = elementPaths.map(
     (elementPath: NodePath<t.ArrayPattern["elements"][number]>) => {
+      if (!elementPath.hasNode()) {
+        const holeIdentifier = environment.createIdentifier();
+        const holePlace = environment.createPlace(holeIdentifier);
+        const instruction = environment.createInstruction(
+          HoleInstruction,
+          holePlace,
+          elementPath as NodePath<null>,
+        );
+        functionBuilder.addInstruction(instruction);
+        return holePlace;
+      }
+
       elementPath.assertLVal();
       const { place, identifiers: elementIdentifiers } =
         buildVariableDeclaratorLVal(

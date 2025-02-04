@@ -12,6 +12,10 @@ export function generateArrayPatternInstruction(
       throw new Error(`Place ${element.id} not found`);
     }
 
+    if (node === null) {
+      return null;
+    }
+
     t.assertLVal(node);
     return node;
   });

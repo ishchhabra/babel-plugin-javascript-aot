@@ -8,6 +8,7 @@ import {
   BinaryExpressionInstruction,
   BindingIdentifierInstruction,
   ExpressionStatementInstruction,
+  HoleInstruction,
   LoadLocalInstruction,
   ObjectPropertyInstruction,
   Place,
@@ -406,6 +407,19 @@ function buildArrayPatternAssignmentLeft(
     if (elementPath.isOptionalMemberExpression()) {
       throw new Error("Unsupported optional member expression");
     }
+
+    if (!elementPath.hasNode()) {
+      const holeIdentifier = environment.createIdentifier();
+      const holePlace = environment.createPlace(holeIdentifier);
+      const instruction = environment.createInstruction(
+        HoleInstruction,
+        holePlace,
+        elementPath as NodePath<null>,
+      );
+      functionBuilder.addInstruction(instruction);
+      return holePlace;
+    }
+
     const { place, instructions: elementInstructions } = buildAssignmentLeft(
       elementPath,
       nodePath,

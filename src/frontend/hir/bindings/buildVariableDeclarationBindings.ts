@@ -131,6 +131,10 @@ function buildArrayPatternBindings(
   const elementsPath: NodePath<t.ArrayPattern["elements"][number]>[] =
     nodePath.get("elements");
   for (const elementPath of elementsPath) {
+    if (!elementPath.hasNode()) {
+      continue;
+    }
+
     elementPath.assertLVal();
     buildLValBindings(bindingsPath, elementPath, functionBuilder, environment);
   }
