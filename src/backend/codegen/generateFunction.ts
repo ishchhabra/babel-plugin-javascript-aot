@@ -7,7 +7,10 @@ import { generateInstruction } from "./instructions/generateInstruction";
 export function generateFunction(
   functionIR: FunctionIR,
   generator: CodeGenerator,
-): { params: t.Identifier[]; statements: Array<t.Statement> } {
+): {
+  params: Array<t.Identifier | t.RestElement | t.Pattern>;
+  statements: Array<t.Statement>;
+} {
   generateHeader(functionIR, generator);
   const params = generateFunctionParams(functionIR, generator);
 
@@ -20,10 +23,20 @@ export function generateFunction(
 function generateFunctionParams(
   functionIR: FunctionIR,
   generator: CodeGenerator,
-): Array<t.Identifier> {
+): Array<t.Identifier | t.RestElement | t.Pattern> {
   return functionIR.params.map((param) => {
-    const node = generator.places.get(param.id)!;
-    t.assertIdentifier(node);
+    const node = generator.places.get(param.id);
+    if (node === undefined) {
+      throw new Error(`Place ${param.id} not found`);
+    }
+
+    if (node === null) {
+      throw new Error(`Holes are not supported in function parameters.`);
+    }
+
+    if (!(t.isIdentifier(node) || t.isPattern(node) || t.isRestElement(node))) {
+      throw new Error(`Unsupported function param: ${node.type}`);
+    }
     return node;
   });
 }

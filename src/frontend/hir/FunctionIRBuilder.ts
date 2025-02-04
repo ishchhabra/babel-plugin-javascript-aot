@@ -33,6 +33,7 @@ export class FunctionIRBuilder {
       this.paramPaths,
       this.bodyPath,
       this,
+      this.moduleBuilder,
       this.environment,
     );
 
