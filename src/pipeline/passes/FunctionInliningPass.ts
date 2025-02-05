@@ -1,6 +1,13 @@
 import { Environment } from "../../environment";
 import { ProjectUnit } from "../../frontend/ProjectBuilder";
-import { BasicBlock, ReturnTerminal } from "../../ir";
+import {
+  ArrayExpressionInstruction,
+  ArrayPatternInstruction,
+  BaseInstruction,
+  BasicBlock,
+  ReturnTerminal,
+  StoreLocalInstruction,
+} from "../../ir";
 import { FunctionIR, FunctionIRId } from "../../ir/core/FunctionIR";
 import { Identifier } from "../../ir/core/Identifier";
 import { ModuleIR } from "../../ir/core/ModuleIR";
@@ -161,11 +168,15 @@ export class FunctionInliningPass extends BaseOptimizationPass {
     }
 
     const rewriteMap = new Map<Identifier, Place>();
-    for (let i = 0; i < funcIR.params.length; i++) {
-      rewriteMap.set(funcIR.params[i].identifier, callExpressionInstr.args[i]);
-    }
+    const instrs: BaseInstruction[] = [];
+    this.inlineFunctionParams(
+      funcIR,
+      callExpressionInstr,
+      environment,
+      instrs,
+      rewriteMap,
+    );
 
-    const instrs = [];
     const block = funcIR.blocks.values().next().value!;
     for (const instr of block.instructions) {
       const clonedInstr = instr.clone(environment);
@@ -205,5 +216,68 @@ export class FunctionInliningPass extends BaseOptimizationPass {
         callExpressionBlock.instructions[i] = oldInstr.rewrite(retRewriteMap);
       }
     }
+  }
+
+  private inlineFunctionParams(
+    funcIR: FunctionIR,
+    callExpressionInstr: CallExpressionInstruction,
+    environment: Environment,
+    instrs: BaseInstruction[],
+    rewriteMap: Map<Identifier, Place>,
+  ) {
+    for (const instr of funcIR.header) {
+      const clonedInstr = instr.clone(environment);
+      rewriteMap.set(instr.place.identifier, clonedInstr.place);
+      instrs.push(clonedInstr.rewrite(rewriteMap));
+    }
+
+    const leftElements = [];
+    for (let i = 0; i < funcIR.params.length; i++) {
+      const paramPlace = funcIR.params[i];
+      const elementPlace = rewriteMap.get(paramPlace.identifier)!;
+      leftElements.push(elementPlace);
+      rewriteMap.set(paramPlace.identifier, elementPlace);
+    }
+
+    const leftArrayPatternIdentifier = environment.createIdentifier();
+    const leftArrayPatternPlace = environment.createPlace(
+      leftArrayPatternIdentifier,
+    );
+    const leftArrayPattern = environment.createInstruction(
+      ArrayPatternInstruction,
+      leftArrayPatternPlace,
+      undefined,
+      leftElements,
+    );
+
+    const rightElements = [];
+    for (let i = 0; i < callExpressionInstr.args.length; i++) {
+      const argPlace = callExpressionInstr.args[i];
+      rightElements.push(argPlace);
+    }
+
+    const rightArrayPatternIdentifier = environment.createIdentifier();
+    const rightArrayPatternPlace = environment.createPlace(
+      rightArrayPatternIdentifier,
+    );
+    const rightArrayPattern = environment.createInstruction(
+      ArrayExpressionInstruction,
+      rightArrayPatternPlace,
+      undefined,
+      rightElements,
+    );
+
+    const storeLocalIdentifier = environment.createIdentifier();
+    const storeLocalPlace = environment.createPlace(storeLocalIdentifier);
+    const storeLocalInstr = environment.createInstruction(
+      StoreLocalInstruction,
+      storeLocalPlace,
+      undefined,
+      leftArrayPatternPlace,
+      rightArrayPatternPlace,
+      "const",
+    );
+
+    instrs.push(leftArrayPattern, rightArrayPattern, storeLocalInstr);
   }
 }

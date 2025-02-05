@@ -32,7 +32,7 @@ export class BindingIdentifierInstruction extends BaseInstruction {
       BindingIdentifierInstruction,
       place,
       this.nodePath,
-      this.name,
+      identifier.name,
     );
   }
 

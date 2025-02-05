@@ -436,7 +436,7 @@ function buildArrayPatternAssignmentLeft(
   const instruction = environment.createInstruction(
     ArrayPatternInstruction,
     place,
-    nodePath,
+    leftPath,
     elementPlaces,
   );
   functionBuilder.addInstruction(instruction);

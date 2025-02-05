@@ -14,7 +14,7 @@ export class ArrayExpressionInstruction extends ValueInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,
-    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly nodePath: NodePath<t.ArrayExpression> | undefined,
     public readonly elements: Place[],
   ) {
     super(id, place, nodePath);
