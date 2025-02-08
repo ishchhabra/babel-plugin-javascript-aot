@@ -25,26 +25,33 @@ export class Optimizer {
   ) {}
 
   public run(): OptimizerResult {
-    let blocks = this.functionIR.blocks;
-    if (this.options.enableConstantPropagationPass) {
-      const constantPropagationResult = new ConstantPropagationPass(
-        this.functionIR,
-        this.moduleIR,
-        this.projectUnit,
-        this.ssa,
-        this.context,
-      ).run();
-      blocks = constantPropagationResult.blocks;
-    }
+    let changed = true;
 
-    if (this.options.enableFunctionInliningPass) {
-      const functionInliningResult = new FunctionInliningPass(
-        this.functionIR,
-        this.moduleIR,
-        this.callGraph,
-        this.projectUnit,
-      ).run();
-      blocks = functionInliningResult.blocks;
+    let blocks = this.functionIR.blocks;
+    while (changed) {
+      changed = false;
+      if (this.options.enableConstantPropagationPass) {
+        const constantPropagationResult = new ConstantPropagationPass(
+          this.functionIR,
+          this.moduleIR,
+          this.projectUnit,
+          this.ssa,
+          this.context,
+        ).run();
+        changed ||= constantPropagationResult.changed;
+        blocks = constantPropagationResult.blocks;
+      }
+
+      if (this.options.enableFunctionInliningPass) {
+        const functionInliningResult = new FunctionInliningPass(
+          this.functionIR,
+          this.moduleIR,
+          this.callGraph,
+          this.projectUnit,
+        ).run();
+        changed ||= functionInliningResult.changed;
+        blocks = functionInliningResult.blocks;
+      }
     }
 
     return { blocks };

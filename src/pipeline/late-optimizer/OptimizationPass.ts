@@ -8,16 +8,13 @@ export abstract class BaseOptimizationPass {
   constructor(protected readonly functionIR: FunctionIR) {}
 
   public run() {
-    let continueOptimizing = true;
-
-    while (continueOptimizing) {
-      const result = this.step();
-      if (!result.changed) {
-        continueOptimizing = false;
-      }
+    let changed = false;
+    let result: OptimizationResult;
+    while ((result = this.step()).changed) {
+      changed ||= result.changed;
     }
 
-    return { blocks: this.functionIR.blocks };
+    return { blocks: this.functionIR.blocks, changed };
   }
 
   protected abstract step(): OptimizationResult;
