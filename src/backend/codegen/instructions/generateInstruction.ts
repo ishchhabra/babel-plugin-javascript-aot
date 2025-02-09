@@ -6,6 +6,7 @@ import {
   ExportSpecifierInstruction,
   ExpressionStatementInstruction,
   ImportSpecifierInstruction,
+  JSXInstruction,
   MemoryInstruction,
   ModuleInstruction,
   PatternInstruction,
@@ -22,6 +23,7 @@ import { generateDeclarationInstruction } from "./declaration/generateDeclaratio
 import { generateBindingIdentifierInstruction } from "./generateBindingIdentifier";
 import { generateExpressionStatementInstruction } from "./generateExpressionStatement";
 import { generateRestElementInstruction } from "./generateRestElement";
+import { generateJSXInstruction } from "./jsx/generateJSX";
 import { generateMemoryInstruction } from "./memory/generateMemory";
 import { generateModuleInstruction } from "./module/generateModule";
 import { generatePatternInstruction } from "./pattern/generatePattern";
@@ -48,6 +50,9 @@ export function generateInstruction(
       return [];
     }
     return [statement];
+  } else if (instruction instanceof JSXInstruction) {
+    generateJSXInstruction(instruction, generator);
+    return [];
   } else if (instruction instanceof MemoryInstruction) {
     const statement = generateMemoryInstruction(instruction, generator);
     // TODO: Refactor HIRBuilder to include a property indicating whether

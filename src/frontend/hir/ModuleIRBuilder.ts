@@ -25,7 +25,7 @@ export class ModuleIRBuilder {
     const code = readFileSync(this.path, "utf-8");
     const ast = parse(code, {
       sourceType: "module",
-      plugins: ["typescript"],
+      plugins: ["typescript", "jsx"],
     });
 
     let programPath: NodePath<t.Program> | undefined;

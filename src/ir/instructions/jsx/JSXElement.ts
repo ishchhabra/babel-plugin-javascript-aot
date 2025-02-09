@@ -17,7 +17,7 @@ export class JSXElementInstruction extends JSXInstruction {
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly openingElement: Place,
-    public readonly closingElement: Place,
+    public readonly closingElement: Place | undefined,
     public readonly children: Place[],
   ) {
     super(id, place, nodePath);
@@ -36,18 +36,28 @@ export class JSXElementInstruction extends JSXInstruction {
     );
   }
 
-  rewrite(values: Map<Identifier, Place>): BaseInstruction {
+  public rewrite(values: Map<Identifier, Place>): BaseInstruction {
     return new JSXElementInstruction(
       this.id,
       this.place,
       this.nodePath,
       values.get(this.openingElement.identifier) ?? this.openingElement,
-      values.get(this.closingElement.identifier) ?? this.closingElement,
+      this.closingElement
+        ? (values.get(this.closingElement.identifier) ?? this.closingElement)
+        : undefined,
       this.children.map((child) => values.get(child.identifier) ?? child),
     );
   }
 
-  getReadPlaces(): Place[] {
-    return [this.openingElement, this.closingElement, ...this.children];
+  public getReadPlaces(): Place[] {
+    return [
+      this.openingElement,
+      ...(this.closingElement ? [this.closingElement] : []),
+      ...this.children,
+    ];
+  }
+
+  public get isPure(): boolean {
+    return false;
   }
 }

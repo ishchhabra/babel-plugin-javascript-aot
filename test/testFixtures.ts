@@ -12,8 +12,8 @@ import {
 
 /**
  * Represents a single fixture file pair:
- * - input (path to code.js)
- * - output (path to output.js)
+ * - input (path to code.js or code.jsx)
+ * - output (path to output.js or output.jsx)
  */
 interface Fixture {
   input: string;
@@ -82,7 +82,7 @@ function loadOptionsChain(
 
 /**
  * A helper that recursively collects all fixtures under `dir`.
- * Looks for `code.js` in a folder, and assumes `output.js` is next to it.
+ * Looks for `code.js` or `code.jsx` in a folder, and creates corresponding output path.
  */
 function findFixtures(dir: string): Fixture[] {
   const fixtures: Fixture[] = [];
@@ -93,7 +93,13 @@ function findFixtures(dir: string): Fixture[] {
       const subdir = join(dir, entry.name);
       fixtures.push(...findFixtures(subdir));
     } else if (entry.name === "code.js") {
-      const outputPath = join(dir, "output.js");
+      const outputPath = join(dir, `output.js`);
+      fixtures.push({
+        input: join(dir, entry.name),
+        output: outputPath,
+      });
+    } else if (entry.name === "code.jsx") {
+      const outputPath = join(dir, `output.jsx`);
       fixtures.push({
         input: join(dir, entry.name),
         output: outputPath,
@@ -114,7 +120,7 @@ function buildTreeFromFixtures(dir: string, fixtures: Fixture[]): TreeNode {
     // e.g. "variable-declaration/array-pattern/code.js"
     //      => ["variable-declaration","array-pattern","code.js"]
     const parts = relPath.split("/");
-    parts.pop(); // remove "code.js"
+    parts.pop(); // remove "code.js" or "code.jsx"
 
     let currentNode: TreeNode = root;
     for (const part of parts) {
@@ -262,12 +268,12 @@ function addTestSuites(
  *   testFixtures(__dirname, { enableConstantPropagationPass: true });
  *
  * It will:
- *   1) Find all fixtures under the directory (look for `code.js`)
+ *   1) Find all fixtures under the directory (look for `code.js` or `code.jsx`)
  *   2) Build a nested tree structure
  *   3) Dynamically add describe/test blocks for each fixture/subdirectory
  *   4) Merge any `options.json` from outer → inner directories for each test
- *   5) If `output.js` is missing and `JEST_UPDATE_SNAPSHOTS` is true, create it
- *      using the compiled code's actual output.
+ *   5) If `output.js`/`output.jsx` is missing and `JEST_UPDATE_SNAPSHOTS` is true,
+ *      create it using the compiled code's actual output.
  */
 export function testFixtures(
   directory: string,

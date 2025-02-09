@@ -37,7 +37,7 @@ export function getMethodName(
 }
 
 export function assertJSXChild(
-  node: t.Node | null,
+  node: t.Node | null | undefined,
 ): asserts node is
   | t.JSXText
   | t.JSXExpressionContainer

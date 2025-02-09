@@ -11,6 +11,7 @@ import { buildUnsupportedNode } from "./buildUnsupportedNode";
 import { buildHole } from "./expressions";
 import { buildExpression } from "./expressions/buildExpression";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
+import { buildJSX } from "./jsx/buildJSX";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
 import { buildPattern } from "./patterns/buildPattern";
 import { buildStatement } from "./statements/buildStatement";
@@ -47,6 +48,10 @@ export function buildNode(
       moduleBuilder,
       environment,
     );
+  }
+
+  if (nodePath.isJSX()) {
+    return buildJSX(nodePath, functionBuilder, moduleBuilder, environment);
   }
 
   if (nodePath.isExpression()) {

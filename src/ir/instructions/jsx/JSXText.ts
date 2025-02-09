@@ -14,7 +14,7 @@ export class JSXTextInstruction extends JSXInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,
-    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly nodePath: NodePath<t.JSXText> | undefined,
     public readonly value: string,
   ) {
     super(id, place, nodePath);

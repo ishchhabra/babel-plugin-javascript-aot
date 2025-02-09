@@ -15,7 +15,7 @@ export class JSXFragmentInstruction extends JSXInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,
-    public readonly nodePath: NodePath<t.Node> | undefined,
+    public readonly nodePath: NodePath<t.JSXFragment> | undefined,
     public readonly openingFragment: Place,
     public readonly closingFragment: Place,
     public readonly children: Place[],
