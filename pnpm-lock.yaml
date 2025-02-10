@@ -21,8 +21,8 @@ importers:
         specifier: ^7.26.7
         version: 7.26.7
       '@babel/traverse':
-        specifier: ^7.26.7
-        version: 7.26.7
+        specifier: ^7.26.8
+        version: 7.26.8
       '@babel/types':
         specifier: ^7.26.7
         version: 7.26.7
@@ -397,8 +397,12 @@ packages:
     resolution: {integrity: sha512-9DGttpmPvIxBb/2uwpVo3dqJ+O6RooAFOS+lB+xDqoE2PVCE8nfoHMdZLpfCQRLwvohzXISPZcgxt80xLfsuwg==}
     engines: {node: '>=6.9.0'}
 
-  '@babel/traverse@7.26.7':
-    resolution: {integrity: sha512-1x1sgeyRLC3r5fQOM0/xtQKsYjyxmFjaOrLJNtZ81inNjyJHGIolTULPiSc/2qe1/qfpFLisLQYFnnZl7QoedA==}
+  '@babel/template@7.26.8':
+    resolution: {integrity: sha512-iNKaX3ZebKIsCvJ+0jd6embf+Aulaa3vNBqZ41kM7iTWjx5qzWKXGHiJUW3+nTpQ18SG11hdF8OAzKrpXkb96Q==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/traverse@7.26.8':
+    resolution: {integrity: sha512-nic9tRkjYH0oB2dzr/JoGIm+4Q6SuYeLEiIiZDwBscRMYFJ+tMAz98fuel9ZnbXViA2I0HVSSRRK8DW5fjXStA==}
     engines: {node: '>=6.9.0'}
 
   '@babel/types@7.26.7':
@@ -2490,7 +2494,7 @@ snapshots:
       '@babel/helpers': 7.26.0
       '@babel/parser': 7.26.7
       '@babel/template': 7.25.9
-      '@babel/traverse': 7.26.7
+      '@babel/traverse': 7.26.8
       '@babel/types': 7.26.7
       convert-source-map: 2.0.0
       debug: 4.4.0
@@ -2510,7 +2514,7 @@ snapshots:
       '@babel/helpers': 7.26.7
       '@babel/parser': 7.26.7
       '@babel/template': 7.25.9
-      '@babel/traverse': 7.26.7
+      '@babel/traverse': 7.26.8
       '@babel/types': 7.26.7
       convert-source-map: 2.0.0
       debug: 4.4.0
@@ -2556,21 +2560,21 @@ snapshots:
       '@babel/helper-optimise-call-expression': 7.25.9
       '@babel/helper-replace-supers': 7.25.9(@babel/core@7.26.7)
       '@babel/helper-skip-transparent-expression-wrappers': 7.25.9
-      '@babel/traverse': 7.26.7
+      '@babel/traverse': 7.26.8
       semver: 6.3.1
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helper-member-expression-to-functions@7.25.9':
     dependencies:
-      '@babel/traverse': 7.26.7
+      '@babel/traverse': 7.26.8
       '@babel/types': 7.26.8
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helper-module-imports@7.25.9':
     dependencies:
-      '@babel/traverse': 7.26.7
+      '@babel/traverse': 7.26.8
       '@babel/types': 7.26.8
     transitivePeerDependencies:
       - supports-color
@@ -2580,7 +2584,7 @@ snapshots:
       '@babel/core': 7.26.0
       '@babel/helper-module-imports': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
-      '@babel/traverse': 7.26.7
+      '@babel/traverse': 7.26.8
     transitivePeerDependencies:
       - supports-color
 
@@ -2589,7 +2593,7 @@ snapshots:
       '@babel/core': 7.26.7
       '@babel/helper-module-imports': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
-      '@babel/traverse': 7.26.7
+      '@babel/traverse': 7.26.8
     transitivePeerDependencies:
       - supports-color
 
@@ -2604,13 +2608,13 @@ snapshots:
       '@babel/core': 7.26.7
       '@babel/helper-member-expression-to-functions': 7.25.9
       '@babel/helper-optimise-call-expression': 7.25.9
-      '@babel/traverse': 7.26.7
+      '@babel/traverse': 7.26.8
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helper-skip-transparent-expression-wrappers@7.25.9':
     dependencies:
-      '@babel/traverse': 7.26.7
+      '@babel/traverse': 7.26.8
       '@babel/types': 7.26.8
     transitivePeerDependencies:
       - supports-color
@@ -2623,7 +2627,7 @@ snapshots:
 
   '@babel/helpers@7.26.0':
     dependencies:
-      '@babel/template': 7.25.9
+      '@babel/template': 7.26.8
       '@babel/types': 7.26.8
 
   '@babel/helpers@7.26.7':
@@ -2770,13 +2774,19 @@ snapshots:
       '@babel/parser': 7.26.7
       '@babel/types': 7.26.7
 
-  '@babel/traverse@7.26.7':
+  '@babel/template@7.26.8':
+    dependencies:
+      '@babel/code-frame': 7.26.2
+      '@babel/parser': 7.26.8
+      '@babel/types': 7.26.8
+
+  '@babel/traverse@7.26.8':
     dependencies:
       '@babel/code-frame': 7.26.2
       '@babel/generator': 7.26.8
-      '@babel/parser': 7.26.7
-      '@babel/template': 7.25.9
-      '@babel/types': 7.26.7
+      '@babel/parser': 7.26.8
+      '@babel/template': 7.26.8
+      '@babel/types': 7.26.8
       debug: 4.4.0
       globals: 11.12.0
     transitivePeerDependencies:
@@ -3554,7 +3564,7 @@ snapshots:
       '@babel/generator': 7.26.8
       '@babel/helper-validator-identifier': 7.25.9
       '@babel/parser': 7.26.7
-      '@babel/traverse': 7.26.7
+      '@babel/traverse': 7.26.8
       '@babel/types': 7.26.7
       babel-plugin-tester: 11.0.4(@babel/core@7.26.7)
       commander: 13.1.0
@@ -3565,7 +3575,7 @@ snapshots:
 
   babel-plugin-jest-hoist@29.6.3:
     dependencies:
-      '@babel/template': 7.25.9
+      '@babel/template': 7.26.8
       '@babel/types': 7.26.8
       '@types/babel__core': 7.20.5
       '@types/babel__traverse': 7.20.6
