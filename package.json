@@ -27,7 +27,7 @@
     "@babel/helper-validator-identifier": "^7.25.9",
     "@babel/parser": "^7.26.9",
     "@babel/traverse": "^7.26.9",
-    "@babel/types": "^7.26.8",
+    "@babel/types": "^7.26.9",
     "babel-plugin-tester": "^11.0.4",
     "commander": "^13.1.0",
     "lodash-es": "^4.17.21",
