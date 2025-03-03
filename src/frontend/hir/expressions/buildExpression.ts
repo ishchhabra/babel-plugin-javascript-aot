@@ -10,6 +10,7 @@ import { buildArrowFunctionExpression } from "./buildArrowFunctionExpression";
 import { buildAssignmentExpression } from "./buildAssignmentExpression";
 import { buildBinaryExpression } from "./buildBinaryExpression";
 import { buildCallExpression } from "./buildCallExpression";
+import { buildConditionalExpression } from "./buildConditionalExpression";
 import { buildFunctionExpression } from "./buildFunctionExpression";
 import { buildLiteral } from "./buildLiteral";
 import { buildLogicalExpression } from "./buildLogicalExpression";
@@ -63,6 +64,14 @@ export function buildExpression(
     case "CallExpression":
       nodePath.assertCallExpression();
       return buildCallExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
+    case "ConditionalExpression":
+      nodePath.assertConditionalExpression();
+      return buildConditionalExpression(
         nodePath,
         functionBuilder,
         moduleBuilder,
