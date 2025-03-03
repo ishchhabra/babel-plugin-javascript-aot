@@ -1,7 +1,7 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
 import { Environment } from "../../../environment";
-import { LiteralInstruction } from "../../../ir";
+import { LiteralInstruction, TPrimitiveValue } from "../../../ir";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 
 export function buildLiteral(
@@ -9,13 +9,7 @@ export function buildLiteral(
   functionBuilder: FunctionIRBuilder,
   environment: Environment,
 ) {
-  if (
-    !t.isNumericLiteral(expressionPath.node) &&
-    !t.isStringLiteral(expressionPath.node) &&
-    !t.isBooleanLiteral(expressionPath.node)
-  ) {
-    throw new Error(`Unsupported literal type: ${expressionPath.type}`);
-  }
+  const value = nodeToValue(expressionPath.node);
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
@@ -23,9 +17,24 @@ export function buildLiteral(
     LiteralInstruction,
     place,
     expressionPath,
-    expressionPath.node.value,
+    value,
   );
   functionBuilder.addInstruction(instruction);
   environment.registerDeclarationInstruction(place, instruction);
   return place;
+}
+
+function nodeToValue(node: t.Literal): TPrimitiveValue {
+  switch (node.type) {
+    case "BooleanLiteral":
+    case "NumericLiteral":
+    case "StringLiteral":
+      return node.value;
+    case "NullLiteral":
+      return null;
+    case "BigIntLiteral":
+      return BigInt(node.value);
+  }
+
+  throw new Error(`Unsupported literal type: ${node.type}`);
 }

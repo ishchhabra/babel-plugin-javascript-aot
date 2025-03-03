@@ -50,6 +50,9 @@ export function buildExpression(
         moduleBuilder,
         environment,
       );
+    case "BigIntLiteral":
+      nodePath.assertBigIntLiteral();
+      return buildLiteral(nodePath, functionBuilder, environment);
     case "BinaryExpression":
       nodePath.assertBinaryExpression();
       return buildBinaryExpression(
@@ -101,6 +104,9 @@ export function buildExpression(
         moduleBuilder,
         environment,
       );
+    case "NullLiteral":
+      nodePath.assertNullLiteral();
+      return buildLiteral(nodePath, functionBuilder, environment);
     case "NumericLiteral":
       nodePath.assertNumericLiteral();
       return buildLiteral(nodePath, functionBuilder, environment);
