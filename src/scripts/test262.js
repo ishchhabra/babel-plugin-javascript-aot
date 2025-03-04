@@ -60,7 +60,7 @@ const updateStatus = () => {
     testFilter
       ? `${chalk.yellow(`${figures.arrowRight} Skipped:`)} ${skipped}`
       : "",
-    `${chalk.blue(`${figures.clock} Time:`)} ${elapsed}s`,
+    `${chalk.blue(`${figures.bullet} Time:`)} ${elapsed}s`,
   ]
     .filter(Boolean)
     .join("\n");
