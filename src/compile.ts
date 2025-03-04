@@ -23,7 +23,10 @@ export const CompilerOptionsSchema = z.object({
 
 export type CompilerOptions = z.infer<typeof CompilerOptionsSchema>;
 
-export function compile(entryPoint: string, options: CompilerOptions) {
+export function compile(
+  entryPoint: string,
+  options: CompilerOptions = CompilerOptionsSchema.parse({}),
+) {
   const projectUnit = new ProjectBuilder().build(entryPoint);
   new Pipeline(projectUnit, options).run();
   const code = new CodeGenerator(entryPoint, projectUnit).generate();
