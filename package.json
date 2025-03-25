@@ -33,7 +33,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@babel/cli": "^7.26.4",
+    "@babel/cli": "^7.27.0",
     "@babel/preset-typescript": "^7.26.0",
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-json": "^6.1.0",
