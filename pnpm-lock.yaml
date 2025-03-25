@@ -75,9 +75,6 @@ importers:
       '@types/node':
         specifier: ^22.13.13
         version: 22.13.13
-      '@types/prettier':
-        specifier: ^3.0.0
-        version: 3.0.0
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.28.0
         version: 8.28.0(@typescript-eslint/parser@8.28.0(eslint@9.23.0)(typescript@5.8.2))(eslint@9.23.0)(typescript@5.8.2)
@@ -972,10 +969,6 @@ packages:
 
   '@types/node@22.13.13':
     resolution: {integrity: sha512-ClsL5nMwKaBRwPcCvH8E7+nU4GxHVx1axNvMZTFHMEfNI7oahimt26P5zjVCRrjiIWj6YFXfE1v3dEp94wLcGQ==}
-
-  '@types/prettier@3.0.0':
-    resolution: {integrity: sha512-mFMBfMOz8QxhYVbuINtswBp9VL2b4Y0QqYHwqLz3YbgtfAcat2Dl6Y1o4e22S/OVE6Ebl9m7wWiMT2lSbAs1wA==}
-    deprecated: This is a stub types definition. prettier provides its own type definitions, so you do not need this installed.
 
   '@types/prop-types@15.7.14':
     resolution: {integrity: sha512-gNMvNH49DJ7OJYv+KAKn0Xp45p8PLl6zo2YnvDIbTd4J6MER2BmWN49TG7n9LvkyihINxeKW8+3bfS2yDC9dzQ==}
@@ -3396,10 +3389,6 @@ snapshots:
   '@types/node@22.13.13':
     dependencies:
       undici-types: 6.20.0
-
-  '@types/prettier@3.0.0':
-    dependencies:
-      prettier: 3.5.3
 
   '@types/prop-types@15.7.14': {}
 
