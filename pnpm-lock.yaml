@@ -12,8 +12,8 @@ importers:
         specifier: ^7.26.10
         version: 7.26.10
       '@babel/generator':
-        specifier: ^7.27.0
-        version: 7.27.0
+        specifier: ^7.27.1
+        version: 7.27.1
       '@babel/helper-validator-identifier':
         specifier: ^7.27.1
         version: 7.27.1
@@ -200,10 +200,6 @@ packages:
 
   '@babel/core@7.26.10':
     resolution: {integrity: sha512-vMqyb7XCDMPvJFFOaT9kxtiRh42GwlZEg1/uIgtZshS5a/8OaduUfCi7kynKgc3Tw/6Uo2D+db9qBttghhmxwQ==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/generator@7.27.0':
-    resolution: {integrity: sha512-VybsKvpiN1gU1sdMZIp7FcqphVVKEwcuj02x73uvcHE0PTihx1nlBcowYWhDwjpoAXRv43+gDzyggGnn1XZhVw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/generator@7.27.1':
@@ -2666,7 +2662,7 @@ snapshots:
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@babel/code-frame': 7.26.2
-      '@babel/generator': 7.27.0
+      '@babel/generator': 7.27.1
       '@babel/helper-compilation-targets': 7.26.5
       '@babel/helper-module-transforms': 7.26.0(@babel/core@7.26.10)
       '@babel/helpers': 7.26.10
@@ -2681,14 +2677,6 @@ snapshots:
       semver: 6.3.1
     transitivePeerDependencies:
       - supports-color
-
-  '@babel/generator@7.27.0':
-    dependencies:
-      '@babel/parser': 7.27.0
-      '@babel/types': 7.27.0
-      '@jridgewell/gen-mapping': 0.3.8
-      '@jridgewell/trace-mapping': 0.3.25
-      jsesc: 3.1.0
 
   '@babel/generator@7.27.1':
     dependencies:
@@ -3745,7 +3733,7 @@ snapshots:
   'babel-plugin-javascript-aot@file:':
     dependencies:
       '@babel/core': 7.26.10
-      '@babel/generator': 7.27.0
+      '@babel/generator': 7.27.1
       '@babel/helper-validator-identifier': 7.27.1
       '@babel/parser': 7.27.0
       '@babel/traverse': 7.27.1
