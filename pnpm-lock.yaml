@@ -33,8 +33,8 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
       zod:
-        specifier: ^3.25.9
-        version: 3.25.9
+        specifier: ^3.25.20
+        version: 3.25.20
     devDependencies:
       '@babel/cli':
         specifier: ^7.27.2
@@ -2636,8 +2636,8 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@3.25.9:
-    resolution: {integrity: sha512-ho97WAF12mhTHd6/1lBbAPJP0cWKvWra6Stl2Tw93EBsIMoHME3bhGUGBXT0AaVmIWtOB1cFh98T+wb9RClo7g==}
+  zod@3.25.20:
+    resolution: {integrity: sha512-z03fqpTMDF1G02VLKUMt6vyACE7rNWkh3gpXVHgPTw28NPtDFRGvcpTtPwn2kMKtQ0idtYJUTxchytmnqYswcw==}
 
 snapshots:
 
@@ -3780,7 +3780,7 @@ snapshots:
       '@babel/types': 7.27.1
       babel-plugin-tester: 11.0.4(@babel/core@7.27.1)
       lodash-es: 4.17.21
-      zod: 3.25.9
+      zod: 3.25.20
     transitivePeerDependencies:
       - supports-color
 
@@ -5309,4 +5309,4 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod@3.25.9: {}
+  zod@3.25.20: {}
