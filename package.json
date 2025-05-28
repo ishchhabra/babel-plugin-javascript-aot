@@ -22,7 +22,7 @@
   },
   "packageManager": "pnpm@9.13.2",
   "dependencies": {
-    "@babel/core": "^7.27.1",
+    "@babel/core": "^7.27.3",
     "@babel/generator": "^7.27.3",
     "@babel/helper-validator-identifier": "^7.27.1",
     "@babel/parser": "^7.27.2",
