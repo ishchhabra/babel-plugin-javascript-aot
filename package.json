@@ -30,7 +30,7 @@
     "@babel/types": "^7.27.6",
     "babel-plugin-tester": "^11.0.4",
     "lodash-es": "^4.17.21",
-    "zod": "^3.25.63"
+    "zod": "^3.25.64"
   },
   "devDependencies": {
     "@babel/cli": "^7.27.2",
