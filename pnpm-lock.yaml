@@ -33,8 +33,8 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
       zod:
-        specifier: ^3.25.64
-        version: 3.25.64
+        specifier: ^3.25.67
+        version: 3.25.67
     devDependencies:
       '@babel/cli':
         specifier: ^7.27.2
@@ -587,10 +587,6 @@ packages:
 
   '@eslint/eslintrc@3.3.1':
     resolution: {integrity: sha512-gtF186CXhIl1p4pJNGZw8Yc6RlshoePRvE0X91oPGb3vZ8pM3qOS9W9NGPat9LziaBV7XrJWGylNQXkGcnM3IQ==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
-  '@eslint/js@9.28.0':
-    resolution: {integrity: sha512-fnqSjGWd/CoIp4EXIxWVK/sHA6DOHN4+8Ix2cX5ycOY7LG0UY8nHCU5pIp2eaE1Mc7Qd8kHspYNzYXT2ojPLzg==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@eslint/js@9.29.0':
@@ -2627,8 +2623,8 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@3.25.64:
-    resolution: {integrity: sha512-hbP9FpSZf7pkS7hRVUrOjhwKJNyampPgtXKc3AN6DsWtoHsg2Sb4SQaS4Tcay380zSwd2VPo9G9180emBACp5g==}
+  zod@3.25.67:
+    resolution: {integrity: sha512-idA2YXwpCdqUSKRCACDE6ItZD9TZzy3OZMtpfLoh6oPR47lipysRrJfjzMqFxQ3uJuUPyUeWe1r9vLH33xO/Qw==}
 
 snapshots:
 
@@ -3039,8 +3035,6 @@ snapshots:
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
       - supports-color
-
-  '@eslint/js@9.28.0': {}
 
   '@eslint/js@9.29.0': {}
 
@@ -3732,7 +3726,7 @@ snapshots:
       '@babel/types': 7.27.6
       babel-plugin-tester: 11.0.4(@babel/core@7.27.4)
       lodash-es: 4.17.21
-      zod: 3.25.64
+      zod: 3.25.67
     transitivePeerDependencies:
       - supports-color
 
@@ -5261,4 +5255,4 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod@3.25.64: {}
+  zod@3.25.67: {}
