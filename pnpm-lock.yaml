@@ -24,8 +24,8 @@ importers:
         specifier: ^7.28.0
         version: 7.28.0
       '@babel/types':
-        specifier: ^7.27.7
-        version: 7.27.7
+        specifier: ^7.28.0
+        version: 7.28.0
       babel-plugin-tester:
         specifier: ^11.0.4
         version: 11.0.4(@babel/core@7.28.0)
@@ -413,10 +413,6 @@ packages:
 
   '@babel/traverse@7.28.0':
     resolution: {integrity: sha512-mGe7UK5wWyh0bKRfupsUchrQGqvDbZDbKJw+kcRGSmdHVYrv+ltd0pnpDTVpiTqnaBru9iEvA8pz8W46v0Amwg==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/types@7.27.7':
-    resolution: {integrity: sha512-8OLQgDScAOHXnAz2cV+RfzzNMipuLVBz2biuAJFMV9bfkNf393je3VM8CLkjQodW5+iWsSJdSgSWT6rsZoXHPw==}
     engines: {node: '>=6.9.0'}
 
   '@babel/types@7.28.0':
@@ -2690,7 +2686,7 @@ snapshots:
       '@babel/parser': 7.27.7
       '@babel/template': 7.27.2
       '@babel/traverse': 7.28.0
-      '@babel/types': 7.27.7
+      '@babel/types': 7.28.0
       convert-source-map: 2.0.0
       debug: 4.4.1
       gensync: 1.0.0-beta.2
@@ -2826,7 +2822,7 @@ snapshots:
 
   '@babel/parser@7.27.7':
     dependencies:
-      '@babel/types': 7.27.7
+      '@babel/types': 7.28.0
 
   '@babel/parser@7.28.0':
     dependencies:
@@ -2974,11 +2970,6 @@ snapshots:
       debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
-
-  '@babel/types@7.27.7':
-    dependencies:
-      '@babel/helper-string-parser': 7.27.1
-      '@babel/helper-validator-identifier': 7.27.1
 
   '@babel/types@7.28.0':
     dependencies:
@@ -3531,25 +3522,25 @@ snapshots:
   '@types/babel__core@7.20.5':
     dependencies:
       '@babel/parser': 7.27.7
-      '@babel/types': 7.27.7
+      '@babel/types': 7.28.0
       '@types/babel__generator': 7.27.0
       '@types/babel__template': 7.4.4
       '@types/babel__traverse': 7.20.7
 
   '@types/babel__generator@7.27.0':
     dependencies:
-      '@babel/types': 7.27.7
+      '@babel/types': 7.28.0
 
   '@types/babel__helper-validator-identifier@7.15.2': {}
 
   '@types/babel__template@7.4.4':
     dependencies:
       '@babel/parser': 7.27.7
-      '@babel/types': 7.27.7
+      '@babel/types': 7.28.0
 
   '@types/babel__traverse@7.20.7':
     dependencies:
-      '@babel/types': 7.27.7
+      '@babel/types': 7.28.0
 
   '@types/estree@1.0.7': {}
 
@@ -3799,7 +3790,7 @@ snapshots:
       '@babel/helper-validator-identifier': 7.27.1
       '@babel/parser': 7.27.7
       '@babel/traverse': 7.28.0
-      '@babel/types': 7.27.7
+      '@babel/types': 7.28.0
       babel-plugin-tester: 11.0.4(@babel/core@7.28.0)
       lodash-es: 4.17.21
       zod: 3.25.69
