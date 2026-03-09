@@ -6,6 +6,7 @@ import { CallGraph } from "./analysis/CallGraph";
 import { LateOptimizer } from "./late-optimizer/LateOptimizer";
 import { MergeConsecutiveBlocksPass } from "./MergeConsecutiveBlocksPass";
 import { Optimizer } from "./optimizer/Optimizer";
+import { UnusedExportEliminationPass } from "./passes/UnusedExportEliminationPass";
 import { SSABuilder } from "./ssa/SSABuilder";
 import { SSAEliminator } from "./ssa/SSAEliminator";
 
@@ -20,6 +21,12 @@ export class Pipeline {
   ) {}
 
   public run() {
+    // Remove exports that no other module imports (module-level pass).
+    if (this.options.enableUnusedExportEliminationPass) {
+      const entryModule = this.projectUnit.postOrder[0];
+      new UnusedExportEliminationPass(this.projectUnit, entryModule).run();
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const context = new Map<string, any>();
     const callGraph = new CallGraph(this.projectUnit);
