@@ -1,10 +1,4 @@
-import {
-  BasicBlock,
-  BlockId,
-  BranchTerminal,
-  JumpTerminal,
-  makeBlockId,
-} from "../../ir";
+import { BasicBlock, BlockId, BranchTerminal, JumpTerminal } from "../../ir";
 
 export function getPredecessors(blocks: Map<BlockId, BasicBlock>) {
   const predecessors = new Map<BlockId, Set<BlockId>>();
@@ -42,7 +36,7 @@ export function getPredecessors(blocks: Map<BlockId, BasicBlock>) {
     }
   };
 
-  // Start from entry block (assumed to be block 0)
-  processBlock(makeBlockId(0), undefined);
+  // Start from the entry block (first block in the map)
+  processBlock(blocks.keys().next().value!, undefined);
   return predecessors;
 }
