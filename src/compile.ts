@@ -14,6 +14,8 @@ export const CompilerOptionsSchema = z.object({
   enableFunctionInliningPass: z.boolean().default(true),
   /** Whether to enable the unused export elimination pass */
   enableUnusedExportEliminationPass: z.boolean().default(true),
+  /** Whether to enable the unreachable code elimination pass */
+  enableUnreachableCodeEliminationPass: z.boolean().default(true),
 
   /** Whether to enable the late optimizer */
   enableLateOptimizer: z.boolean().default(true),
@@ -21,6 +23,8 @@ export const CompilerOptionsSchema = z.object({
   enableLoadStoreForwardingPass: z.boolean().default(true),
   /** Whether to enable the redundant store elimination pass */
   enableRedundantCopyEliminationPass: z.boolean().default(true),
+  /** Whether to enable the late copy propagation pass */
+  enableLateCopyPropagationPass: z.boolean().default(true),
   /** Whether to enable the late dead code elimination pass */
   enableLateDeadCodeEliminationPass: z.boolean().default(true),
 });
