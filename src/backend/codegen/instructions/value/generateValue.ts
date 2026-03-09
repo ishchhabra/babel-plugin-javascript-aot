@@ -9,6 +9,7 @@ import {
   ObjectExpressionInstruction,
   ObjectMethodInstruction,
   ObjectPropertyInstruction,
+  SequenceExpressionInstruction,
   UnaryExpressionInstruction,
   ValueInstruction,
 } from "../../../../ir";
@@ -30,6 +31,7 @@ import { generateLogicalExpressionInstruction } from "./generateLogicalExpressio
 import { generateObjectExpressionInstruction } from "./generateObjectExpression";
 import { generateObjectMethodInstruction } from "./generateObjectMethod";
 import { generateObjectPropertyInstruction } from "./generateObjectProperty";
+import { generateSequenceExpressionInstruction } from "./generateSequenceExpression";
 import { generateThisExpressionInstruction } from "./generateThisExpression";
 import { generateUnaryExpressionInstruction } from "./generateUnaryExpression";
 import { YieldExpressionInstruction } from "../../../../ir/instructions/value/YieldExpression";
@@ -64,6 +66,8 @@ export function generateValueInstruction(
     return generateObjectMethodInstruction(instruction, generator);
   } else if (instruction instanceof ObjectPropertyInstruction) {
     return generateObjectPropertyInstruction(instruction, generator);
+  } else if (instruction instanceof SequenceExpressionInstruction) {
+    return generateSequenceExpressionInstruction(instruction, generator);
   } else if (instruction instanceof ThisExpressionInstruction) {
     return generateThisExpressionInstruction(instruction, generator);
   } else if (instruction instanceof UnaryExpressionInstruction) {
