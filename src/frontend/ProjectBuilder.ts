@@ -1,3 +1,4 @@
+import { existsSync } from "fs";
 import { Environment } from "../environment";
 import { ModuleIR } from "../ir/core/ModuleIR";
 import { ModuleIRBuilder } from "./hir/ModuleIRBuilder";
@@ -31,6 +32,11 @@ export class ProjectBuilder {
       (global) => global.kind === "import",
     );
     for (const { source } of imports) {
+      // Skip external packages and unresolvable paths
+      if (!source.startsWith("/") || !existsSync(source)) {
+        continue;
+      }
+
       this.buildModule(source);
     }
 
@@ -53,7 +59,12 @@ export class ProjectBuilder {
         (global) => global.kind === "import",
       );
       for (const { source } of imports) {
-        visit(this.modules.get(source)!);
+        const mod = this.modules.get(source);
+        if (mod === undefined) {
+          continue;
+        }
+
+        visit(mod);
       }
     };
 
