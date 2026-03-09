@@ -7,6 +7,7 @@ import { CallGraph } from "../analysis/CallGraph";
 import { AlgebraicSimplificationPass } from "../passes/AlgebraicSimplificationPass";
 import { ConstantPropagationPass } from "../passes/ConstantPropagationPass";
 import { FunctionInliningPass } from "../passes/FunctionInliningPass";
+import { UnreachableCodeEliminationPass } from "../passes/UnreachableCodeEliminationPass";
 import { SSA } from "../ssa/SSABuilder";
 
 interface OptimizerResult {
@@ -49,6 +50,13 @@ export class Optimizer {
         ).run();
         changed ||= algebraicSimplificationResult.changed;
         blocks = algebraicSimplificationResult.blocks;
+      }
+
+      if (this.options.enableUnreachableCodeEliminationPass) {
+        const unreachableCodeEliminationResult =
+          new UnreachableCodeEliminationPass(this.functionIR).run();
+        changed ||= unreachableCodeEliminationResult.changed;
+        blocks = unreachableCodeEliminationResult.blocks;
       }
 
       if (this.options.enableFunctionInliningPass) {
