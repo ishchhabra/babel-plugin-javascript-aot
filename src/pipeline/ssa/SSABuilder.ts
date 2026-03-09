@@ -39,10 +39,15 @@ export class SSABuilder {
    */
   private computePhiNodes(): Set<Phi> {
     const phis = new Set<Phi>();
+    const functionBlockIds = new Set(this.functionIR.blocks.keys());
 
     for (const [declarationId, placeIds] of this.moduleIR.environment
       .declToPlaces) {
-      const definitionBlocks = placeIds.map((p) => p.blockId);
+      // Only consider definitions in blocks belonging to this function,
+      // since declToPlaces is shared across all functions in the module.
+      const definitionBlocks = placeIds
+        .filter((p) => functionBlockIds.has(p.blockId))
+        .map((p) => p.blockId);
       if (definitionBlocks.length <= 1) {
         continue;
       }
