@@ -22,9 +22,7 @@ export function generateJSXOpeningElementInstruction(
   const attributes = instruction.attributes.map((attrPlace) => {
     const attrNode = generator.places.get(attrPlace.id);
     if (!attrNode) {
-      throw new Error(
-        `Place not found for JSX attribute: ${attrPlace.id}`,
-      );
+      throw new Error(`Place not found for JSX attribute: ${attrPlace.id}`);
     }
     if (t.isJSXAttribute(attrNode)) {
       return attrNode;

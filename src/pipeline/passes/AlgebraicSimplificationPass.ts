@@ -190,10 +190,18 @@ export class AlgebraicSimplificationPass extends BaseOptimizationPass {
       if (leftIsLit && leftLit === 1 && !rightIsLit) {
         return this.forwardPlace(instruction, instruction.right);
       }
-      if (rightIsLit && rightLit === 0 && this.isFiniteNumber(instruction.left)) {
+      if (
+        rightIsLit &&
+        rightLit === 0 &&
+        this.isFiniteNumber(instruction.left)
+      ) {
         return this.makeLiteral(instruction, 0);
       }
-      if (leftIsLit && leftLit === 0 && this.isFiniteNumber(instruction.right)) {
+      if (
+        leftIsLit &&
+        leftLit === 0 &&
+        this.isFiniteNumber(instruction.right)
+      ) {
         return this.makeLiteral(instruction, 0);
       }
     }
@@ -233,7 +241,11 @@ export class AlgebraicSimplificationPass extends BaseOptimizationPass {
       if (rightIsLit && rightLit === 1 && !leftIsLit) {
         return this.forwardPlace(instruction, instruction.left);
       }
-      if (rightIsLit && rightLit === 0 && this.isFiniteNumber(instruction.left)) {
+      if (
+        rightIsLit &&
+        rightLit === 0 &&
+        this.isFiniteNumber(instruction.left)
+      ) {
         return this.makeLiteral(instruction, 1);
       }
     }

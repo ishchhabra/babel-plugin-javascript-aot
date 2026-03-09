@@ -15,9 +15,7 @@ export class TaggedTemplateExpressionInstruction extends ValueInstruction {
     super(id, place, nodePath);
   }
 
-  public clone(
-    environment: Environment,
-  ): TaggedTemplateExpressionInstruction {
+  public clone(environment: Environment): TaggedTemplateExpressionInstruction {
     const identifier = environment.createIdentifier();
     const place = environment.createPlace(identifier);
     return environment.createInstruction(
