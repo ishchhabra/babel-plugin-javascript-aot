@@ -6,6 +6,7 @@ import {
   HoleInstruction,
   LiteralInstruction,
   LogicalExpressionInstruction,
+  NewExpressionInstruction,
   ObjectExpressionInstruction,
   ObjectMethodInstruction,
   ObjectPropertyInstruction,
@@ -27,6 +28,7 @@ import { generateFunctionExpressionInstruction } from "./generateFunctionExpress
 import { generateHoleInstruction } from "./generateHole";
 import { generateLiteralInstruction } from "./generateLiteral";
 import { generateLogicalExpressionInstruction } from "./generateLogicalExpression";
+import { generateNewExpressionInstruction } from "./generateNewExpression";
 import { generateObjectExpressionInstruction } from "./generateObjectExpression";
 import { generateObjectMethodInstruction } from "./generateObjectMethod";
 import { generateObjectPropertyInstruction } from "./generateObjectProperty";
@@ -58,6 +60,8 @@ export function generateValueInstruction(
     return generateLiteralInstruction(instruction, generator);
   } else if (instruction instanceof LogicalExpressionInstruction) {
     return generateLogicalExpressionInstruction(instruction, generator);
+  } else if (instruction instanceof NewExpressionInstruction) {
+    return generateNewExpressionInstruction(instruction, generator);
   } else if (instruction instanceof ObjectExpressionInstruction) {
     return generateObjectExpressionInstruction(instruction, generator);
   } else if (instruction instanceof ObjectMethodInstruction) {
