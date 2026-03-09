@@ -24,7 +24,12 @@ export default [
   },
   {
     files: ["{src,test}/**/*.{js,jsx}"],
-    ignores: ["**/output.js", "**/output.jsx"],
+    ignores: [
+      "test/**/code.js",
+      "test/**/code.jsx",
+      "test/**/output.js",
+      "test/**/output.jsx",
+    ],
     languageOptions: {
       parserOptions: {
         ecmaVersion: "latest",
