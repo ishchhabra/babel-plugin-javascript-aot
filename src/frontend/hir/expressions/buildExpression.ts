@@ -5,6 +5,7 @@ import { Place } from "../../../ir";
 import { buildUnsupportedNode } from "../buildUnsupportedNode";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
+import { buildAwaitExpression } from "./buildAwaitExpression";
 import { buildArrayExpression } from "./buildArrayExpression";
 import { buildArrowFunctionExpression } from "./buildArrowFunctionExpression";
 import { buildAssignmentExpression } from "./buildAssignmentExpression";
@@ -26,6 +27,14 @@ export function buildExpression(
   environment: Environment,
 ): Place {
   switch (nodePath.type) {
+    case "AwaitExpression":
+      nodePath.assertAwaitExpression();
+      return buildAwaitExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "AssignmentExpression":
       nodePath.assertAssignmentExpression();
       return buildAssignmentExpression(
