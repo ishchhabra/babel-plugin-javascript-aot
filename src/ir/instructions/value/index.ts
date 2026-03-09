@@ -10,6 +10,7 @@ export { ObjectExpressionInstruction } from "./ObjectExpression";
 export { ObjectMethodInstruction } from "./ObjectMethod";
 export { ObjectPropertyInstruction } from "./ObjectProperty";
 export { SequenceExpressionInstruction } from "./SequenceExpression";
+export { TaggedTemplateExpressionInstruction } from "./TaggedTemplateExpression";
 export { TemplateLiteralInstruction } from "./TemplateLiteral";
 export { ThisExpressionInstruction } from "./ThisExpression";
 export { UnaryExpressionInstruction } from "./UnaryExpression";

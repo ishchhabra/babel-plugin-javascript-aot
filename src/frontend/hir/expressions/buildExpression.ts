@@ -19,6 +19,7 @@ import { buildMemberExpression } from "./buildMemberExpression";
 import { buildNewExpression } from "./buildNewExpression";
 import { buildObjectExpression } from "./buildObjectExpression";
 import { buildSequenceExpression } from "./buildSequenceExpression";
+import { buildTaggedTemplateExpression } from "./buildTaggedTemplateExpression";
 import { buildTemplateLiteral } from "./buildTemplateLiteral";
 import { buildUnaryExpression } from "./buildUnaryExpression";
 import { buildThisExpression } from "./buildThisExpression";
@@ -162,6 +163,14 @@ export function buildExpression(
     case "ThisExpression":
       nodePath.assertThisExpression();
       return buildThisExpression(nodePath, functionBuilder, environment);
+    case "TaggedTemplateExpression":
+      nodePath.assertTaggedTemplateExpression();
+      return buildTaggedTemplateExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "UnaryExpression":
       nodePath.assertUnaryExpression();
       return buildUnaryExpression(
