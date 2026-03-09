@@ -7,4 +7,5 @@ export { LogicalExpressionInstruction } from "./LogicalExpression";
 export { ObjectExpressionInstruction } from "./ObjectExpression";
 export { ObjectMethodInstruction } from "./ObjectMethod";
 export { ObjectPropertyInstruction } from "./ObjectProperty";
+export { ThisExpressionInstruction } from "./ThisExpression";
 export { UnaryExpressionInstruction } from "./UnaryExpression";
