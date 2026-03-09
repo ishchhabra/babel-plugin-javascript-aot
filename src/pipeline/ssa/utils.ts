@@ -12,6 +12,6 @@ export function createPhiIdentifier(
 ): Identifier {
   declarationId ??= makeDeclarationId(environment.nextDeclarationId++);
 
-  const identifierId = makeIdentifierId(environment.nextPhiId++);
+  const identifierId = makeIdentifierId(environment.nextIdentifierId++);
   return new Identifier(identifierId, `phi_${identifierId}`, declarationId);
 }

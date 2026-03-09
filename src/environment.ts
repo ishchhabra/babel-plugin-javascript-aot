@@ -68,7 +68,6 @@ export class Environment {
   nextIdentifierId = 0;
   nextInstructionId = 0;
   nextPlaceId = 0;
-  nextPhiId = 0;
 
   public createIdentifier(declarationId?: DeclarationId): Identifier {
     declarationId ??= makeDeclarationId(this.nextDeclarationId++);
