@@ -10,3 +10,4 @@ export { ObjectMethodInstruction } from "./ObjectMethod";
 export { ObjectPropertyInstruction } from "./ObjectProperty";
 export { ThisExpressionInstruction } from "./ThisExpression";
 export { UnaryExpressionInstruction } from "./UnaryExpression";
+export { YieldExpressionInstruction } from "./YieldExpression";

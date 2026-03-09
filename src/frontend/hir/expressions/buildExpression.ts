@@ -20,6 +20,7 @@ import { buildObjectExpression } from "./buildObjectExpression";
 import { buildUnaryExpression } from "./buildUnaryExpression";
 import { buildThisExpression } from "./buildThisExpression";
 import { buildUpdateExpression } from "./buildUpdateExpression";
+import { buildYieldExpression } from "./buildYieldExpression";
 
 export function buildExpression(
   nodePath: NodePath<t.Expression>,
@@ -145,6 +146,14 @@ export function buildExpression(
     case "UpdateExpression":
       nodePath.assertUpdateExpression();
       return buildUpdateExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
+    case "YieldExpression":
+      nodePath.assertYieldExpression();
+      return buildYieldExpression(
         nodePath,
         functionBuilder,
         moduleBuilder,
