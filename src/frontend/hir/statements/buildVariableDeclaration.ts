@@ -62,8 +62,24 @@ export function buildVariableDeclaration(
       "const",
     );
     functionBuilder.addInstruction(instruction);
-    lvalIdentifiers.forEach((identifier) => {
-      environment.registerDeclarationInstruction(identifier, instruction);
+    lvalIdentifiers.forEach((lvalIdentifier) => {
+      environment.registerDeclarationInstruction(lvalIdentifier, instruction);
+
+      // Update the declToPlaces entry to reflect the actual block where the
+      // declaration instruction lives. The binding registration (in buildBindings)
+      // uses the block that was current at binding-discovery time (e.g., the function
+      // entry block), but the actual StoreLocal may end up in a later block (e.g.,
+      // after an if-statement). Without this update, SSA phi operands won't find
+      // the definition in the correct predecessor block.
+      const declPlaces = environment.declToPlaces.get(
+        lvalIdentifier.identifier.declarationId,
+      );
+      if (declPlaces) {
+        const entry = declPlaces.find((p) => p.placeId === lvalIdentifier.id);
+        if (entry) {
+          entry.blockId = functionBuilder.currentBlock.id;
+        }
+      }
     });
 
     return place;
