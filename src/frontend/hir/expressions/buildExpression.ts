@@ -18,6 +18,7 @@ import { buildLogicalExpression } from "./buildLogicalExpression";
 import { buildMemberExpression } from "./buildMemberExpression";
 import { buildNewExpression } from "./buildNewExpression";
 import { buildObjectExpression } from "./buildObjectExpression";
+import { buildSequenceExpression } from "./buildSequenceExpression";
 import { buildUnaryExpression } from "./buildUnaryExpression";
 import { buildThisExpression } from "./buildThisExpression";
 import { buildUpdateExpression } from "./buildUpdateExpression";
@@ -133,6 +134,14 @@ export function buildExpression(
     case "ObjectExpression":
       nodePath.assertObjectExpression();
       return buildObjectExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
+    case "SequenceExpression":
+      nodePath.assertSequenceExpression();
+      return buildSequenceExpression(
         nodePath,
         functionBuilder,
         moduleBuilder,
