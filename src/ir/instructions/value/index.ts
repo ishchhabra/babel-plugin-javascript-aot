@@ -1,3 +1,4 @@
+export { AwaitExpressionInstruction } from "./AwaitExpression";
 export { ArrayExpressionInstruction } from "./ArrayExpression";
 export { BinaryExpressionInstruction } from "./BinaryExpression";
 export { CallExpressionInstruction } from "./CallExpression";

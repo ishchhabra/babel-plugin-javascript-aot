@@ -14,10 +14,12 @@ import {
 } from "../../../../ir";
 import { FunctionIR } from "../../../../ir/core/FunctionIR";
 import { ArrowFunctionExpressionInstruction } from "../../../../ir/instructions/value/ArrowFunctionExpression";
+import { AwaitExpressionInstruction } from "../../../../ir/instructions/value/AwaitExpression";
 import { FunctionExpressionInstruction } from "../../../../ir/instructions/value/FunctionExpression";
 import { ThisExpressionInstruction } from "../../../../ir/instructions/value/ThisExpression";
 import { CodeGenerator } from "../../../CodeGenerator";
 import { generateArrayExpressionInstruction } from "./generateArrayExpression";
+import { generateAwaitExpressionInstruction } from "./generateAwaitExpression";
 import { generateArrowFunctionExpressionInstruction } from "./generateArrowFunctionExpression";
 import { generateBinaryExpressionInstruction } from "./generateBinaryExpression";
 import { generateCallExpression } from "./generateCallExpression";
@@ -38,6 +40,8 @@ export function generateValueInstruction(
 ): t.Expression | t.ObjectMethod | t.ObjectProperty | null {
   if (instruction instanceof ArrayExpressionInstruction) {
     return generateArrayExpressionInstruction(instruction, generator);
+  } else if (instruction instanceof AwaitExpressionInstruction) {
+    return generateAwaitExpressionInstruction(instruction, generator);
   } else if (instruction instanceof ArrowFunctionExpressionInstruction) {
     return generateArrowFunctionExpressionInstruction(instruction, generator);
   } else if (instruction instanceof BinaryExpressionInstruction) {
