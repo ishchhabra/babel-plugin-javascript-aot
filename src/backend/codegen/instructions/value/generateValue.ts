@@ -15,6 +15,7 @@ import {
 import { FunctionIR } from "../../../../ir/core/FunctionIR";
 import { ArrowFunctionExpressionInstruction } from "../../../../ir/instructions/value/ArrowFunctionExpression";
 import { FunctionExpressionInstruction } from "../../../../ir/instructions/value/FunctionExpression";
+import { ThisExpressionInstruction } from "../../../../ir/instructions/value/ThisExpression";
 import { CodeGenerator } from "../../../CodeGenerator";
 import { generateArrayExpressionInstruction } from "./generateArrayExpression";
 import { generateArrowFunctionExpressionInstruction } from "./generateArrowFunctionExpression";
@@ -27,6 +28,7 @@ import { generateLogicalExpressionInstruction } from "./generateLogicalExpressio
 import { generateObjectExpressionInstruction } from "./generateObjectExpression";
 import { generateObjectMethodInstruction } from "./generateObjectMethod";
 import { generateObjectPropertyInstruction } from "./generateObjectProperty";
+import { generateThisExpressionInstruction } from "./generateThisExpression";
 import { generateUnaryExpressionInstruction } from "./generateUnaryExpression";
 
 export function generateValueInstruction(
@@ -56,6 +58,8 @@ export function generateValueInstruction(
     return generateObjectMethodInstruction(instruction, generator);
   } else if (instruction instanceof ObjectPropertyInstruction) {
     return generateObjectPropertyInstruction(instruction, generator);
+  } else if (instruction instanceof ThisExpressionInstruction) {
+    return generateThisExpressionInstruction(instruction, generator);
   } else if (instruction instanceof UnaryExpressionInstruction) {
     return generateUnaryExpressionInstruction(instruction, generator);
   }
