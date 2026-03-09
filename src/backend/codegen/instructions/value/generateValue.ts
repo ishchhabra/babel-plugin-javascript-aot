@@ -28,6 +28,8 @@ import { generateObjectExpressionInstruction } from "./generateObjectExpression"
 import { generateObjectMethodInstruction } from "./generateObjectMethod";
 import { generateObjectPropertyInstruction } from "./generateObjectProperty";
 import { generateUnaryExpressionInstruction } from "./generateUnaryExpression";
+import { YieldExpressionInstruction } from "../../../../ir/instructions/value/YieldExpression";
+import { generateYieldExpressionInstruction } from "./generateYieldExpression";
 
 export function generateValueInstruction(
   instruction: ValueInstruction,
@@ -58,6 +60,8 @@ export function generateValueInstruction(
     return generateObjectPropertyInstruction(instruction, generator);
   } else if (instruction instanceof UnaryExpressionInstruction) {
     return generateUnaryExpressionInstruction(instruction, generator);
+  } else if (instruction instanceof YieldExpressionInstruction) {
+    return generateYieldExpressionInstruction(instruction, generator);
   }
 
   throw new Error(`Unsupported value type: ${instruction.constructor.name}`);
