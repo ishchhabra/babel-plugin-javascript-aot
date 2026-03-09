@@ -4,6 +4,7 @@ import { BasicBlock, BlockId } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
 import { CallGraph } from "../analysis/CallGraph";
+import { AlgebraicSimplificationPass } from "../passes/AlgebraicSimplificationPass";
 import { ConstantPropagationPass } from "../passes/ConstantPropagationPass";
 import { FunctionInliningPass } from "../passes/FunctionInliningPass";
 import { SSA } from "../ssa/SSABuilder";
@@ -40,6 +41,14 @@ export class Optimizer {
         ).run();
         changed ||= constantPropagationResult.changed;
         blocks = constantPropagationResult.blocks;
+      }
+
+      if (this.options.enableAlgebraicSimplificationPass) {
+        const algebraicSimplificationResult = new AlgebraicSimplificationPass(
+          this.functionIR,
+        ).run();
+        changed ||= algebraicSimplificationResult.changed;
+        blocks = algebraicSimplificationResult.blocks;
       }
 
       if (this.options.enableFunctionInliningPass) {
