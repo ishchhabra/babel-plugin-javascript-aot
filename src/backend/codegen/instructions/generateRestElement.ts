@@ -12,7 +12,7 @@ export function generateRestElementInstruction(
   }
   t.assertLVal(argument);
 
-  const node = t.restElement(argument);
+  const node = t.restElement(argument as t.RestElement["argument"]);
   generator.places.set(instruction.place.id, node);
   return node;
 }

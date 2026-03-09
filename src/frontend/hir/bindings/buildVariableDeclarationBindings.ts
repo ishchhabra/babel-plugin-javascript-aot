@@ -22,7 +22,7 @@ export function buildVariableDeclarationBindings(
 
   const declarationPaths = nodePath.get("declarations");
   for (const declarationPath of declarationPaths) {
-    const id = declarationPath.get("id");
+    const id = declarationPath.get("id") as NodePath<t.LVal>;
     buildLValBindings(bindingsPath, id, functionBuilder, environment);
   }
 }

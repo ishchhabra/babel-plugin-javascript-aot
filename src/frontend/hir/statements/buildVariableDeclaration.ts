@@ -25,7 +25,7 @@ export function buildVariableDeclaration(
 ): Place | Place[] | undefined {
   const declarations = nodePath.get("declarations");
   const declarationPlaces = declarations.map((declaration) => {
-    const id = declaration.get("id");
+    const id = declaration.get("id") as NodePath<t.LVal>;
     const { place: lvalPlace, identifiers: lvalIdentifiers } =
       buildVariableDeclaratorLVal(
         id,

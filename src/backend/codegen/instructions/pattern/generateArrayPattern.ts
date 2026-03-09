@@ -20,7 +20,7 @@ export function generateArrayPatternInstruction(
     return node;
   });
 
-  const node = t.arrayPattern(elements);
+  const node = t.arrayPattern(elements as (t.PatternLike | null)[]);
   generator.places.set(instruction.place.id, node);
   return node;
 }

@@ -421,7 +421,7 @@ function buildArrayPatternAssignmentLeft(
     }
 
     const { place, instructions: elementInstructions } = buildAssignmentLeft(
-      elementPath,
+      elementPath as NodePath<t.LVal>,
       nodePath,
       functionBuilder,
       moduleBuilder,

@@ -22,7 +22,7 @@ export function buildFunctionParams(
   return paramPaths.map(
     (paramPath: NodePath<t.Identifier | t.RestElement | t.Pattern>) =>
       buildFunctionParam(
-        paramPath,
+        paramPath as NodePath<t.LVal>,
         bodyPath,
         functionBuilder,
         moduleBuilder,
@@ -121,7 +121,7 @@ function buildFunctionArrayPatternParam(
     }
 
     return buildFunctionParam(
-      elementPath,
+      elementPath as NodePath<t.LVal>,
       bodyPath,
       functionBuilder,
       moduleBuilder,
