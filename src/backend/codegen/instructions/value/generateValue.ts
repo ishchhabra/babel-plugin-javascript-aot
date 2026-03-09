@@ -19,6 +19,7 @@ import { FunctionIR } from "../../../../ir/core/FunctionIR";
 import { ArrowFunctionExpressionInstruction } from "../../../../ir/instructions/value/ArrowFunctionExpression";
 import { AwaitExpressionInstruction } from "../../../../ir/instructions/value/AwaitExpression";
 import { FunctionExpressionInstruction } from "../../../../ir/instructions/value/FunctionExpression";
+import { TaggedTemplateExpressionInstruction } from "../../../../ir/instructions/value/TaggedTemplateExpression";
 import { ThisExpressionInstruction } from "../../../../ir/instructions/value/ThisExpression";
 import { CodeGenerator } from "../../../CodeGenerator";
 import { generateArrayExpressionInstruction } from "./generateArrayExpression";
@@ -37,6 +38,7 @@ import { generateObjectPropertyInstruction } from "./generateObjectProperty";
 import { generateSequenceExpressionInstruction } from "./generateSequenceExpression";
 import { generateTemplateLiteralInstruction } from "./generateTemplateLiteral";
 import { generateThisExpressionInstruction } from "./generateThisExpression";
+import { generateTaggedTemplateExpressionInstruction } from "./generateTaggedTemplateExpression";
 import { generateUnaryExpressionInstruction } from "./generateUnaryExpression";
 import { YieldExpressionInstruction } from "../../../../ir/instructions/value/YieldExpression";
 import { generateYieldExpressionInstruction } from "./generateYieldExpression";
@@ -78,6 +80,8 @@ export function generateValueInstruction(
     return generateTemplateLiteralInstruction(instruction, generator);
   } else if (instruction instanceof ThisExpressionInstruction) {
     return generateThisExpressionInstruction(instruction, generator);
+  } else if (instruction instanceof TaggedTemplateExpressionInstruction) {
+    return generateTaggedTemplateExpressionInstruction(instruction, generator);
   } else if (instruction instanceof UnaryExpressionInstruction) {
     return generateUnaryExpressionInstruction(instruction, generator);
   } else if (instruction instanceof YieldExpressionInstruction) {
