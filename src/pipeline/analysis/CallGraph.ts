@@ -233,7 +233,7 @@ export class CallGraph {
     }
 
     const exportPlace = moduleIR.exports.get(name);
-    if (exportPlace === undefined) {
+    if (exportPlace === undefined || exportPlace.declaration === undefined) {
       return undefined;
     }
 
