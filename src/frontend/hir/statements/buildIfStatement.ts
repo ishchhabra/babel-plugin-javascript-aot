@@ -43,11 +43,14 @@ export function buildIfStatement(
   buildNode(consequentPath, functionBuilder, moduleBuilder, environment);
 
   // After building the consequent block, we need to set the terminal
-  // from the last block to the join block.
-  functionBuilder.currentBlock.terminal = new JumpTerminal(
-    createInstructionId(functionBuilder.environment),
-    joinBlock.id,
-  );
+  // from the last block to the join block, unless the block already has
+  // a terminal (e.g., a return statement).
+  if (functionBuilder.currentBlock.terminal === undefined) {
+    functionBuilder.currentBlock.terminal = new JumpTerminal(
+      createInstructionId(functionBuilder.environment),
+      joinBlock.id,
+    );
+  }
 
   // Build the alternate block
   const alternatePath = nodePath.get("alternate");
@@ -61,11 +64,14 @@ export function buildIfStatement(
   }
 
   // After building the alternate block, we need to set the terminal
-  // from the last block to the join block.
-  functionBuilder.currentBlock.terminal = new JumpTerminal(
-    createInstructionId(functionBuilder.environment),
-    joinBlock.id,
-  );
+  // from the last block to the join block, unless the block already has
+  // a terminal (e.g., a return statement).
+  if (functionBuilder.currentBlock.terminal === undefined) {
+    functionBuilder.currentBlock.terminal = new JumpTerminal(
+      createInstructionId(functionBuilder.environment),
+      joinBlock.id,
+    );
+  }
 
   // Set branch terminal for the current block.
   currentBlock.terminal = new BranchTerminal(
