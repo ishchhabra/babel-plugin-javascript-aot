@@ -9,13 +9,9 @@ export function generateBranchTerminal(
   functionIR: FunctionIR,
   generator: CodeGenerator,
 ): Array<t.Statement> {
-  // Generate the fallthrough block first so that we do not rebuild it
-  // if the alternate block is the same as the fallthrough block.
-  const fallthrough = generateBlock(
-    terminal.fallthrough,
-    functionIR,
-    generator,
-  );
+  // Reserve the fallthrough block so branches don't pull it into their scope,
+  // but defer its generation until after the branches have populated phi places.
+  generator.generatedBlocks.add(terminal.fallthrough);
 
   const test = generator.places.get(terminal.test.id);
   if (test === undefined) {
@@ -29,6 +25,14 @@ export function generateBranchTerminal(
   if (terminal.alternate !== terminal.fallthrough) {
     alternate = generateBlock(terminal.alternate, functionIR, generator);
   }
+
+  // Now generate fallthrough — branches have defined all phi operands.
+  generator.generatedBlocks.delete(terminal.fallthrough);
+  const fallthrough = generateBlock(
+    terminal.fallthrough,
+    functionIR,
+    generator,
+  );
 
   const node = t.ifStatement(
     test,
