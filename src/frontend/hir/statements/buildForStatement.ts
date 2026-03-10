@@ -5,6 +5,7 @@ import {
   BranchTerminal,
   ExpressionStatementInstruction,
   JumpTerminal,
+  StoreLocalInstruction,
   makeInstructionId,
 } from "../../../ir";
 import { buildBindings } from "../bindings/buildBindings";
@@ -28,14 +29,20 @@ export function buildForStatement(
 
   functionBuilder.currentBlock = initBlock;
   if (initPath.hasNode()) {
-    // If the init is an expression, wrap it with an expression statement.
     if (initPath.isExpression()) {
-      initPath.replaceWith(t.expressionStatement(initPath.node));
+      // Build expression inits (e.g. `for (i = 0; ...)`) directly since
+      // the statement builder expects a Statement node.
+      buildExpressionAsStatement(
+        initPath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
+    } else {
+      initPath.assertStatement();
+      buildBindings(nodePath, functionBuilder, environment);
+      buildStatement(initPath, functionBuilder, moduleBuilder, environment);
     }
-
-    initPath.assertStatement();
-    buildBindings(nodePath, functionBuilder, environment);
-    buildStatement(initPath, functionBuilder, moduleBuilder, environment);
   }
   const initBlockTerminus = functionBuilder.currentBlock;
 
@@ -132,6 +139,14 @@ function buildExpressionAsStatement(
   );
   if (expressionPlace === undefined || Array.isArray(expressionPlace)) {
     throw new Error("Expression place is undefined");
+  }
+
+  // Assignments already emit a StoreLocalInstruction; wrapping in
+  // ExpressionStatementInstruction would duplicate the declaration in codegen.
+  const expressionInstruction =
+    functionBuilder.environment.placeToInstruction.get(expressionPlace.id);
+  if (expressionInstruction instanceof StoreLocalInstruction) {
+    return expressionPlace;
   }
 
   const identifier = environment.createIdentifier();
