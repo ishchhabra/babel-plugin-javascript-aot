@@ -76,7 +76,7 @@ export class FunctionInliningPass extends BaseOptimizationPass {
           continue;
         }
 
-        if (!this.isInlinableFunction(functionIR)) {
+        if (!this.isInlinableFunction(functionIR, modulePath)) {
           continue;
         }
 
@@ -97,13 +97,12 @@ export class FunctionInliningPass extends BaseOptimizationPass {
    * - Must have exactly one block
    * - Must not be recursive
    */
-  private isInlinableFunction(funcIR: FunctionIR): boolean {
+  private isInlinableFunction(funcIR: FunctionIR, modulePath: string): boolean {
     if (funcIR.blocks.size > 1) {
       return false;
     }
 
-    if (this.isFunctionRecursive(funcIR)) {
-      console.log("Function is recursive", this.moduleIR.functions.size);
+    if (this.isFunctionRecursive(funcIR, modulePath)) {
       return false;
     }
 
@@ -117,7 +116,7 @@ export class FunctionInliningPass extends BaseOptimizationPass {
    *
    * @param funcIR - The FunctionIR we want to test for recursion
    */
-  private isFunctionRecursive(funcIR: FunctionIR): boolean {
+  private isFunctionRecursive(funcIR: FunctionIR, modulePath: string): boolean {
     const start = funcIR.id;
     const visited = new Set<FunctionIRId>();
     const stack = new Set<FunctionIRId>();
@@ -136,7 +135,7 @@ export class FunctionInliningPass extends BaseOptimizationPass {
       stack.add(current);
 
       const neighbors =
-        this.callGraph.calls.get(this.moduleIR.path)?.get(current) ?? new Set();
+        this.callGraph.calls.get(modulePath)?.get(current) ?? new Set();
       for (const neighbor of neighbors) {
         if (dfs(neighbor.functionIRId)) {
           return true;
