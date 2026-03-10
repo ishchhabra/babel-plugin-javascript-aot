@@ -5,6 +5,7 @@ import {
   ArrayPatternInstruction,
   BaseInstruction,
   BasicBlock,
+  LiteralInstruction,
   ReturnTerminal,
   StoreLocalInstruction,
 } from "../../ir";
@@ -188,44 +189,54 @@ export class FunctionInliningPass extends BaseOptimizationPass {
         callExpressionInstr.rewrite(rewriteMap);
     }
 
-    let returnPlace: Place | undefined = undefined;
+    let returnPlace: Place;
     if (block.terminal instanceof ReturnTerminal) {
       const oldReturnId = block.terminal.value.identifier;
-      returnPlace = rewriteMap.get(oldReturnId);
+      const rewritten = rewriteMap.get(oldReturnId);
 
-      if (!returnPlace) {
+      if (!rewritten) {
         throw new Error(
           "Could not find a rewritten place for the function's return value",
         );
       }
+      returnPlace = rewritten;
+    } else {
+      // Void function: the call evaluates to undefined. Create an undefined
+      // literal so any reference to the call's result place resolves correctly.
+      const undefinedLiteral = environment.createInstruction(
+        LiteralInstruction,
+        environment.createPlace(environment.createIdentifier()),
+        undefined,
+        undefined,
+      );
+      instrs.push(undefinedLiteral);
+      returnPlace = undefinedLiteral.place;
     }
 
     callExpressionBlock.instructions.splice(index, 1, ...instrs);
 
-    if (returnPlace) {
-      const retRewriteMap = new Map<Identifier, Place>();
-      retRewriteMap.set(callExpressionInstr.place.identifier, returnPlace);
+    const retRewriteMap = new Map<Identifier, Place>();
+    retRewriteMap.set(callExpressionInstr.place.identifier, returnPlace);
 
-      for (
-        let i = index + instrs.length;
-        i < callExpressionBlock.instructions.length;
-        i++
-      ) {
-        const oldInstr = callExpressionBlock.instructions[i];
-        callExpressionBlock.instructions[i] = oldInstr.rewrite(retRewriteMap);
-      }
+    for (
+      let i = index + instrs.length;
+      i < callExpressionBlock.instructions.length;
+      i++
+    ) {
+      const oldInstr = callExpressionBlock.instructions[i];
+      callExpressionBlock.instructions[i] = oldInstr.rewrite(retRewriteMap);
+    }
 
-      // Also update the block's terminal if it references the old call place
-      if (
-        callExpressionBlock.terminal instanceof ReturnTerminal &&
-        callExpressionBlock.terminal.value.identifier ===
-          callExpressionInstr.place.identifier
-      ) {
-        callExpressionBlock.terminal = new ReturnTerminal(
-          callExpressionBlock.terminal.id,
-          returnPlace,
-        );
-      }
+    // Also update the block's terminal if it references the old call place
+    if (
+      callExpressionBlock.terminal instanceof ReturnTerminal &&
+      callExpressionBlock.terminal.value.identifier ===
+        callExpressionInstr.place.identifier
+    ) {
+      callExpressionBlock.terminal = new ReturnTerminal(
+        callExpressionBlock.terminal.id,
+        returnPlace,
+      );
     }
   }
 
