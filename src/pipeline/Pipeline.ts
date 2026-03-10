@@ -18,13 +18,14 @@ export class Pipeline {
   constructor(
     private readonly projectUnit: ProjectUnit,
     private readonly options: CompilerOptions,
+    private readonly entryModules?: string[],
   ) {}
 
   public run() {
     // Remove exports that no other module imports (module-level pass).
     if (this.options.enableUnusedExportEliminationPass) {
-      const entryModule = this.projectUnit.postOrder[0];
-      new UnusedExportEliminationPass(this.projectUnit, entryModule).run();
+      const entryModules = this.entryModules ?? [this.projectUnit.postOrder[0]];
+      new UnusedExportEliminationPass(this.projectUnit, entryModules).run();
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
