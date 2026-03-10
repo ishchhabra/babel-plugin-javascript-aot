@@ -241,6 +241,29 @@ function buildObjectPatternVariableDeclaratorLVal(
       return place;
     }
 
+    if (propertyPath.isRestElement()) {
+      const argumentPath = propertyPath.get("argument");
+      const { place: argumentPlace, identifiers: argumentIdentifiers } =
+        buildVariableDeclaratorLVal(
+          argumentPath,
+          functionBuilder,
+          moduleBuilder,
+          environment,
+        );
+      identifiers.push(...argumentIdentifiers);
+
+      const identifier = environment.createIdentifier();
+      const place = environment.createPlace(identifier);
+      const instruction = environment.createInstruction(
+        RestElementInstruction,
+        place,
+        propertyPath,
+        argumentPlace,
+      );
+      functionBuilder.addInstruction(instruction);
+      return place;
+    }
+
     throw new Error("Unsupported object pattern property");
   });
 

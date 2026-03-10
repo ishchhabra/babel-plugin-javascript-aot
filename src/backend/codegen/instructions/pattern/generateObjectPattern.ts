@@ -12,7 +12,11 @@ export function generateObjectPatternInstruction(
       throw new Error(`Place ${property.id} not found`);
     }
 
-    t.assertObjectProperty(node);
+    if (!t.isObjectProperty(node) && !t.isRestElement(node)) {
+      throw new Error(
+        `Expected ObjectProperty or RestElement but got ${node?.type}`,
+      );
+    }
     return node;
   });
 

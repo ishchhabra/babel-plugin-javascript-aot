@@ -492,6 +492,30 @@ function buildObjectPatternAssignmentLeft(
       return place;
     }
 
+    if (propertyPath.isRestElement()) {
+      const argumentPath = propertyPath.get("argument");
+      const { place: argumentPlace, instructions: argumentInstructions } =
+        buildAssignmentLeft(
+          argumentPath,
+          nodePath,
+          functionBuilder,
+          moduleBuilder,
+          environment,
+        );
+      instructions.push(...argumentInstructions);
+
+      const identifier = environment.createIdentifier();
+      const place = environment.createPlace(identifier);
+      const instruction = environment.createInstruction(
+        RestElementInstruction,
+        place,
+        propertyPath,
+        argumentPlace,
+      );
+      functionBuilder.addInstruction(instruction);
+      return place;
+    }
+
     throw new Error("Unsupported object pattern property");
   });
 

@@ -201,6 +201,28 @@ function buildFunctionObjectPatternParam(
       return place;
     }
 
+    if (propertyPath.isRestElement()) {
+      const argumentPath = propertyPath.get("argument");
+      const argumentPlace = buildFunctionParam(
+        argumentPath as NodePath<t.LVal>,
+        bodyPath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
+
+      const identifier = environment.createIdentifier();
+      const place = environment.createPlace(identifier);
+      const instruction = environment.createInstruction(
+        RestElementInstruction,
+        place,
+        propertyPath,
+        argumentPlace,
+      );
+      functionBuilder.header.push(instruction);
+      return place;
+    }
+
     throw new Error("Unsupported object pattern property");
   });
 
