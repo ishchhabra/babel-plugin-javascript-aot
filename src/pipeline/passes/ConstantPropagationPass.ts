@@ -88,18 +88,20 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
 
   private evaluatePhi(phi: Phi) {
     let value: TPrimitiveValue | undefined = undefined;
+    let hasValue = false;
     for (const [, operand] of phi.operands) {
       if (!this.constants.has(operand.identifier.id)) {
         return undefined;
       }
 
       const operandValue = this.constants.get(operand.identifier.id);
-      if (value === undefined) {
+      if (!hasValue) {
         value = operandValue;
+        hasValue = true;
         continue;
       }
 
-      if (operandValue !== value) {
+      if (!Object.is(operandValue, value)) {
         return undefined;
       }
     }
@@ -137,10 +139,10 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
       throw new Error("Terminal is not a branch terminal");
     }
 
-    const test = this.constants.get(terminal.test.identifier.id);
-    if (test === undefined) {
+    if (!this.constants.has(terminal.test.identifier.id)) {
       return false;
     }
+    const test = this.constants.get(terminal.test.identifier.id);
 
     const targetBlockId = test ? terminal.consequent : terminal.alternate;
     block.terminal = new JumpTerminal(terminal.id, targetBlockId);
@@ -235,9 +237,6 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
       return undefined;
     }
 
-    if (instruction.value === undefined) {
-      throw new Error("Literal value is undefined");
-    }
     this.constants.set(instruction.place.identifier.id, instruction.value);
     return null;
   }
@@ -245,15 +244,29 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
   private evaluateBinaryExpressionInstruction(
     instruction: BinaryExpressionInstruction,
   ) {
+    if (
+      !this.constants.has(instruction.left.identifier.id) ||
+      !this.constants.has(instruction.right.identifier.id)
+    ) {
+      return undefined;
+    }
     const left = this.constants.get(instruction.left.identifier.id);
     const right = this.constants.get(instruction.right.identifier.id);
 
-    if (left === undefined || right === undefined) {
-      return undefined;
-    }
-
     let result: TPrimitiveValue;
     switch (instruction.operator) {
+      case "==":
+        result = left == right;
+        break;
+      case "!=":
+        result = left != right;
+        break;
+      case "===":
+        result = left === right;
+        break;
+      case "!==":
+        result = left !== right;
+        break;
       case "+":
         result = (left as number) + (right as number);
         break;
@@ -265,6 +278,12 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
         break;
       case "/":
         result = (left as number) / (right as number);
+        break;
+      case "%":
+        result = (left as number) % (right as number);
+        break;
+      case "**":
+        result = (left as number) ** (right as number);
         break;
       case "|":
         result = (left as number) | (right as number);
@@ -281,11 +300,8 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
       case ">>>":
         result = (left as number) >>> (right as number);
         break;
-      case "==":
-        result = left === right;
-        break;
-      case "!=":
-        result = left !== right;
+      case "<<":
+        result = (left as number) << (right as number);
         break;
       case ">":
         result = (left as number) > (right as number);
@@ -298,21 +314,6 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
         break;
       case "<=":
         result = (left as number) <= (right as number);
-        break;
-      case "!==":
-        result = left !== right;
-        break;
-      case "===":
-        result = left === right;
-        break;
-      case "%":
-        result = (left as number) % (right as number);
-        break;
-      case "**":
-        result = (left as number) ** (right as number);
-        break;
-      case "<<":
-        result = (left as number) << (right as number);
         break;
       default:
         return undefined;
@@ -330,10 +331,10 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
   private evaluateUnaryExpressionInstruction(
     instruction: UnaryExpressionInstruction,
   ) {
-    const operand = this.constants.get(instruction.argument.identifier.id);
-    if (operand === undefined) {
+    if (!this.constants.has(instruction.argument.identifier.id)) {
       return undefined;
     }
+    const operand = this.constants.get(instruction.argument.identifier.id);
 
     let result: TPrimitiveValue;
     switch (instruction.operator) {
@@ -365,12 +366,14 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
   private evaluateLogicalExpressionInstruction(
     instruction: LogicalExpressionInstruction,
   ) {
-    const left = this.constants.get(instruction.left.identifier.id);
-    const right = this.constants.get(instruction.right.identifier.id);
-
-    if (left === undefined || right === undefined) {
+    if (
+      !this.constants.has(instruction.left.identifier.id) ||
+      !this.constants.has(instruction.right.identifier.id)
+    ) {
       return undefined;
     }
+    const left = this.constants.get(instruction.left.identifier.id);
+    const right = this.constants.get(instruction.right.identifier.id);
 
     let result: TPrimitiveValue;
     switch (instruction.operator) {
@@ -426,9 +429,6 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
     }
 
     const value = this.constants.get(instruction.value.identifier.id);
-    if (value === undefined) {
-      throw new Error("Literal value is undefined");
-    }
     this.constants.set(instruction.place.identifier.id, value);
     return new LiteralInstruction(
       instruction.id,
@@ -506,10 +506,19 @@ export class ConstantPropagationPass extends BaseOptimizationPass {
 
     const source = global.source;
 
-    const globalConstants = this.context.get("constants")!;
-    const constantsForSource = globalConstants.get(source)!;
+    const globalConstants = this.context.get("constants");
+    if (globalConstants === undefined) {
+      return undefined;
+    }
+    const constantsForSource = globalConstants.get(source);
+    if (constantsForSource === undefined) {
+      return undefined;
+    }
 
-    const moduleUnit = this.projectUnit.modules.get(source)!;
+    const moduleUnit = this.projectUnit.modules.get(source);
+    if (moduleUnit === undefined) {
+      return undefined;
+    }
     const moduleExport = moduleUnit.exports.get(global.name);
     if (moduleExport === undefined) {
       return undefined;
