@@ -7,6 +7,7 @@ import {
 } from "../../ir";
 import { FunctionIRId } from "../../ir/core/FunctionIR";
 import { ModuleGlobal, ModuleIR } from "../../ir/core/ModuleIR";
+import { ExportFromInstruction } from "../../ir/instructions/module/ExportFrom";
 
 /**
  * A project-wide call graph that stores:
@@ -221,12 +222,23 @@ export class CallGraph {
     };
   }
 
-  public resolveGlobalFunctionCall(global: ModuleGlobal) {
+  public resolveGlobalFunctionCall(
+    global: ModuleGlobal,
+    visited: Set<string> = new Set(),
+  ): { modulePath: string; functionIRId: FunctionIRId } | undefined {
     if (global.kind !== "import") {
       return undefined;
     }
 
     const { name, source } = global;
+
+    // Prevent infinite loops in circular re-export chains.
+    const key = `${source}:${name}`;
+    if (visited.has(key)) {
+      return undefined;
+    }
+    visited.add(key);
+
     const moduleIR = this.projectUnit.modules.get(source);
     if (moduleIR === undefined) {
       return undefined;
@@ -235,6 +247,15 @@ export class CallGraph {
     const exportPlace = moduleIR.exports.get(name);
     if (exportPlace === undefined || exportPlace.declaration === undefined) {
       return undefined;
+    }
+
+    // If the export is a re-export, follow the chain to the source module.
+    if (exportPlace.declaration instanceof ExportFromInstruction) {
+      const reExportGlobal = moduleIR.globals.get(name);
+      if (reExportGlobal === undefined) {
+        return undefined;
+      }
+      return this.resolveGlobalFunctionCall(reExportGlobal, visited);
     }
 
     const funcDeclInstr = moduleIR.environment.placeToInstruction.get(
