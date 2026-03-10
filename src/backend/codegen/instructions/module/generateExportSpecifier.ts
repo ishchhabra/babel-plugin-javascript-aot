@@ -7,7 +7,15 @@ export function generateExportSpecifierInstruction(
   instruction: ExportSpecifierInstruction,
   generator: CodeGenerator,
 ): t.ExportSpecifier {
-  const local = t.identifier(instruction.local);
+  const localNode = generator.places.get(instruction.localPlace.id);
+  let local: t.Identifier;
+  if (t.isIdentifier(localNode)) {
+    local = localNode;
+  } else if (t.isFunctionDeclaration(localNode) && localNode.id) {
+    local = localNode.id;
+  } else {
+    throw new Error("Export specifier local must resolve to an identifier");
+  }
   const exported = toIdentifierOrStringLiteral(instruction.exported);
 
   const node = t.exportSpecifier(local, exported);

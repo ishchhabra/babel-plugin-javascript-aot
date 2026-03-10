@@ -1,10 +1,14 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../environment";
-import { ExportSpecifierInstruction, Place } from "../../ir";
+import {
+  ExportSpecifierInstruction,
+  FunctionDeclarationInstruction,
+  Place,
+  StoreLocalInstruction,
+} from "../../ir";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
-import { buildNode } from "./buildNode";
 
 export function buildExportSpecifier(
   nodePath: NodePath<t.ExportSpecifier>,
@@ -12,19 +16,28 @@ export function buildExportSpecifier(
   moduleBuilder: ModuleIRBuilder,
   environment: Environment,
 ): Place {
-  const localPath = nodePath.get("local");
-  const localPlace = buildNode(
-    localPath,
-    functionBuilder,
-    moduleBuilder,
-    environment,
-  );
-  if (localPlace === undefined || Array.isArray(localPlace)) {
-    throw new Error("Export specifier local must be a single place");
-  }
-
   const localName = getLocalName(nodePath);
   const exportedName = getExportedName(nodePath);
+
+  const declarationId = functionBuilder.getDeclarationId(localName, nodePath)!;
+  const declarationInstructionId =
+    environment.getDeclarationInstruction(declarationId)!;
+  const declarationInstruction = environment.instructions.get(
+    declarationInstructionId,
+  )!;
+
+  // Use the declaration's binding place directly so that ExportSpecifier
+  // holds a read-reference to it, preventing DCE from removing the declaration.
+  let localPlace: Place;
+  if (declarationInstruction instanceof StoreLocalInstruction) {
+    localPlace = declarationInstruction.lval;
+  } else if (declarationInstruction instanceof FunctionDeclarationInstruction) {
+    localPlace = declarationInstruction.identifier;
+  } else {
+    throw new Error(
+      `Export specifier local '${localName}' references unsupported declaration type`,
+    );
+  }
 
   const identifier = environment.createIdentifier();
   const place = environment.createPlace(identifier);
@@ -32,17 +45,14 @@ export function buildExportSpecifier(
     ExportSpecifierInstruction,
     place,
     nodePath,
-    localName,
+    localPlace,
     exportedName,
   );
   functionBuilder.addInstruction(instruction);
 
-  const declarationId = functionBuilder.getDeclarationId(localName, nodePath)!;
-  const declarationInstructionId =
-    environment.getDeclarationInstruction(declarationId)!;
   moduleBuilder.exports.set(exportedName, {
     instruction,
-    declaration: environment.instructions.get(declarationInstructionId)!,
+    declaration: declarationInstruction,
   });
   return place;
 }
