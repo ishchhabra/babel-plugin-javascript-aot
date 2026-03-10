@@ -12,7 +12,11 @@ export function generateObjectExpressionInstruction(
       throw new Error(`Place ${property.id} not found`);
     }
 
-    if (!t.isObjectProperty(propertyNode) && !t.isObjectMethod(propertyNode)) {
+    if (
+      !t.isObjectProperty(propertyNode) &&
+      !t.isObjectMethod(propertyNode) &&
+      !t.isSpreadElement(propertyNode)
+    ) {
       throw new Error(`Unsupported property type: ${propertyNode?.type}`);
     }
 
