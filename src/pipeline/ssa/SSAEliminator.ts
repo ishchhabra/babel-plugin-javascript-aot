@@ -33,9 +33,6 @@ export class SSAEliminator {
       }
 
       this.#insertPhiDeclaration(phi);
-      // NOTE: We need to replace phi usages before inserting copies, otherwise
-      // the copies will be rewritten as well, making it `phi = phi`.
-      this.#replacePhiUsages(phi);
       this.#insertPhiCopies(phi);
     }
 
@@ -126,26 +123,6 @@ export class SSAEliminator {
           undefined,
           copyPlace,
         ),
-      );
-    }
-  }
-
-  #replacePhiUsages(phi: Phi) {
-    const values = new Map(
-      Array.from(phi.operands.values()).map((place) => [
-        place.identifier,
-        phi.place,
-      ]),
-    );
-
-    for (const [blockId, block] of this.functionIR.blocks) {
-      const dominators = this.functionIR.dominators.get(blockId)!;
-      if (!dominators.has(phi.blockId)) {
-        continue;
-      }
-
-      block.instructions = block.instructions.map((instruction) =>
-        instruction.rewrite(values),
       );
     }
   }

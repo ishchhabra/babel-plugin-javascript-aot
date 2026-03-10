@@ -155,10 +155,16 @@ export class SSABuilder {
         ]),
       );
 
-      const phiBlock = this.functionIR.blocks.get(phi.blockId)!;
-      phiBlock.instructions = phiBlock.instructions.map((instruction) =>
-        this.rewriteInstruction(instruction, rewriteMap),
-      );
+      for (const [blockId, block] of this.functionIR.blocks) {
+        const dominators = this.functionIR.dominators.get(blockId)!;
+        if (!dominators.has(phi.blockId)) {
+          continue;
+        }
+
+        block.instructions = block.instructions.map((instruction) =>
+          this.rewriteInstruction(instruction, rewriteMap),
+        );
+      }
     }
   }
 
