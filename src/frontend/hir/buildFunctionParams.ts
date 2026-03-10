@@ -8,7 +8,9 @@ import {
   Place,
   RestElementInstruction,
 } from "../../ir";
+import { AssignmentPatternInstruction } from "../../ir/instructions/pattern/AssignmentPattern";
 import { ObjectPatternInstruction } from "../../ir/instructions/pattern/ObjectPattern";
+import { buildNode } from "./buildNode";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
 
@@ -55,6 +57,14 @@ function buildFunctionParam(
     );
   } else if (paramPath.isObjectPattern()) {
     return buildFunctionObjectPatternParam(
+      paramPath,
+      bodyPath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
+  } else if (paramPath.isAssignmentPattern()) {
+    return buildFunctionAssignmentPatternParam(
       paramPath,
       bodyPath,
       functionBuilder,
@@ -223,6 +233,54 @@ function buildFunctionObjectPropertyKey(
   );
   functionBuilder.header.push(keyInstruction);
   return keyPlace;
+}
+
+function buildFunctionAssignmentPatternParam(
+  paramPath: NodePath<t.AssignmentPattern>,
+  bodyPath: NodePath,
+  functionBuilder: FunctionIRBuilder,
+  moduleBuilder: ModuleIRBuilder,
+  environment: Environment,
+): Place {
+  const leftPath = paramPath.get("left");
+  const leftPlace = buildFunctionParam(
+    leftPath as NodePath<t.LVal>,
+    bodyPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
+
+  // buildNode emits instructions into the current block, but param
+  // instructions must live in the function header for codegen to resolve
+  // places during param generation. We splice the newly added instructions
+  // from the block into the header.
+  const insertPoint = functionBuilder.currentBlock.instructions.length;
+  const rightPath = paramPath.get("right");
+  const rightPlace = buildNode(
+    rightPath,
+    functionBuilder,
+    moduleBuilder,
+    environment,
+  );
+  if (rightPlace === undefined || Array.isArray(rightPlace)) {
+    throw new Error("Default value must be a single expression");
+  }
+  const defaultValueInstructions =
+    functionBuilder.currentBlock.instructions.splice(insertPoint);
+  functionBuilder.header.push(...defaultValueInstructions);
+
+  const identifier = environment.createIdentifier();
+  const place = environment.createPlace(identifier);
+  const instruction = environment.createInstruction(
+    AssignmentPatternInstruction,
+    place,
+    paramPath,
+    leftPlace,
+    rightPlace,
+  );
+  functionBuilder.header.push(instruction);
+  return place;
 }
 
 function buildFunctionRestElementParam(
