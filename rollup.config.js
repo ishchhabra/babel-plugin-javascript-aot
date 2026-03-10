@@ -12,7 +12,7 @@ const config = {
     preserveModulesRoot: "src",
     sourcemap: true,
   },
-  external: [/@babel\/.*/, "lodash-es", "zod", "commander"],
+  external: [/@babel\/.*/, "lodash-es", "zod", "commander", "glob"],
   plugins: [
     typescript({
       tsconfig: "./tsconfig.json",

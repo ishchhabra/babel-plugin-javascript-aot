@@ -29,6 +29,7 @@
     "@babel/traverse": "^7.28.4",
     "@babel/types": "^7.28.4",
     "babel-plugin-tester": "^11.0.4",
+    "glob": "^13.0.6",
     "lodash-es": "^4.17.21",
     "zod": "^3.25.76"
   },
