@@ -93,6 +93,12 @@ function buildFunctionIdentifierParam(
 
   const declarationId = identifier.declarationId;
   functionBuilder.registerDeclarationName(name, declarationId, bodyPath);
+  bodyPath.scope.rename(name, identifier.name);
+  functionBuilder.registerDeclarationName(
+    identifier.name,
+    declarationId,
+    bodyPath,
+  );
   environment.registerDeclaration(
     declarationId,
     functionBuilder.currentBlock.id,
