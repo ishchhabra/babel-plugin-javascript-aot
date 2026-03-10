@@ -1,11 +1,11 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
-import { createRequire } from "module";
 import { Environment } from "../../../environment";
 import { ImportDeclarationInstruction } from "../../../ir";
 import { buildImportSpecifier } from "../buildImportSpecifier";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
+import { resolveModulePath } from "../resolveModulePath";
 
 export function buildImportDeclaration(
   nodePath: NodePath<t.ImportDeclaration>,
@@ -54,13 +54,4 @@ export function buildImportDeclaration(
   );
   functionBuilder.addInstruction(instruction);
   return place;
-}
-
-function resolveModulePath(importPath: string, path: string): string {
-  try {
-    const require = createRequire(path);
-    return require.resolve(importPath);
-  } catch {
-    return importPath;
-  }
 }

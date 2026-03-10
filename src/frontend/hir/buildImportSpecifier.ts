@@ -1,10 +1,10 @@
 import { NodePath } from "@babel/core";
 import * as t from "@babel/types";
-import { createRequire } from "module";
 import { Environment } from "../../environment";
 import { ImportSpecifierInstruction } from "../../ir";
 import { FunctionIRBuilder } from "./FunctionIRBuilder";
 import { ModuleIRBuilder } from "./ModuleIRBuilder";
+import { resolveModulePath } from "./resolveModulePath";
 
 export function buildImportSpecifier(
   specifierNodePath: NodePath<t.ImportSpecifier | t.ImportDefaultSpecifier>,
@@ -60,14 +60,5 @@ function getImportedName(
     }
 
     return importedNode.value;
-  }
-}
-
-function resolveModulePath(importPath: string, path: string): string {
-  try {
-    const require = createRequire(path);
-    return require.resolve(importPath);
-  } catch {
-    return importPath;
   }
 }
