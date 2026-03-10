@@ -15,7 +15,7 @@ export class ExportSpecifierInstruction extends ModuleInstruction {
     public readonly id: InstructionId,
     public readonly place: Place,
     public readonly nodePath: NodePath<t.Node> | undefined,
-    public readonly local: string,
+    public readonly localPlace: Place,
     public readonly exported: string,
   ) {
     super(id, place, nodePath);
@@ -28,7 +28,7 @@ export class ExportSpecifierInstruction extends ModuleInstruction {
       ExportSpecifierInstruction,
       place,
       this.nodePath,
-      this.local,
+      this.localPlace,
       this.exported,
     );
   }
@@ -38,6 +38,6 @@ export class ExportSpecifierInstruction extends ModuleInstruction {
   }
 
   getReadPlaces(): Place[] {
-    return [];
+    return [this.localPlace];
   }
 }
