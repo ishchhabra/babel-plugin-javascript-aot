@@ -31,11 +31,11 @@
     "babel-plugin-tester": "^11.0.4",
     "glob": "^13.0.6",
     "lodash-es": "^4.17.21",
+    "@babel/preset-typescript": "^7.28.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@babel/cli": "^7.28.3",
-    "@babel/preset-typescript": "^7.28.5",
     "@rollup/plugin-commonjs": "^28.0.8",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",

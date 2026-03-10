@@ -20,6 +20,9 @@ importers:
       '@babel/parser':
         specifier: ^7.28.4
         version: 7.29.0
+      '@babel/preset-typescript':
+        specifier: ^7.28.5
+        version: 7.28.5(@babel/core@7.28.4)
       '@babel/traverse':
         specifier: ^7.28.4
         version: 7.29.0
@@ -42,9 +45,6 @@ importers:
       '@babel/cli':
         specifier: ^7.28.3
         version: 7.28.3(@babel/core@7.28.4)
-      '@babel/preset-typescript':
-        specifier: ^7.28.5
-        version: 7.28.5(@babel/core@7.28.4)
       '@rollup/plugin-commonjs':
         specifier: ^28.0.8
         version: 28.0.9(rollup@4.59.0)
@@ -3582,9 +3582,11 @@ snapshots:
       '@babel/generator': 7.28.3
       '@babel/helper-validator-identifier': 7.28.5
       '@babel/parser': 7.28.4
+      '@babel/preset-typescript': 7.28.5(@babel/core@7.28.4)
       '@babel/traverse': 7.28.4
       '@babel/types': 7.28.4
       babel-plugin-tester: 11.0.4(@babel/core@7.28.4)
+      glob: 13.0.6
       lodash-es: 4.17.23
       zod: 3.25.76
     transitivePeerDependencies:
