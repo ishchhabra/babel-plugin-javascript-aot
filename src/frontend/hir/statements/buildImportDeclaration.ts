@@ -57,6 +57,10 @@ export function buildImportDeclaration(
 }
 
 function resolveModulePath(importPath: string, path: string): string {
-  const require = createRequire(path);
-  return require.resolve(importPath);
+  try {
+    const require = createRequire(path);
+    return require.resolve(importPath);
+  } catch {
+    return importPath;
+  }
 }
