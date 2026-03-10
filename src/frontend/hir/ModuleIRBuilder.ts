@@ -1,3 +1,4 @@
+import { transformSync } from "@babel/core";
 import { parse } from "@babel/parser";
 import _traverse, { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
@@ -21,11 +22,34 @@ export class ModuleIRBuilder {
     public readonly environment: Environment,
   ) {}
 
+  private stripTypeScript(code: string): string {
+    const isTSFile = this.path.endsWith(".ts") || this.path.endsWith(".tsx");
+    if (!isTSFile) {
+      return code;
+    }
+
+    const result = transformSync(code, {
+      filename: this.path,
+      presets: [
+        [
+          "@babel/preset-typescript",
+          { isTSX: this.path.endsWith(".tsx"), allExtensions: true },
+        ],
+      ],
+      configFile: false,
+      babelrc: false,
+    });
+    if (result?.code == null) {
+      throw new Error(`Failed to strip TypeScript from ${this.path}`);
+    }
+    return result.code;
+  }
+
   public build(): ModuleIR {
-    const code = readFileSync(this.path, "utf-8");
+    const code = this.stripTypeScript(readFileSync(this.path, "utf-8"));
     const ast = parse(code, {
       sourceType: "module",
-      plugins: ["typescript", "jsx"],
+      plugins: ["jsx"],
     });
 
     let programPath: NodePath<t.Program> | undefined;
