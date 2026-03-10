@@ -5,6 +5,7 @@ import { StoreLocalInstruction } from "../../../ir";
 import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
 import { buildBinaryExpression } from "./buildBinaryExpression";
+import { buildMemberExpressionUpdate } from "./buildMemberExpression";
 
 export function buildUpdateExpression(
   nodePath: NodePath<t.UpdateExpression>,
@@ -13,6 +14,15 @@ export function buildUpdateExpression(
   environment: Environment,
 ) {
   const argumentPath = nodePath.get("argument");
+  if (argumentPath.isMemberExpression()) {
+    return buildMemberExpressionUpdate(
+      nodePath,
+      argumentPath,
+      functionBuilder,
+      moduleBuilder,
+      environment,
+    );
+  }
   if (!argumentPath.isIdentifier()) {
     throw new Error(`Unsupported argument type: ${argumentPath.type}`);
   }
