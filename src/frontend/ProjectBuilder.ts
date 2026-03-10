@@ -19,6 +19,25 @@ export class ProjectBuilder {
     return { modules: this.modules, postOrder };
   }
 
+  /**
+   * Builds a ProjectUnit from multiple entry points. Each entry point is
+   * built independently (discovering its dependencies), and the post-order
+   * traversal covers all reachable modules from all entries.
+   */
+  public getProjectUnit(entryPoints: string[]): ProjectUnit {
+    const visited = new Set<string>();
+    const result: string[] = [];
+
+    for (const entry of entryPoints) {
+      const moduleIR = this.modules.get(entry);
+      if (moduleIR) {
+        this.visitPostOrder(moduleIR, visited, result);
+      }
+    }
+
+    return { modules: this.modules, postOrder: result };
+  }
+
   private buildModule(path: string): ModuleIR {
     if (this.modules.has(path)) {
       return this.modules.get(path)!;
@@ -46,29 +65,32 @@ export class ProjectBuilder {
   private getPostOrder(moduleIR: ModuleIR) {
     const visited = new Set<string>();
     const result: string[] = [];
-
-    const visit = (moduleIR: ModuleIR) => {
-      if (visited.has(moduleIR.path)) {
-        return;
-      }
-
-      visited.add(moduleIR.path);
-      result.push(moduleIR.path);
-
-      const imports = Array.from(moduleIR.globals.values()).filter(
-        (global) => global.kind === "import",
-      );
-      for (const { source } of imports) {
-        const mod = this.modules.get(source);
-        if (mod === undefined) {
-          continue;
-        }
-
-        visit(mod);
-      }
-    };
-
-    visit(moduleIR);
+    this.visitPostOrder(moduleIR, visited, result);
     return result;
+  }
+
+  private visitPostOrder(
+    moduleIR: ModuleIR,
+    visited: Set<string>,
+    result: string[],
+  ) {
+    if (visited.has(moduleIR.path)) {
+      return;
+    }
+
+    visited.add(moduleIR.path);
+    result.push(moduleIR.path);
+
+    const imports = Array.from(moduleIR.globals.values()).filter(
+      (global) => global.kind === "import",
+    );
+    for (const { source } of imports) {
+      const mod = this.modules.get(source);
+      if (mod === undefined) {
+        continue;
+      }
+
+      this.visitPostOrder(mod, visited, result);
+    }
   }
 }

@@ -32,4 +32,21 @@ export class CodeGenerator {
     const program = t.program(statements);
     return generate(program).code;
   }
+
+  /**
+   * Generates code for a specific module in the project. Creates a fresh
+   * CodeGenerator instance so per-module state (places, blocks) is isolated.
+   */
+  generateModule(modulePath: string): string {
+    const moduleIR = this.projectUnit.modules.get(modulePath);
+    if (!moduleIR) {
+      throw new Error(`Module not found: ${modulePath}`);
+    }
+
+    const generator = new CodeGenerator(modulePath, this.projectUnit);
+    const entryFunction = moduleIR.functions.get(makeFunctionIRId(0))!;
+    const { statements } = generateFunction(entryFunction, generator);
+    const program = t.program(statements);
+    return generate(program).code;
+  }
 }
