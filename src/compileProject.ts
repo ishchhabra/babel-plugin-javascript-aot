@@ -67,19 +67,25 @@ export function compileProject(options: ProjectCompilerOptions): FileResult[] {
 
   // Build the entire project as a single unit
   const projectBuilder = new ProjectBuilder();
+  const builtFiles: string[] = [];
   for (const file of entryFiles) {
     try {
       projectBuilder.build(join(resolvedSrc, file));
-    } catch {
+      builtFiles.push(file);
+    } catch (err: unknown) {
       // If a file fails to parse, copy it as-is
       const absOutput = join(resolvedOut, file);
       mkdirSync(dirname(absOutput), { recursive: true });
       writeFileSync(absOutput, readFileSync(join(resolvedSrc, file)));
-      results.push({ file, status: "skipped", error: "Failed to build" });
+      results.push({
+        file,
+        status: "skipped",
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
-  const entryPaths = entryFiles.map((f) => join(resolvedSrc, f));
+  const entryPaths = builtFiles.map((f) => join(resolvedSrc, f));
   const projectUnit = projectBuilder.getProjectUnit(entryPaths);
 
   // Determine root entries: source files not imported by any other source file
@@ -102,7 +108,7 @@ export function compileProject(options: ProjectCompilerOptions): FileResult[] {
     new Pipeline(projectUnit, parsedOptions, rootEntryPaths).run();
   } catch (err: unknown) {
     // If pipeline fails, copy all entry files as-is
-    for (const file of entryFiles) {
+    for (const file of builtFiles) {
       const absOutput = join(resolvedOut, file);
       mkdirSync(dirname(absOutput), { recursive: true });
       writeFileSync(absOutput, readFileSync(join(resolvedSrc, file)));

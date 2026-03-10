@@ -214,6 +214,18 @@ export class FunctionInliningPass extends BaseOptimizationPass {
         const oldInstr = callExpressionBlock.instructions[i];
         callExpressionBlock.instructions[i] = oldInstr.rewrite(retRewriteMap);
       }
+
+      // Also update the block's terminal if it references the old call place
+      if (
+        callExpressionBlock.terminal instanceof ReturnTerminal &&
+        callExpressionBlock.terminal.value.identifier ===
+          callExpressionInstr.place.identifier
+      ) {
+        callExpressionBlock.terminal = new ReturnTerminal(
+          callExpressionBlock.terminal.id,
+          returnPlace,
+        );
+      }
     }
   }
 
