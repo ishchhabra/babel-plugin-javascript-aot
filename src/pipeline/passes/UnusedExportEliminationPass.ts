@@ -2,6 +2,7 @@ import { ProjectUnit } from "../../frontend/ProjectBuilder";
 import { BaseInstruction } from "../../ir";
 import {
   ExportDefaultDeclarationInstruction,
+  ExportFromInstruction,
   ExportNamedDeclarationInstruction,
   ExportSpecifierInstruction,
 } from "../../ir/instructions/module";
@@ -82,6 +83,15 @@ export class UnusedExportEliminationPass {
             // Remove ExportNamedDeclarationInstruction if it's one of the dead ones.
             if (instr instanceof ExportNamedDeclarationInstruction) {
               return !deadExportInstructions.has(instr);
+            }
+
+            // Remove ExportFromInstruction if all its specifiers are unused,
+            // or filter out individual unused specifiers.
+            if (instr instanceof ExportFromInstruction) {
+              instr.specifiers = instr.specifiers.filter(
+                (s) => !unusedExportNames.has(s.exported),
+              );
+              return instr.specifiers.length > 0;
             }
 
             // Remove ExportDefaultDeclarationInstruction for unused "default" export.
