@@ -15,10 +15,14 @@ import {
  * This pass runs at the module level, before per-function optimization passes.
  */
 export class UnusedExportEliminationPass {
+  private readonly entryModules: Set<string>;
+
   constructor(
     private readonly projectUnit: ProjectUnit,
-    private readonly entryModule: string,
-  ) {}
+    entryModules: string[],
+  ) {
+    this.entryModules = new Set(entryModules);
+  }
 
   public run(): void {
     // 1) Collect the set of (source, importedName) pairs across all modules.
@@ -37,8 +41,8 @@ export class UnusedExportEliminationPass {
 
     // 2) For each non-entry module, remove exports that no other module imports.
     for (const [modulePath, moduleIR] of this.projectUnit.modules) {
-      // Never touch the entry module's exports.
-      if (modulePath === this.entryModule) {
+      // Never touch entry modules' exports.
+      if (this.entryModules.has(modulePath)) {
         continue;
       }
 
