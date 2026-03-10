@@ -1,4 +1,4 @@
-import { BranchTerminal } from "../../ir";
+import { BranchTerminal, JumpTerminal } from "../../ir";
 
 import * as t from "@babel/types";
 import { BlockId } from "../../ir";
@@ -12,12 +12,50 @@ export function generateBackEdge(
   generator: CodeGenerator,
 ): Array<t.Statement> {
   const terminal = functionIR.blocks.get(blockId)!.terminal!;
-  if (!(terminal instanceof BranchTerminal)) {
-    throw new Error(
-      `Unsupported back edge from ${blockId} to ${blockId} (${terminal.constructor.name})`,
-    );
+
+  if (terminal instanceof JumpTerminal) {
+    return generateJumpBackEdge(terminal, functionIR, generator);
   }
 
+  if (terminal instanceof BranchTerminal) {
+    return generateBranchBackEdge(terminal, functionIR, generator);
+  }
+
+  throw new Error(
+    `Unsupported back edge on block ${blockId} (${terminal.constructor.name})`,
+  );
+}
+
+/**
+ * A JumpTerminal back edge is an unconditional loop: while (true) { ... }
+ *
+ * This occurs when ConstantPropagationPass folds a loop condition that is
+ * always true, replacing BranchTerminal(true, body, exit) with
+ * JumpTerminal(body).
+ */
+function generateJumpBackEdge(
+  terminal: JumpTerminal,
+  functionIR: FunctionIR,
+  generator: CodeGenerator,
+): Array<t.Statement> {
+  const bodyInstructions = generateBasicBlock(
+    terminal.target,
+    functionIR,
+    generator,
+  );
+
+  const node = t.whileStatement(
+    t.booleanLiteral(true),
+    t.blockStatement(bodyInstructions),
+  );
+  return [node];
+}
+
+function generateBranchBackEdge(
+  terminal: BranchTerminal,
+  functionIR: FunctionIR,
+  generator: CodeGenerator,
+): Array<t.Statement> {
   const test = generator.places.get(terminal.test.id);
   if (test === undefined) {
     throw new Error(`Place ${terminal.test.id} not found`);
@@ -30,8 +68,6 @@ export function generateBackEdge(
     functionIR,
     generator,
   );
-  // NOTE: No need to generate the consequent block, because in a while loop
-  // it's the same as the fallthrough block.
   const exitInstructions = generateBasicBlock(
     terminal.fallthrough,
     functionIR,
