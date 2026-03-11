@@ -27,6 +27,8 @@ export const CompilerOptionsSchema = z.object({
   enableLateCopyPropagationPass: z.boolean().default(true),
   /** Whether to enable the late dead code elimination pass */
   enableLateDeadCodeEliminationPass: z.boolean().default(true),
+  /** Whether to enable the export declaration merging pass */
+  enableExportDeclarationMergingPass: z.boolean().default(true),
 });
 
 export type CompilerOptions = z.infer<typeof CompilerOptionsSchema>;

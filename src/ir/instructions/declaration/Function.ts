@@ -10,6 +10,14 @@ import { Identifier, Place } from "../../core";
 import { FunctionIR } from "../../core/FunctionIR";
 
 export class FunctionDeclarationInstruction extends DeclarationInstruction {
+  /**
+   * Whether codegen should emit this as a standalone statement. When `false`,
+   * codegen still populates `generator.places` but does not emit a
+   * FunctionDeclaration statement. Set to `false` by ExportDeclarationMergingPass
+   * when the declaration is wrapped inside an ExportNamedDeclaration.
+   */
+  public emit: boolean = true;
+
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,

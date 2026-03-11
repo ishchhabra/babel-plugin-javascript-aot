@@ -5,6 +5,7 @@ import {
   DeclarationInstruction,
   ExportSpecifierInstruction,
   ExpressionStatementInstruction,
+  FunctionDeclarationInstruction,
   ImportSpecifierInstruction,
   JSXInstruction,
   MemoryInstruction,
@@ -40,6 +41,12 @@ export function generateInstruction(
     return [];
   } else if (instruction instanceof DeclarationInstruction) {
     const statement = generateDeclarationInstruction(instruction, generator);
+    if (
+      instruction instanceof FunctionDeclarationInstruction &&
+      !instruction.emit
+    ) {
+      return [];
+    }
     return [statement];
   } else if (instruction instanceof ExpressionStatementInstruction) {
     const statement = generateExpressionStatementInstruction(
@@ -57,7 +64,7 @@ export function generateInstruction(
     const statement = generateMemoryInstruction(instruction, generator);
     // TODO: Refactor HIRBuilder to include a property indicating whether
     // the place is temporary or not.
-    if (instruction instanceof StoreLocalInstruction) {
+    if (instruction instanceof StoreLocalInstruction && instruction.emit) {
       return [statement as t.Statement];
     }
 

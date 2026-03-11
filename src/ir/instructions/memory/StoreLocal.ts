@@ -13,6 +13,14 @@ import { Identifier, Place } from "../../core";
  * ```
  */
 export class StoreLocalInstruction extends MemoryInstruction {
+  /**
+   * Whether codegen should emit this as a standalone statement. When `false`,
+   * codegen still populates `generator.places` but does not emit a
+   * VariableDeclaration statement. Set to `false` by ExportDeclarationMergingPass
+   * when the declaration is wrapped inside an ExportNamedDeclaration.
+   */
+  public emit: boolean = true;
+
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,

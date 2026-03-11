@@ -2,6 +2,7 @@ import { CompilerOptions } from "../../compile";
 import { ProjectUnit } from "../../frontend/ProjectBuilder";
 import { BasicBlock, BlockId } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
+import { ExportDeclarationMergingPass } from "./passes/ExportDeclarationMergingPass";
 import { LateCopyPropagationPass } from "./passes/LateCopyPropagationPass";
 import { LoadStoreForwardingPass } from "./passes/LoadStoreForwardingPass";
 import { RedundantCopyEliminationPass } from "./passes/RedundantCopyEliminationPass";
@@ -38,6 +39,13 @@ export class LateOptimizer {
         this.functionIR,
       ).run();
       blocks = lateCopyPropagationResult.blocks;
+    }
+
+    if (this.options.enableExportDeclarationMergingPass) {
+      const exportDeclarationMergingResult = new ExportDeclarationMergingPass(
+        this.functionIR,
+      ).run();
+      blocks = exportDeclarationMergingResult.blocks;
     }
 
     return { blocks };
