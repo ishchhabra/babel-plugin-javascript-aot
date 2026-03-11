@@ -18,6 +18,7 @@ import { buildLogicalExpression } from "./buildLogicalExpression";
 import { buildMemberExpression } from "./buildMemberExpression";
 import { buildNewExpression } from "./buildNewExpression";
 import { buildObjectExpression } from "./buildObjectExpression";
+import { buildRegExpLiteral } from "./buildRegExpLiteral";
 import { buildSequenceExpression } from "./buildSequenceExpression";
 import { buildTaggedTemplateExpression } from "./buildTaggedTemplateExpression";
 import { buildTemplateLiteral } from "./buildTemplateLiteral";
@@ -133,6 +134,9 @@ export function buildExpression(
     case "NumericLiteral":
       nodePath.assertNumericLiteral();
       return buildLiteral(nodePath, functionBuilder, environment);
+    case "RegExpLiteral":
+      nodePath.assertRegExpLiteral();
+      return buildRegExpLiteral(nodePath, functionBuilder, environment);
     case "ObjectExpression":
       nodePath.assertObjectExpression();
       return buildObjectExpression(

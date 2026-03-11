@@ -7,6 +7,7 @@ export { LiteralInstruction, type TPrimitiveValue } from "./Literal";
 export { LogicalExpressionInstruction } from "./LogicalExpression";
 export { NewExpressionInstruction } from "./NewExpression";
 export { ObjectExpressionInstruction } from "./ObjectExpression";
+export { RegExpLiteralInstruction } from "./RegExpLiteral";
 export { ObjectMethodInstruction } from "./ObjectMethod";
 export { ObjectPropertyInstruction } from "./ObjectProperty";
 export { SequenceExpressionInstruction } from "./SequenceExpression";
