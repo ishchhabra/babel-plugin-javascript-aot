@@ -67,7 +67,7 @@ export function toIdentifierOrStringLiteral(
  * @returns `true` if the MemberExpression is static, `false` if it is dynamic.
  */
 export function isStaticMemberAccess(
-  path: NodePath<t.MemberExpression>,
+  path: NodePath<t.MemberExpression | t.OptionalMemberExpression>,
 ): boolean {
   if (!path.node.computed) {
     return true;

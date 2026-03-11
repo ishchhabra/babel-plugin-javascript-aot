@@ -14,10 +14,13 @@ export class CallExpressionInstruction extends ValueInstruction {
   constructor(
     public readonly id: InstructionId,
     public readonly place: Place,
-    public readonly nodePath: NodePath<t.CallExpression> | undefined,
+    public readonly nodePath:
+      | NodePath<t.CallExpression | t.OptionalCallExpression>
+      | undefined,
     public readonly callee: Place,
     // Using args instead of arguments since arguments is a reserved word
     public readonly args: Place[],
+    public readonly optional: boolean = false,
   ) {
     super(id, place, nodePath);
   }
@@ -31,6 +34,7 @@ export class CallExpressionInstruction extends ValueInstruction {
       this.nodePath,
       this.callee,
       this.args,
+      this.optional,
     );
   }
 
@@ -41,6 +45,7 @@ export class CallExpressionInstruction extends ValueInstruction {
       this.nodePath,
       values.get(this.callee.identifier) ?? this.callee,
       this.args.map((arg) => values.get(arg.identifier) ?? arg),
+      this.optional,
     );
   }
 

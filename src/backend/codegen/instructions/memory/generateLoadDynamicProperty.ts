@@ -18,7 +18,13 @@ export function generateLoadDynamicPropertyInstruction(
   }
   t.assertExpression(property);
 
-  const node = t.memberExpression(object, property, true);
+  const inOptionalChain =
+    instruction.optional ||
+    t.isOptionalMemberExpression(object) ||
+    t.isOptionalCallExpression(object);
+  const node = inOptionalChain
+    ? t.optionalMemberExpression(object, property, true, instruction.optional)
+    : t.memberExpression(object, property, true);
   generator.places.set(instruction.place.id, node);
   return node;
 }

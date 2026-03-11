@@ -15,6 +15,7 @@ export class LoadStaticPropertyInstruction extends MemoryInstruction {
     public readonly nodePath: NodePath<t.Node> | undefined,
     public readonly object: Place,
     public readonly property: string,
+    public readonly optional: boolean = false,
   ) {
     super(id, place, nodePath);
   }
@@ -28,6 +29,7 @@ export class LoadStaticPropertyInstruction extends MemoryInstruction {
       this.nodePath,
       this.object,
       this.property,
+      this.optional,
     );
   }
 
@@ -38,6 +40,7 @@ export class LoadStaticPropertyInstruction extends MemoryInstruction {
       this.nodePath,
       values.get(this.object.identifier) ?? this.object,
       this.property,
+      this.optional,
     );
   }
 

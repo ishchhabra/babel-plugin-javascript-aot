@@ -133,6 +133,22 @@ export function buildExpression(
     case "NumericLiteral":
       nodePath.assertNumericLiteral();
       return buildLiteral(nodePath, functionBuilder, environment);
+    case "OptionalCallExpression":
+      nodePath.assertOptionalCallExpression();
+      return buildCallExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
+    case "OptionalMemberExpression":
+      nodePath.assertOptionalMemberExpression();
+      return buildMemberExpression(
+        nodePath,
+        functionBuilder,
+        moduleBuilder,
+        environment,
+      );
     case "ObjectExpression":
       nodePath.assertObjectExpression();
       return buildObjectExpression(
