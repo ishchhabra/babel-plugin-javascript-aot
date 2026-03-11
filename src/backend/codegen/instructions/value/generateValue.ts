@@ -16,6 +16,7 @@ import {
   ValueInstruction,
 } from "../../../../ir";
 import { FunctionIR } from "../../../../ir/core/FunctionIR";
+import { RegExpLiteralInstruction } from "../../../../ir/instructions/value/RegExpLiteral";
 import { ArrowFunctionExpressionInstruction } from "../../../../ir/instructions/value/ArrowFunctionExpression";
 import { AwaitExpressionInstruction } from "../../../../ir/instructions/value/AwaitExpression";
 import { FunctionExpressionInstruction } from "../../../../ir/instructions/value/FunctionExpression";
@@ -35,6 +36,7 @@ import { generateNewExpressionInstruction } from "./generateNewExpression";
 import { generateObjectExpressionInstruction } from "./generateObjectExpression";
 import { generateObjectMethodInstruction } from "./generateObjectMethod";
 import { generateObjectPropertyInstruction } from "./generateObjectProperty";
+import { generateRegExpLiteralInstruction } from "./generateRegExpLiteral";
 import { generateSequenceExpressionInstruction } from "./generateSequenceExpression";
 import { generateTemplateLiteralInstruction } from "./generateTemplateLiteral";
 import { generateThisExpressionInstruction } from "./generateThisExpression";
@@ -68,6 +70,8 @@ export function generateValueInstruction(
     return generateLogicalExpressionInstruction(instruction, generator);
   } else if (instruction instanceof NewExpressionInstruction) {
     return generateNewExpressionInstruction(instruction, generator);
+  } else if (instruction instanceof RegExpLiteralInstruction) {
+    return generateRegExpLiteralInstruction(instruction, generator);
   } else if (instruction instanceof ObjectExpressionInstruction) {
     return generateObjectExpressionInstruction(instruction, generator);
   } else if (instruction instanceof ObjectMethodInstruction) {
