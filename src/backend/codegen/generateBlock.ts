@@ -1,9 +1,8 @@
 import * as t from "@babel/types";
-import { BindingIdentifierInstruction, BlockId } from "../../ir";
+import { BlockId } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { CodeGenerator } from "../CodeGenerator";
 import { generateBackEdge } from "./generateBackEdge";
-import { generateBindingIdentifierInstruction } from "./instructions/generateBindingIdentifier";
 import { generateInstruction } from "./instructions/generateInstruction";
 import { generateTerminal } from "./terminals/generateTerminal";
 
@@ -36,17 +35,6 @@ export function generateBasicBlock(
   const block = functionIR.blocks.get(blockId);
   if (block === undefined) {
     throw new Error(`Block ${blockId} not found`);
-  }
-
-  // Pre-register all binding identifiers before generating instructions.
-  // This mirrors how JS engines handle hoisting: bindings are created at
-  // scope entry before any code executes. Without this, forward references
-  // to hoisted function declarations and closure references from nested
-  // function bodies would fail to resolve.
-  for (const instruction of block.instructions) {
-    if (instruction instanceof BindingIdentifierInstruction) {
-      generateBindingIdentifierInstruction(instruction, generator);
-    }
   }
 
   const statements: Array<t.Statement> = [];
