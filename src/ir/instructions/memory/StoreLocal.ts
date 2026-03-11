@@ -45,12 +45,17 @@ export class StoreLocalInstruction extends MemoryInstruction {
     );
   }
 
-  rewrite(values: Map<Identifier, Place>): StoreLocalInstruction {
+  rewrite(
+    values: Map<Identifier, Place>,
+    { rewriteDefinitions = false }: { rewriteDefinitions?: boolean } = {},
+  ): StoreLocalInstruction {
     return new StoreLocalInstruction(
       this.id,
       this.place,
       this.nodePath,
-      this.lval,
+      rewriteDefinitions
+        ? (values.get(this.lval.identifier) ?? this.lval)
+        : this.lval,
       values.get(this.value.identifier) ?? this.value,
       this.type,
     );

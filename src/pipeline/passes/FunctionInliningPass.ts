@@ -181,7 +181,9 @@ export class FunctionInliningPass extends BaseOptimizationPass {
     for (const instr of block.instructions) {
       const clonedInstr = instr.clone(environment);
       rewriteMap.set(instr.place.identifier, clonedInstr.place);
-      instrs.push(clonedInstr.rewrite(rewriteMap));
+      instrs.push(
+        clonedInstr.rewrite(rewriteMap, { rewriteDefinitions: true }),
+      );
     }
 
     if (block.terminal instanceof ReturnTerminal) {

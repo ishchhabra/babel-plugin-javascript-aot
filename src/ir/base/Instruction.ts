@@ -37,9 +37,16 @@ export abstract class BaseInstruction {
    * Rewrites the instruction to use values.
    *
    * @param values - A map of old values to new values.
+   * @param options - Optional flags to control rewrite behavior.
+   * @param options.rewriteDefinitions - When true, also rewrite definition
+   *   sites (e.g. StoreLocal lval). Defaults to false because SSA needs
+   *   definitions unchanged.
    * @returns The rewritten instruction.
    */
-  abstract rewrite(values: Map<Identifier, Place>): BaseInstruction;
+  abstract rewrite(
+    values: Map<Identifier, Place>,
+    options?: { rewriteDefinitions?: boolean },
+  ): BaseInstruction;
 
   /**
    * Return a set of place IDs that this instruction *reads* (uses).
