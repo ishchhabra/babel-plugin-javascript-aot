@@ -15,7 +15,7 @@ export class CodeGenerator {
   public readonly places: Map<PlaceId, t.Node | null> = new Map();
   public readonly blockToStatements: Map<BlockId, Array<t.Statement>> =
     new Map();
-  public readonly generatedBlocks: Set<BlockId> = new Set();
+  public generatedBlocks: Set<BlockId> = new Set();
 
   constructor(
     public readonly path: string,

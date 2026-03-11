@@ -7,7 +7,9 @@ import {
   LoadPhiInstruction,
   Place,
   PlaceId,
+  ReturnTerminal,
 } from "../../ir";
+import { BaseTerminal } from "../../ir/base/Terminal";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
 import { Phi } from "./Phi";
@@ -164,8 +166,29 @@ export class SSABuilder {
         block.instructions = block.instructions.map((instruction) =>
           this.rewriteInstruction(instruction, rewriteMap),
         );
+
+        if (block.terminal !== undefined) {
+          block.terminal = this.rewriteTerminal(block.terminal, rewriteMap);
+        }
       }
     }
+  }
+
+  private rewriteTerminal(
+    terminal: BaseTerminal,
+    values: Map<Identifier, Place>,
+  ): BaseTerminal {
+    if (
+      terminal instanceof ReturnTerminal &&
+      values.has(terminal.value.identifier)
+    ) {
+      return new ReturnTerminal(
+        terminal.id,
+        values.get(terminal.value.identifier)!,
+      );
+    }
+
+    return terminal;
   }
 
   private rewriteInstruction<T extends BaseInstruction>(

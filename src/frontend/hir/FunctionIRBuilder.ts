@@ -1,7 +1,14 @@
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Environment } from "../../environment";
-import { BaseInstruction, BasicBlock, BlockId, DeclarationId } from "../../ir";
+import {
+  BaseInstruction,
+  BasicBlock,
+  BlockId,
+  DeclarationId,
+  createInstructionId,
+  ReturnTerminal,
+} from "../../ir";
 import { FunctionIR, makeFunctionIRId } from "../../ir/core/FunctionIR";
 import { buildBindings } from "./bindings";
 import { buildFunctionParams } from "./buildFunctionParams";
@@ -40,7 +47,21 @@ export class FunctionIRBuilder {
     const functionId = makeFunctionIRId(this.environment.nextFunctionId++);
 
     if (this.bodyPath.isExpression()) {
-      buildNode(this.bodyPath, this, this.moduleBuilder, this.environment);
+      const resultPlace = buildNode(
+        this.bodyPath,
+        this,
+        this.moduleBuilder,
+        this.environment,
+      );
+      if (resultPlace !== undefined && !Array.isArray(resultPlace)) {
+        // Add an explicit ReturnTerminal so the codegen knows what value
+        // the expression body produces, even when the IR has multiple
+        // blocks (e.g. from ternary or logical expressions).
+        this.currentBlock.terminal = new ReturnTerminal(
+          createInstructionId(this.environment),
+          resultPlace,
+        );
+      }
     } else {
       buildBindings(this.bodyPath, this, this.environment);
       const bodyPath = this.bodyPath.get("body");
