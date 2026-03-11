@@ -456,14 +456,30 @@ function buildObjectPatternAssignmentLeft(
   const propertyPlaces = propertyPaths.map((propertyPath) => {
     if (propertyPath.isObjectProperty()) {
       const keyPath = propertyPath.get("key");
-      const keyPlace = buildNode(
-        keyPath,
-        functionBuilder,
-        moduleBuilder,
-        environment,
-      );
-      if (keyPlace === undefined || Array.isArray(keyPlace)) {
-        throw new Error("Object pattern key must be a single place");
+      let keyPlace;
+      if (!propertyPath.node.computed && keyPath.isIdentifier()) {
+        // Non-computed identifier keys are property labels, not variable
+        // references. Create a fresh BI to avoid colliding with same-named
+        // variable declarations.
+        const keyIdentifier = environment.createIdentifier();
+        keyPlace = environment.createPlace(keyIdentifier);
+        const keyInstruction = environment.createInstruction(
+          BindingIdentifierInstruction,
+          keyPlace,
+          keyPath,
+          keyPath.node.name,
+        );
+        functionBuilder.addInstruction(keyInstruction);
+      } else {
+        keyPlace = buildNode(
+          keyPath,
+          functionBuilder,
+          moduleBuilder,
+          environment,
+        );
+        if (keyPlace === undefined || Array.isArray(keyPlace)) {
+          throw new Error("Object pattern key must be a single place");
+        }
       }
 
       const valuePath = propertyPath.get("value");
