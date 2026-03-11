@@ -51,8 +51,15 @@ export class ProjectBuilder {
       (global) => global.kind === "import",
     );
     for (const { source } of imports) {
-      // Skip external packages and unresolvable paths
-      if (!source.startsWith("/") || !existsSync(source)) {
+      // Skip external packages, unresolvable paths, and node_modules.
+      // node_modules are skipped for now because third-party packages
+      // often use syntax and patterns not yet supported by the compiler.
+      // This filter can be removed once we have broader language coverage.
+      if (
+        !source.startsWith("/") ||
+        !existsSync(source) ||
+        source.includes("/node_modules/")
+      ) {
         continue;
       }
 
