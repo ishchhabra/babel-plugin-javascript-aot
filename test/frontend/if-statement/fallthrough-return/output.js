@@ -8,5 +8,5 @@ function $0_0($1_0) {
     const $4_2 = "negative";
     $7_phi_14 = $4_2;
   }
-  return $4_2;
+  return $7_phi_14;
 }

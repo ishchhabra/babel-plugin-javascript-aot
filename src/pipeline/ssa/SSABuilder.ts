@@ -7,6 +7,7 @@ import {
   LoadPhiInstruction,
   Place,
   PlaceId,
+  ReturnTerminal,
 } from "../../ir";
 import { FunctionIR } from "../../ir/core/FunctionIR";
 import { ModuleIR } from "../../ir/core/ModuleIR";
@@ -164,6 +165,18 @@ export class SSABuilder {
         block.instructions = block.instructions.map((instruction) =>
           this.rewriteInstruction(instruction, rewriteMap),
         );
+
+        // Also rewrite ReturnTerminal references so expression-bodied
+        // arrows return the phi place instead of a pre-SSA operand.
+        if (
+          block.terminal instanceof ReturnTerminal &&
+          rewriteMap.has(block.terminal.value.identifier)
+        ) {
+          block.terminal = new ReturnTerminal(
+            block.terminal.id,
+            rewriteMap.get(block.terminal.value.identifier)!,
+          );
+        }
       }
     }
   }
