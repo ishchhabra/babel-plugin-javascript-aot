@@ -7,11 +7,13 @@ import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildCallExpression(
-  expressionPath: NodePath<t.CallExpression>,
+  expressionPath: NodePath<t.CallExpression | t.OptionalCallExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
   environment: Environment,
 ): Place {
+  const optional =
+    expressionPath.isOptionalCallExpression() && expressionPath.node.optional;
   const calleePath = expressionPath.get("callee");
   if (!calleePath.isExpression()) {
     throw new Error(`Unsupported callee type: ${calleePath.type}`);
@@ -50,6 +52,7 @@ export function buildCallExpression(
     expressionPath,
     calleePlace,
     argumentPlaces,
+    optional,
   );
   functionBuilder.addInstruction(instruction);
   return place;

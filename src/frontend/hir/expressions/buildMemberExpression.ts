@@ -20,11 +20,13 @@ import { FunctionIRBuilder } from "../FunctionIRBuilder";
 import { ModuleIRBuilder } from "../ModuleIRBuilder";
 
 export function buildMemberExpression(
-  nodePath: NodePath<t.MemberExpression>,
+  nodePath: NodePath<t.MemberExpression | t.OptionalMemberExpression>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
   environment: Environment,
 ) {
+  const optional =
+    nodePath.isOptionalMemberExpression() && nodePath.node.optional;
   const objectPath = nodePath.get("object");
   const objectPlace = buildNode(
     objectPath,
@@ -50,6 +52,7 @@ export function buildMemberExpression(
       nodePath,
       objectPlace,
       propertyName,
+      optional,
     );
     functionBuilder.addInstruction(instruction);
     return place;
@@ -69,6 +72,7 @@ export function buildMemberExpression(
       nodePath,
       objectPlace,
       propertyPlace,
+      optional,
     );
     functionBuilder.addInstruction(instruction);
     return place;

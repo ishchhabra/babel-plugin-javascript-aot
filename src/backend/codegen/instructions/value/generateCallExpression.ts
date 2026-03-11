@@ -23,7 +23,13 @@ export function generateCallExpression(
     return node;
   });
 
-  const node = t.callExpression(callee, args);
+  const inOptionalChain =
+    instruction.optional ||
+    t.isOptionalMemberExpression(callee) ||
+    t.isOptionalCallExpression(callee);
+  const node = inOptionalChain
+    ? t.optionalCallExpression(callee, args, instruction.optional)
+    : t.callExpression(callee, args);
   generator.places.set(instruction.place.id, node);
   return node;
 }

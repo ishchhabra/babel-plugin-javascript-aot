@@ -12,8 +12,39 @@ export function generateLoadStaticPropertyInstruction(
   }
   t.assertExpression(object);
 
+  const inOptionalChain =
+    instruction.optional ||
+    t.isOptionalMemberExpression(object) ||
+    t.isOptionalCallExpression(object);
+
   let node: t.Expression;
-  if (isNumeric(instruction.property)) {
+  if (inOptionalChain) {
+    if (isNumeric(instruction.property)) {
+      const property = t.numericLiteral(Number(instruction.property));
+      node = t.optionalMemberExpression(
+        object,
+        property,
+        true,
+        instruction.optional,
+      );
+    } else if (t.isValidIdentifier(instruction.property, true)) {
+      const property = t.identifier(instruction.property);
+      node = t.optionalMemberExpression(
+        object,
+        property,
+        false,
+        instruction.optional,
+      );
+    } else {
+      const property = t.valueToNode(instruction.property) as t.Expression;
+      node = t.optionalMemberExpression(
+        object,
+        property,
+        true,
+        instruction.optional,
+      );
+    }
+  } else if (isNumeric(instruction.property)) {
     const property = t.numericLiteral(Number(instruction.property));
     node = t.memberExpression(object, property, true);
   } else if (t.isValidIdentifier(instruction.property, true)) {
