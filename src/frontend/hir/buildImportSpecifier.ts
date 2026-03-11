@@ -7,7 +7,9 @@ import { ModuleIRBuilder } from "./ModuleIRBuilder";
 import { resolveModulePath } from "./resolveModulePath";
 
 export function buildImportSpecifier(
-  specifierNodePath: NodePath<t.ImportSpecifier | t.ImportDefaultSpecifier>,
+  specifierNodePath: NodePath<
+    t.ImportSpecifier | t.ImportDefaultSpecifier | t.ImportNamespaceSpecifier
+  >,
   declarationNodePath: NodePath<t.ImportDeclaration>,
   functionBuilder: FunctionIRBuilder,
   moduleBuilder: ModuleIRBuilder,
@@ -46,7 +48,9 @@ function getLocalName(
 }
 
 function getImportedName(
-  nodePath: NodePath<t.ImportSpecifier | t.ImportDefaultSpecifier>,
+  nodePath: NodePath<
+    t.ImportSpecifier | t.ImportDefaultSpecifier | t.ImportNamespaceSpecifier
+  >,
 ) {
   const node = nodePath.node;
   if (t.isImportDefaultSpecifier(node)) {

@@ -22,12 +22,12 @@ export function buildImportDeclaration(
 
   const specifiersPath = nodePath.get("specifiers");
   const specifierPlaces = specifiersPath.map((specifierPath) => {
-    if (specifierPath.isImportNamespaceSpecifier()) {
-      throw new Error("Import namespace specifier is not supported");
-    }
-
     const importSpecifierPlace = buildImportSpecifier(
-      specifierPath as NodePath<t.ImportSpecifier | t.ImportDefaultSpecifier>,
+      specifierPath as NodePath<
+        | t.ImportSpecifier
+        | t.ImportDefaultSpecifier
+        | t.ImportNamespaceSpecifier
+      >,
       nodePath,
       functionBuilder,
       moduleBuilder,
