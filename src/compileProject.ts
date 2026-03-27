@@ -123,7 +123,7 @@ export function compileProject(options: ProjectCompilerOptions): FileResult[] {
 
   // Generate code for each source module
   const generator = new CodeGenerator("", projectUnit);
-  for (const file of entryFiles) {
+  for (const file of builtFiles) {
     const absInput = join(resolvedSrc, file);
     const absOutput = join(resolvedOut, file);
     mkdirSync(dirname(absOutput), { recursive: true });
